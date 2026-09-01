@@ -1,0 +1,21 @@
+# Raw / intermediate EEG data (never commit — download from OpenNeuro ds004621 instead)
+raw_data/
+*.vhdr
+*.vmrk
+*.eeg
+*.set
+*.fdt
+
+# Large derivative figures/images (regenerate locally; keep repo lightweight)
+*.png
+*.fig
+*.mat
+
+# MATLAB
+*.asv
+*.m~
+octave-workspace
+
+# OS junk
+.DS_Store
+Thumbs.db
