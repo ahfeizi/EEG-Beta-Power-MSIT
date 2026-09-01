@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Pre-Stimulus Beta Power During Task Anticipation — Analysis Code"
+type: software
+authors:
+  - family-names: "Feizi"
+    given-names: "Amir Hossein"
+    orcid: "https://orcid.org/0000-0001-8929-0910"
+  - family-names: "Motie Nasrabadi"
+    given-names: "Ali"
+    orcid: "https://orcid.org/0000-0002-3702-8547"
+repository-code: "https://github.com/ahfeizi/EEG-Beta-Power-MSIT"
+license: MIT
+version: 1.0.0
+date-released: "2026-09-01"
+keywords:
+  - EEG
+  - beta oscillations
+  - cognitive control
+  - task anticipation
+  - MSIT
+  - Nencki-Symfonia
+  - EEGLAB
+  - MATLAB
