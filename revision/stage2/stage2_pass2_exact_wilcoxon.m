@@ -114,24 +114,23 @@ writetable(D, fullfile(outDir, 'pass2_d_posthoc_exploratory.csv'));
 %% apply the S2-2 decision rule
 cand = ["Fz" "Cz" "C4" "C3" "F3" "F4"];
 fid = fopen(fullfile(outDir, 'pass2_summary.txt'), 'w');
-pr = @(varargin) cellfun(@(h) fprintf(h, varargin{:}), {1, fid});
-pr('Stage 2 pass 2 (S2-2): method sensitivity of v1 Wilcoxon tests\n\n');
-pr('Replication of the v1 computation (relative tolerance %g):\n', repTol);
-pr('  (a) %d/%d channel p-values replicate v1; FDR set replicates v1: %d\n', sum(A.replicates_v1), nC, ...
+pr(fid, 'Stage 2 pass 2 (S2-2): method sensitivity of v1 Wilcoxon tests\n\n');
+pr(fid, 'Replication of the v1 computation (relative tolerance %g):\n', repTol);
+pr(fid, '  (a) %d/%d channel p-values replicate v1; FDR set replicates v1: %d\n', sum(A.replicates_v1), nC, ...
     isequal(A.distinct_v1_method, A.distinct_v1_saved));
-pr('  (b) %d/%d FS-vs-00 p-values replicate v1\n', sum(B.replicates_v1), height(B));
-pr('  (c) %d/%d Table 2 p-values replicate v1\n\n', sum(C.replicates_v1), height(C));
+pr(fid, '  (b) %d/%d FS-vs-00 p-values replicate v1\n', sum(B.replicates_v1), height(B));
+pr(fid, '  (c) %d/%d Table 2 p-values replicate v1\n\n', sum(C.replicates_v1), height(C));
 stopC = ~all(C.replicates_v1) || any(C.relDiff_exact_vs_v1 > repTol);
-pr('Rule (c) control check: %s\n', ternary(stopC, 'FAILED -> STOP, investigate before interpreting (a), (b), (d)', ...
+pr(fid, 'Rule (c) control check: %s\n', ternary(stopC, 'FAILED -> STOP, investigate before interpreting (a), (b), (d)', ...
     'passed (exact p equals the saved v1 p)'));
 ca = A(ismember(A.channel, cand), :);
 flipA = ca.channel(ca.fdr_status_changed);
 f4 = A(A.channel == "F4", :);
-pr('Rule (a): FDR-set changes among Fz/Cz/C4/C3/F3/F4: %s\n', strjoin_or_none(flipA));
-pr('          FDR-distinct channels overall: v1 method %d, exact %d; status changed for %d channel(s): %s\n', ...
+pr(fid, 'Rule (a): FDR-set changes among Fz/Cz/C4/C3/F3/F4: %s\n', strjoin_or_none(flipA));
+pr(fid, '          FDR-distinct channels overall: v1 method %d, exact %d; status changed for %d channel(s): %s\n', ...
     sum(A.distinct_v1_method), sum(A.distinct_exact), sum(A.fdr_status_changed), strjoin_or_none(A.channel(A.fdr_status_changed)));
-pr('          F4: p v1 = %.4g, p exact = %.4g, crosses .05: %d\n', f4.p_v1_saved, f4.p_exact, (f4.p_v1_saved < .05) ~= (f4.p_exact < .05));
-pr('Rule (b): FS-vs-00 p crossing .05: %s\n', strjoin_or_none(B.channel(B.crosses_05)));
+pr(fid, '          F4: p v1 = %.4g, p exact = %.4g, crosses .05: %d\n', f4.p_v1_saved, f4.p_exact, (f4.p_v1_saved < .05) ~= (f4.p_exact < .05));
+pr(fid, 'Rule (b): FS-vs-00 p crossing .05: %s\n', strjoin_or_none(B.channel(B.crosses_05)));
 flagA = ~isempty(flipA) || ((f4.p_v1_saved < .05) ~= (f4.p_exact < .05));
 flagB = any(B.crosses_05);
 if stopC
@@ -141,8 +140,8 @@ elseif ~flagA && ~flagB
 else
     verdict = sprintf('flags: Stage 4 (#9) = %d, Stage 6 = %d', flagA, flagB);
 end
-pr('\nVERDICT: %s\n', verdict);
-pr('Differences are listed in pass2_a/b/c/d_*.csv. No manuscript number changes in Stage 2.\n');
+pr(fid, '\nVERDICT: %s\n', verdict);
+pr(fid, 'Differences are listed in pass2_a/b/c/d_*.csv. No manuscript number changes in Stage 2.\n');
 fclose(fid);
 
 
@@ -162,6 +161,12 @@ end
 
 function s = ternary(c, a, b)
 if c, s = a; else, s = b; end
+end
+
+function pr(fid, varargin)
+% print to the console and to the summary file
+fprintf(1, varargin{:});
+fprintf(fid, varargin{:});
 end
 
 function s = strjoin_or_none(x)
