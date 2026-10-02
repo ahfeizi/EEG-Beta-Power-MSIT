@@ -180,3 +180,27 @@ Fields: ID · date · stage · question · inputs · procedure · decision rule 
   - No flag for Stage 4 or Stage 6.
   - As stated in the rule, these values are not manuscript numbers.
   - Files: `<outRoot>/stage2/pass2_a..d_*.csv`, `pass2_summary.txt`.
+
+---
+
+# Stage 3a: design of the harmonised preprocessing pipeline
+
+Design decisions are recorded one by one as they are made. The pipeline runs only after the whole design is approved (then a 3-subject test, then all 42 subjects).
+
+**Fixed requirement.** Preprocessing delivers **continuous** cleaned data with all events, for both conditions. Epoching and analysis windows are chosen in Stages 5–6, so no window choice is locked in here.
+
+## S3a-D1 · 2026-10-02 · Output format, sampling rate, storage
+
+- **Format (option b).** Per subject and condition (rest, MSIT+), save:
+  - (1) the final cleaned **continuous** EEGLAB `.set`, with all original events (stimuli, responses, S10/S11/S12, boundaries), the rest block labels, the ICA matrices and the list of removed components;
+  - (2) the continuous data **just before component removal** (after channel repair and re-referencing), with the ICA weights and the ICLabel class probabilities.
+
+  Reason: the ICLabel thresholds (D10), and any sensitivity analysis on them, can be re-applied without rerunning ICA, the most expensive step. Cost: about twice the storage.
+- **Target sampling rate: 500 Hz** (raw: 1000 Hz).
+  - 250 Hz was rejected: a Nyquist of 125 Hz leaves no room for the 55–95 Hz control band plus a ~100 Hz low-pass and its transition band.
+  - 1000 Hz was rejected: twice the storage and ICA time, with no gain for beta or the control band.
+  - 500 Hz is the same as v1, and leaves room for a higher-frequency EMG index if D4 allows it.
+- **Storage (option i).** Large EEG files go to a new path field `eegOutRoot` (`get_paths.m`; locally a folder outside the raw-data folder on the data drive). Tables, reports and small figures stay under `outRoot`.
+- **Disk-space gate.** Before the 3-subject test and again before the 42-subject run, check the free space on both drives. **Stop** if:
+  - the `eegOutRoot` drive would have < 15 GB left after the projected output, or
+  - the `outRoot` drive has < 5 GB free.
