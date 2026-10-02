@@ -158,3 +158,25 @@ Fields: ID · date · stage · question · inputs · procedure · decision rule 
     - `beta_avgpower_heatmap_subject_x_channel.png` (1616×949 vs 1441×949).
   - This is consistent with a different figure geometry when rendering in batch mode. For Figure 3, the panel titles (percent changes and p-values) and the plotted points are identical on visual inspection. Under S2-1, PNGs do not bear on the as-run claim.
 - **Next.** Pass 2 (S2-2) may build on these scripts: no DIFFERENT CSV outcome.
+
+### Outcome S2-2 (appended 2026-10-02 after the run; the rule above is unchanged)
+
+- **Code note.** The first run stopped at the summary-printing helper, after the four result CSVs had been written. The helper was fixed (commit 3d3c2e9, reporting only) and the script was rerun in full; the results below are from that rerun.
+- **Replication of v1 (relative tolerance 1e-12):**
+  - (a) 125/125 channel p-values and the v1 FDR set reproduced;
+  - (b) 3/3 FS-vs-00 p-values reproduced;
+  - (c) 3/3 Table 2 p-values reproduced.
+- **Rule (c), control check: passed.** The exact p equals the saved v1 p, with relative differences ≤ 2.2e-15.
+- **Rule (a):**
+  - The FDR-significant set is identical: 90/125 channels under both methods; no channel changes status, none of Fz/Cz/C4/C3/F3/F4 included.
+  - F4: v1 p = 0.05655, exact p = 0.0568; it does not cross .05.
+  - The exact p is smaller than the approximate p for the very small p-values (for example C3: 3.6e-08 → 2.5e-11) and nearly unchanged near .05.
+- **Rule (b):** no FS-vs-00 p crosses .05:
+  - Fz 0.1225 → 0.1249
+  - Cz 0.171 → 0.1747
+  - C4 0.3987 → 0.4061
+- **(d), exploratory:** 18 post-hoc tests; 0 FDR-significant and 0 nominally significant under both methods.
+- **VERDICT under S2-2: the exact method changes no v1 conclusion.**
+  - No flag for Stage 4 or Stage 6.
+  - As stated in the rule, these values are not manuscript numbers.
+  - Files: `<outRoot>/stage2/pass2_a..d_*.csv`, `pass2_summary.txt`.
