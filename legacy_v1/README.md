@@ -94,6 +94,8 @@ The table compares each executed script's last-modified time with the times of t
 - The current file is from 2026-09-01 (note 2), so this script's own output no longer exists.
 - Which of the two scripts wrote the pre-09-01 fixed-mode file cannot be determined from the files. Both use the same algorithm.
 
+**`diagnostics/`.** These are the T1/T2 figures of `exploratory/diagnose_flagged_subjects_new2.m` for sub-08, sub-09 and sub-15 (2026-06-29), copied byte-identical (SHA-256 verified) from the pilot-stage output folder. They are the v1 evidence for the "drift" claim in Methods (subject-inclusion triage), produced in the pilot stage.
+
 ## Rerunning (if ever needed)
 
 - **Outputs.** Every output goes to `<outRoot>/legacy_v1_rerun/` (`rerunDir`). Scripts read v1 inputs from `derivRoot` / `taskDeriv`.

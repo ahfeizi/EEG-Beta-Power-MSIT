@@ -23,3 +23,6 @@ Thumbs.db
 # Local paths (machine-specific; copy config_local_example.m) and default output folder
 config_local.m
 outputs/
+
+# Exception: v1 pilot-stage diagnostic figures kept as evidence (see legacy_v1/README.md)
+!legacy_v1/diagnostics/*.png
