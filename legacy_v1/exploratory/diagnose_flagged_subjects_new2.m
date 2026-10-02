@@ -29,8 +29,12 @@
 clear; clc;
 
 % ---------------------------------------------------------------- CONFIG -----
-cfg.bidsRoot  = fullfile(pwd, 'raw_data', 'ds004621');   % <-- EDIT: path to the downloaded OpenNeuro ds004621 dataset
-cfg.outDir    = fullfile(pwd, 'derivatives');   % <-- EDIT if needed
+repoRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));   % [path] legacy_v1/<folder>/<this> -> repository root
+addpath(repoRoot);  P = get_paths();                                  % [path] config_local.m or repo defaults (get_paths.m)
+rerunDir = fullfile(P.outRoot, 'legacy_v1_rerun');                    % [path] a rerun writes here, never over v1 derivatives
+if ~exist(rerunDir, 'dir'); mkdir(rerunDir); end                      % [path]
+cfg.bidsRoot  = P.bidsRoot;   % [path] read-only
+cfg.outDir    = rerunDir;     % [path]
 cfg.taskLabel = 'rest';
 
 % the two flagged subjects + one clean reference (from triage: sub-08 was cleanest)

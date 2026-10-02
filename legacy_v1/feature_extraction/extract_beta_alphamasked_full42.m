@@ -7,7 +7,11 @@
 % lower-edge clustering (19/23 edge cases at 13-13.5 Hz) was a fit artifact
 % from alpha, not genuine beta signal.
 
-derivRoot     = fullfile(pwd, 'derivatives');   % <-- EDIT if needed: your local output/derivatives folder
+repoRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));   % [path] legacy_v1/<folder>/<this> -> repository root
+addpath(repoRoot);  P = get_paths();                                  % [path] config_local.m or repo defaults (get_paths.m)
+rerunDir = fullfile(P.outRoot, 'legacy_v1_rerun');                    % [path] a rerun writes here, never over v1 derivatives
+if ~exist(rerunDir, 'dir'); mkdir(rerunDir); end                      % [path]
+derivRoot = P.derivRoot;                                           % [path] v1 derivatives (read-only)
 qcSummaryFile = fullfile(derivRoot, 'full_qc_summary.csv');
 
 subjects = arrayfun(@(i) sprintf('sub-%02d', i), 1:42, 'uni', 0);
@@ -74,7 +78,7 @@ nHighEdge = sum(results.nearEdge==1 & results.IBF_Hz >= betaBand(2)-0.5);
 fprintf('  lower-edge (near alpha): %d\n', nLowEdge);
 fprintf('  upper-edge (near EMG):   %d\n', nHighEdge);
 
-outFile = fullfile(derivRoot, 'beta_features_full42_alphamasked.csv');
+outFile = fullfile(rerunDir, 'beta_features_full42_alphamasked.csv');   % [path]
 writetable(results, outFile);
 fprintf('\nSaved -> %s\n', outFile);
 
@@ -82,7 +86,7 @@ fprintf('\nSaved -> %s\n', outFile);
 if exist(qcSummaryFile, 'file')
     qcT = readtable(qcSummaryFile);
     merged = outerjoin(results, qcT, 'Keys', 'subject', 'MergeKeys', true);
-    mergedFile = fullfile(derivRoot, 'beta_features_full42_alphamasked_with_qc.csv');
+    mergedFile = fullfile(rerunDir, 'beta_features_full42_alphamasked_with_qc.csv');   % [path]
     writetable(merged, mergedFile);
     fprintf('Merged with QC summary -> %s\n', mergedFile);
 

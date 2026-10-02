@@ -1,9 +1,15 @@
 %% ---- extract IBF/amplitude, robust to 'fixed' vs 'knee' aperiodic mode ----
-derivRoot = fullfile(pwd, 'derivatives');   % <-- EDIT if needed: your local output/derivatives folder
-subjects  = {'sub-17', 'sub-20', 'sub-08', 'sub-09', 'sub-15'};
-
+repoRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));   % [path] legacy_v1/<folder>/<this> -> repository root
+addpath(repoRoot);  P = get_paths();                                  % [path] config_local.m or repo defaults (get_paths.m)
+rerunDir = fullfile(P.outRoot, 'legacy_v1_rerun');                    % [path] a rerun writes here, never over v1 derivatives
+if ~exist(rerunDir, 'dir'); mkdir(rerunDir); end                      % [path]
+derivRoot = P.derivRoot;                                           % [path] v1 derivatives (read-only)
+subjects  = arrayfun(@(i) sprintf('sub-%02d', i), 1:42, 'uni', 0);
 freq_range = [3, 40];
-betaBand   = [15, 25];     % تنگ‌تر شده تا از نشت آلفا/EMG فاصله بگیره
+betaBand   = [13, 30];
+% [path] as run: pyenv('Version', <local Python 3.10 executable>) -- see README, "FOOOF / Python setup"
+% [path] as run: addpath(<local fooof_mat folder>) -- see README, "FOOOF / Python setup"
+py.importlib.import_module('fooof');
 
 settings = struct();
 settings.aperiodic_mode    = 'fixed';   % <-- تغییر اصلی: بدون knee
@@ -62,4 +68,4 @@ for i = 1:numel(subjects)
 end
 
 disp(results)
-writetable(results, fullfile(derivRoot, 'beta_features_pilot_fixed.csv'));
+writetable(results, fullfile(rerunDir, 'beta_features_full42_fixed.csv'));   % [path]

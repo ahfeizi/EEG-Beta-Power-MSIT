@@ -7,7 +7,11 @@
 % plus one spectrum-grid figure PER CHANNEL (6 figures total), each showing
 % all 42 subjects' raw PSD for that single channel.
 
-derivRoot  = fullfile(pwd, 'derivatives');   % <-- EDIT if needed: your local output/derivatives folder
+repoRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));   % [path] legacy_v1/<folder>/<this> -> repository root
+addpath(repoRoot);  P = get_paths();                                  % [path] config_local.m or repo defaults (get_paths.m)
+rerunDir = fullfile(P.outRoot, 'legacy_v1_rerun');                    % [path] a rerun writes here, never over v1 derivatives
+if ~exist(rerunDir, 'dir'); mkdir(rerunDir); end                      % [path]
+derivRoot = P.derivRoot;                                           % [path] v1 derivatives (read-only)
 targetChans = {'Fz', 'Cz', 'F3', 'F4', 'C3', 'C4'};
 subjects    = arrayfun(@(i) sprintf('sub-%02d', i), 1:42, 'uni', 0);
 
@@ -80,7 +84,7 @@ for i = 1:numel(subjects)
 end
 
 fprintf('\nExtracted %d channel x subject rows\n', height(results));
-outFile = fullfile(derivRoot, 'beta_features_per_channel_raw.csv');
+outFile = fullfile(rerunDir, 'beta_features_per_channel_raw.csv');   % [path]
 writetable(results, outFile);
 fprintf('Saved -> %s\n', outFile);
 
@@ -122,7 +126,7 @@ for c = 1:numel(targetChans)
     xlabel(tl, 'Frequency (Hz)');
     ylabel(tl, 'Power (\muV^2/Hz)');
 
-    figFile = fullfile(derivRoot, sprintf('all_subjects_%s_raw_spectrum_grid.png', chName));
+    figFile = fullfile(rerunDir, sprintf('all_subjects_%s_raw_spectrum_grid.png', chName));   % [path]
     exportgraphics(gcf, figFile, 'Resolution', 200);
     fprintf('Saved -> %s\n', figFile);
 end

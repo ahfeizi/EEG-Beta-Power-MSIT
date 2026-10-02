@@ -6,7 +6,11 @@
 % the raw PSD (Welch, 2s Hanning, 50% overlap, NO 1/f detrending) across the
 % beta band [13 30] Hz.
 
-derivRoot   = fullfile(pwd, 'derivatives');   % <-- EDIT if needed: your local output/derivatives folder
+repoRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));   % [path] legacy_v1/<folder>/<this> -> repository root
+addpath(repoRoot);  P = get_paths();                                  % [path] config_local.m or repo defaults (get_paths.m)
+rerunDir = fullfile(P.outRoot, 'legacy_v1_rerun');                    % [path] a rerun writes here, never over v1 derivatives
+if ~exist(rerunDir, 'dir'); mkdir(rerunDir); end                      % [path]
+derivRoot = P.derivRoot;                                           % [path] v1 derivatives (read-only)
 targetChans = {'Fz', 'Cz', 'F3', 'F4', 'C3', 'C4'};
 subjects    = arrayfun(@(i) sprintf('sub-%02d', i), 1:42, 'uni', 0);
 
@@ -60,7 +64,7 @@ for i = 1:numel(subjects)
 end
 
 fprintf('\nExtracted %d channel x subject rows\n', height(results));
-outFile = fullfile(derivRoot, 'beta_avgpower_per_channel.csv');
+outFile = fullfile(rerunDir, 'beta_avgpower_per_channel.csv');   % [path]
 writetable(results, outFile);
 fprintf('Saved -> %s\n', outFile);
 
@@ -89,6 +93,6 @@ h.ColorbarVisible = 'on';
 h.CellLabelFormat = '%.2f';
 h.FontSize = 8;
 
-figFile = fullfile(derivRoot, 'beta_avgpower_heatmap_subject_x_channel.png');
+figFile = fullfile(rerunDir, 'beta_avgpower_heatmap_subject_x_channel.png');   % [path]
 exportgraphics(gcf, figFile, 'Resolution', 200);
 fprintf('Saved -> %s\n', figFile);

@@ -11,7 +11,11 @@
 % so the beta feature table can be cross-checked against contamination
 % indicators before anything is handed to correlation/ML analysis.
 
-derivRoot   = fullfile(pwd, 'derivatives');   % <-- EDIT if needed: your local output/derivatives folder
+repoRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));   % [path] legacy_v1/<folder>/<this> -> repository root
+addpath(repoRoot);  P = get_paths();                                  % [path] config_local.m or repo defaults (get_paths.m)
+rerunDir = fullfile(P.outRoot, 'legacy_v1_rerun');                    % [path] a rerun writes here, never over v1 derivatives
+if ~exist(rerunDir, 'dir'); mkdir(rerunDir); end                      % [path]
+derivRoot = P.derivRoot;                                           % [path] v1 derivatives (read-only)
 qcSummaryFile = fullfile(derivRoot, 'full_qc_summary.csv');   % from RUN_MODE='full'
 
 subjects = arrayfun(@(i) sprintf('sub-%02d', i), 1:42, 'uni', 0);
@@ -70,7 +74,7 @@ if ~isempty(missing)
     fprintf('Missing/failed: %s\n', strjoin(missing, ', '));
 end
 
-outFile = fullfile(derivRoot, 'beta_features_full42_detrend_sgf.csv');
+outFile = fullfile(rerunDir, 'beta_features_full42_detrend_sgf.csv');   % [path]
 writetable(results, outFile);
 fprintf('\nSaved -> %s\n', outFile);
 
@@ -78,7 +82,7 @@ fprintf('\nSaved -> %s\n', outFile);
 if exist(qcSummaryFile, 'file')
     qcT = readtable(qcSummaryFile);
     merged = outerjoin(results, qcT, 'Keys', 'subject', 'MergeKeys', true);
-    mergedFile = fullfile(derivRoot, 'beta_features_full42_with_qc.csv');
+    mergedFile = fullfile(rerunDir, 'beta_features_full42_with_qc.csv');   % [path]
     writetable(merged, mergedFile);
     fprintf('Merged with QC summary -> %s\n', mergedFile);
 

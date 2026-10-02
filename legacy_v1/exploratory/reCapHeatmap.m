@@ -1,5 +1,9 @@
 %% ---- rescaled heatmap: cap the color scale so the outlier doesn't wash out the rest ----
-derivRoot = fullfile(pwd, 'derivatives');   % <-- EDIT if needed: your local output/derivatives folder
+repoRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));   % [path] legacy_v1/<folder>/<this> -> repository root
+addpath(repoRoot);  P = get_paths();                                  % [path] config_local.m or repo defaults (get_paths.m)
+rerunDir = fullfile(P.outRoot, 'legacy_v1_rerun');                    % [path] a rerun writes here, never over v1 derivatives
+if ~exist(rerunDir, 'dir'); mkdir(rerunDir); end                      % [path]
+derivRoot = P.derivRoot;                                           % [path] v1 derivatives (read-only)
 T = readtable(fullfile(derivRoot, 'beta_avgpower_per_channel.csv'));
 
 subjects = unique(T.subject, 'stable');
@@ -26,4 +30,4 @@ h.FontSize = 8;
 capVal = prctile(M(:), 95);           % <-- outlier no longer dominates the scale
 h.ColorLimits = [0, capVal];
 
-exportgraphics(gcf, fullfile(derivRoot, 'beta_avgpower_heatmap_capped.png'), 'Resolution', 200);
+exportgraphics(gcf, fullfile(rerunDir, 'beta_avgpower_heatmap_capped.png'), 'Resolution', 200);   % [path]

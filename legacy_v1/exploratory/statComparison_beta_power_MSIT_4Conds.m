@@ -1,6 +1,10 @@
 %% ---- statistical comparison of beta power across the 4 MSIT+ conditions ----
-derivRoot = fullfile(pwd, 'derivatives');   % <-- EDIT if needed: your local output/derivatives folder
-taskDeriv = fullfile(derivRoot, 'MSIT_Output');
+repoRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));   % [path] legacy_v1/<folder>/<this> -> repository root
+addpath(repoRoot);  P = get_paths();                                  % [path] config_local.m or repo defaults (get_paths.m)
+rerunDir = fullfile(P.outRoot, 'legacy_v1_rerun');                    % [path] a rerun writes here, never over v1 derivatives
+if ~exist(rerunDir, 'dir'); mkdir(rerunDir); end                      % [path]
+derivRoot = P.derivRoot;                                           % [path] v1 derivatives (read-only)
+taskDeriv = P.taskDeriv;                                           % [path] v1 MSIT+ derivatives (read-only)
 T = readtable(fullfile(taskDeriv, 'msit_beta_power_by_condition.csv'));
 
 channels   = {'Fz','Cz','C4'};
@@ -36,7 +40,7 @@ for c = 1:numel(channels)
     pairs = nchoosek(1:4, 2);
     pPost = nan(size(pairs,1),1);
     for pr = 1:size(pairs,1)
-        pPost(pr) = signrank(M(:,pairs(pr,1)), M(:,pairs(pr,2)), 'method', 'exact');
+        pPost(pr) = signrank(M(:,pairs(pr,1)), M(:,pairs(pr,2)));
     end
     [~, sortIdx] = sort(pPost);
     m = numel(pPost);
@@ -59,7 +63,7 @@ for c = 1:numel(channels)
         'VariableNames', {'channel','friedman_chi2','friedman_p'})]; %#ok<AGROW>
 end
 
-writetable(results, fullfile(taskDeriv, 'msit_beta_condition_comparison_summary.csv'));
+writetable(results, fullfile(rerunDir, 'msit_beta_condition_comparison_summary.csv'));   % [path]
 
 function s = ternary(cond, a, b)
     if cond, s = a; else, s = b; end

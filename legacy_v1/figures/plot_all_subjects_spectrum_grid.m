@@ -6,7 +6,11 @@
 % is simply rising/falling through it (which is why the peak-based feature
 % failed for about half the sample).
 
-derivRoot = fullfile(pwd, 'derivatives');   % <-- EDIT if needed: your local output/derivatives folder
+repoRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));   % [path] legacy_v1/<folder>/<this> -> repository root
+addpath(repoRoot);  P = get_paths();                                  % [path] config_local.m or repo defaults (get_paths.m)
+rerunDir = fullfile(P.outRoot, 'legacy_v1_rerun');                    % [path] a rerun writes here, never over v1 derivatives
+if ~exist(rerunDir, 'dir'); mkdir(rerunDir); end                      % [path]
+derivRoot = P.derivRoot;                                           % [path] v1 derivatives (read-only)
 subjects  = arrayfun(@(i) sprintf('sub-%02d', i), 1:42, 'uni', 0);
 
 displayRange = [5, 40];    % Hz, what to actually plot (wider than beta band for context)
@@ -91,6 +95,6 @@ title(tl, 'Detrended spectrum shape (1/f removed), all subjects -- shaded region
 xlabel(tl, 'Frequency (Hz)');
 ylabel(tl, 'Residual above 1/f background');
 
-outFile = fullfile(derivRoot, 'all_subjects_detrended_spectrum_grid.png');
+outFile = fullfile(rerunDir, 'all_subjects_detrended_spectrum_grid.png');   % [path]
 exportgraphics(gcf, outFile, 'Resolution', 200);
 fprintf('\nSaved -> %s\n', outFile);

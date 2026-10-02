@@ -1,5 +1,9 @@
 %% ---- merged scalp map: distinct-power colors + verdict halo for 6 candidates ----
-derivRoot = fullfile(pwd, 'derivatives');   % <-- EDIT if needed: your local output/derivatives folder
+repoRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));   % [path] legacy_v1/<folder>/<this> -> repository root
+addpath(repoRoot);  P = get_paths();                                  % [path] config_local.m or repo defaults (get_paths.m)
+rerunDir = fullfile(P.outRoot, 'legacy_v1_rerun');                    % [path] a rerun writes here, never over v1 derivatives
+if ~exist(rerunDir, 'dir'); mkdir(rerunDir); end                      % [path]
+derivRoot = P.derivRoot;                                           % [path] v1 derivatives (read-only)
 
 %% ---- load channel locations ----
 sampleSet = fullfile(derivRoot, 'sub-01', 'sub-01_rest_clean.set');
@@ -94,5 +98,5 @@ legend([h1 h2 h3 h4 h5 h6], ...
      'Verdict: clean (Fz, Cz, C4)', 'Verdict: ambiguous (C3)', 'Verdict: EMG-contaminated (F3, F4)'}, ...
     'Location','southoutside', 'NumColumns', 2, 'Box','off', 'FontSize', 9);
 
-exportgraphics(gcf, fullfile(derivRoot, 'scalpmap_merged.png'), 'Resolution', 220);
+exportgraphics(gcf, fullfile(rerunDir, 'scalpmap_merged.png'), 'Resolution', 220);   % [path]
 fprintf('Saved -> scalpmap_merged.png\n');

@@ -4,7 +4,11 @@
 % within the band of interest. No aperiodic subtraction, no significance
 % gating -- just frequency + amplitude, as instructed.
 
-derivRoot = fullfile(pwd, 'derivatives');   % <-- EDIT if needed: your local output/derivatives folder
+repoRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));   % [path] legacy_v1/<folder>/<this> -> repository root
+addpath(repoRoot);  P = get_paths();                                  % [path] config_local.m or repo defaults (get_paths.m)
+rerunDir = fullfile(P.outRoot, 'legacy_v1_rerun');                    % [path] a rerun writes here, never over v1 derivatives
+if ~exist(rerunDir, 'dir'); mkdir(rerunDir); end                      % [path]
+derivRoot = P.derivRoot;                                           % [path] v1 derivatives (read-only)
 subjects  = arrayfun(@(i) sprintf('sub-%02d', i), 1:42, 'uni', 0);
 
 betaBand    = [13, 30];   % Hz
@@ -42,7 +46,7 @@ for i = 1:numel(subjects)
 end
 
 disp(results)
-writetable(results, fullfile(derivRoot, 'beta_features_full42_sgf.csv'));
+writetable(results, fullfile(rerunDir, 'beta_features_full42_sgf.csv'));   % [path]
 
 
 % ============================================================================

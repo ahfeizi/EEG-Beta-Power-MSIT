@@ -3,7 +3,11 @@
 % labeled with its name, and colored by category, so results can be read
 % at a glance instead of from a long table.
 
-derivRoot = fullfile(pwd, 'derivatives');   % <-- EDIT if needed: your local output/derivatives folder
+repoRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));   % [path] legacy_v1/<folder>/<this> -> repository root
+addpath(repoRoot);  P = get_paths();                                  % [path] config_local.m or repo defaults (get_paths.m)
+rerunDir = fullfile(P.outRoot, 'legacy_v1_rerun');                    % [path] a rerun writes here, never over v1 derivatives
+if ~exist(rerunDir, 'dir'); mkdir(rerunDir); end                      % [path]
+derivRoot = P.derivRoot;                                           % [path] v1 derivatives (read-only)
 
 %% ---- load channel locations (from any one preprocessed subject) ----
 sampleSet = fullfile(derivRoot, 'sub-01', 'sub-01_rest_clean.set');
@@ -65,7 +69,7 @@ legend([scatter(nan,nan,55,colHigh,'filled'), scatter(nan,nan,55,colLow,'filled'
     {'Significantly ABOVE average', 'Significantly BELOW average', 'Not significant'}, ...
     'Location','southoutside', 'Orientation','horizontal', 'Box','off');
 
-exportgraphics(gcf, fullfile(derivRoot, 'scalpmap_distinct_channels.png'), 'Resolution', 220);
+exportgraphics(gcf, fullfile(rerunDir, 'scalpmap_distinct_channels.png'), 'Resolution', 220);   % [path]
 
 %% ---- FIGURE B: verdict for the 6 candidate channels ----
 candidates = {'Fz','Cz','C4','C3','F3','F4'};
@@ -108,6 +112,6 @@ legend([scatter(nan,nan,140,colClean,'filled'), scatter(nan,nan,140,colAmbig,'fi
     {'Clean (Fz, Cz, C4)', 'Ambiguous (C3)', 'EMG-contaminated (F3, F4)'}, ...
     'Location','southoutside', 'Orientation','vertical', 'Box','off');
 
-exportgraphics(gcf, fullfile(derivRoot, 'scalpmap_candidate_verdict.png'), 'Resolution', 220);
+exportgraphics(gcf, fullfile(rerunDir, 'scalpmap_candidate_verdict.png'), 'Resolution', 220);   % [path]
 
 fprintf('Saved:\n  scalpmap_distinct_channels.png\n  scalpmap_candidate_verdict.png\n');

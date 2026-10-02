@@ -1,5 +1,9 @@
 %% ---- control-band (55-95 Hz) power for RESTING STATE (fast, files already clean) ----
-derivRoot = fullfile(pwd, 'derivatives');   % <-- EDIT if needed: your local output/derivatives folder
+repoRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));   % [path] legacy_v1/<folder>/<this> -> repository root
+addpath(repoRoot);  P = get_paths();                                  % [path] config_local.m or repo defaults (get_paths.m)
+rerunDir = fullfile(P.outRoot, 'legacy_v1_rerun');                    % [path] a rerun writes here, never over v1 derivatives
+if ~exist(rerunDir, 'dir'); mkdir(rerunDir); end                      % [path]
+derivRoot = P.derivRoot;                                           % [path] v1 derivatives (read-only)
 subjects = arrayfun(@(i) sprintf('sub-%02d', i), 1:42, 'uni', 0);
 targetChans = {'Fz','Cz','C4'};
 controlBand = [55, 95];
@@ -28,4 +32,4 @@ for i = 1:numel(subjects)
     end
     fprintf('%s done\n', subject);
 end
-writetable(results, fullfile(derivRoot, 'rest_control_band_power.csv'));
+writetable(results, fullfile(rerunDir, 'rest_control_band_power.csv'));   % [path]

@@ -21,7 +21,11 @@
 %     contamination (which is broadband) would produce a shared source driving
 %     both bands together.
 
-derivRoot = fullfile(pwd, 'derivatives');   % <-- EDIT if needed: your local output/derivatives folder
+repoRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));   % [path] legacy_v1/<folder>/<this> -> repository root
+addpath(repoRoot);  P = get_paths();                                  % [path] config_local.m or repo defaults (get_paths.m)
+rerunDir = fullfile(P.outRoot, 'legacy_v1_rerun');                    % [path] a rerun writes here, never over v1 derivatives
+if ~exist(rerunDir, 'dir'); mkdir(rerunDir); end                      % [path]
+derivRoot = P.derivRoot;                                           % [path] v1 derivatives (read-only)
 [ALLEEG, EEG, CURRENTSET] = eeglab;
 
 %% ---- 0. load and verify completeness ----
@@ -59,7 +63,7 @@ for c = 1:nChan
     if all(row == row(1))          % guard against degenerate rows
         pvals(c) = 1;
     else
-        pvals(c) = signrank(row, 0, 'method', 'exact');   % Wilcoxon signed-rank test vs. 0 (exact method; see Methods)
+        pvals(c) = signrank(row);   % Wilcoxon signed-rank test vs. 0
     end
 end
 
@@ -81,7 +85,7 @@ distinctTable = table(chanLabels, meanZ, pvals, isDistinct, ...
 distinctTable = sortrows(distinctTable, 'meanZscore', 'descend');
 disp(distinctTable);
 
-outFile1 = fullfile(derivRoot, 'beta_distinct_channels_stats.csv');
+outFile1 = fullfile(rerunDir, 'beta_distinct_channels_stats.csv');   % [path]
 writetable(distinctTable, outFile1);
 fprintf('Saved -> %s\n', outFile1);
 
@@ -179,7 +183,7 @@ emgTable = table(chanLabels, emgCorr, emgP, likelyEMG, ...
 emgTable = sortrows(emgTable, 'betaVsControlBand_r', 'descend');
 disp(emgTable);
 
-outFile2 = fullfile(derivRoot, 'beta_emg_contamination_test.csv');
+outFile2 = fullfile(rerunDir, 'beta_emg_contamination_test.csv');   % [path]
 writetable(emgTable, outFile2);
 fprintf('Saved -> %s\n', outFile2);
 

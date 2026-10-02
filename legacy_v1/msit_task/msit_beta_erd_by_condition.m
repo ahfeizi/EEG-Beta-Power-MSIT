@@ -1,8 +1,12 @@
 %% ---- MSIT+ task: baseline-normalized beta ERD by condition (+ control band) ----
-bidsRoot  = fullfile(pwd, 'raw_data', 'ds004621');   % <-- EDIT: path to the downloaded OpenNeuro ds004621 dataset
-derivRoot = fullfile(pwd, 'derivatives');   % <-- EDIT if needed: your local output/derivatives folder
-taskDeriv = fullfile(derivRoot, 'MSIT_Output');
-if ~exist(taskDeriv, 'dir'); mkdir(taskDeriv); end
+repoRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));   % [path] legacy_v1/<folder>/<this> -> repository root
+addpath(repoRoot);  P = get_paths();                                  % [path] config_local.m or repo defaults (get_paths.m)
+rerunDir = fullfile(P.outRoot, 'legacy_v1_rerun');                    % [path] a rerun writes here, never over v1 derivatives
+if ~exist(rerunDir, 'dir'); mkdir(rerunDir); end                      % [path]
+bidsRoot  = P.bidsRoot;                                            % [path] raw dataset (read-only)
+derivRoot = P.derivRoot;                                           % [path] v1 derivatives (read-only)
+taskDeriv = P.taskDeriv;                                           % [path] v1 MSIT+ derivatives (read-only)
+% [path] as run: mkdir(taskDeriv) -- a rerun writes to rerunDir (created above)
 
 subjects = arrayfun(@(i) sprintf('sub-%02d', i), 1:42, 'uni', 0);
 targetChans = {'Fz','Cz','C4'};
@@ -23,7 +27,7 @@ icThresh = [0 0; 0.80 1; 0.80 1; 0.80 1; 0.80 1; 0.80 1; 0 0];
 
 [ALLEEG, EEG, CURRENTSET] = eeglab;
 
-outFile = fullfile(taskDeriv, 'msit_beta_erd_by_condition.csv');
+outFile = fullfile(rerunDir, 'msit_beta_erd_by_condition.csv');   % [path]
 results = table();
 if exist(outFile, 'file')
     fprintf('Found existing partial results, resuming from them.\n');

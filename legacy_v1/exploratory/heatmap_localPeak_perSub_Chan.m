@@ -1,5 +1,9 @@
 %% ---- heatmap: hasLocalPeak per subject x channel ----
-derivRoot = fullfile(pwd, 'derivatives');   % <-- EDIT if needed: your local output/derivatives folder
+repoRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));   % [path] legacy_v1/<folder>/<this> -> repository root
+addpath(repoRoot);  P = get_paths();                                  % [path] config_local.m or repo defaults (get_paths.m)
+rerunDir = fullfile(P.outRoot, 'legacy_v1_rerun');                    % [path] a rerun writes here, never over v1 derivatives
+if ~exist(rerunDir, 'dir'); mkdir(rerunDir); end                      % [path]
+derivRoot = P.derivRoot;                                           % [path] v1 derivatives (read-only)
 T = readtable(fullfile(derivRoot, 'beta_local_peaks_per_channel.csv'));
 
 subjects = unique(T.subject, 'stable');
@@ -31,6 +35,6 @@ h.CellLabelColor = 'none';
 h.GridVisible = 'on';
 h.FontSize = 9;
 
-figFile = fullfile(derivRoot, 'beta_peak_heatmap_subject_x_channel.png');
+figFile = fullfile(rerunDir, 'beta_peak_heatmap_subject_x_channel.png');   % [path]
 exportgraphics(gcf, figFile, 'Resolution', 200);
 fprintf('Saved -> %s\n', figFile);

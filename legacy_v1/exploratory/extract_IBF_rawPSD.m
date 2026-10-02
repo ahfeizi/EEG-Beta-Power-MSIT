@@ -10,7 +10,12 @@ close all;
 % PATHS
 % -------------------------------------------------------------------------
 
-cfg.derivRoot = fullfile(pwd, 'derivatives');   % <-- EDIT if needed: your local output/derivatives folder
+repoRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));   % [path] legacy_v1/<folder>/<this> -> repository root
+addpath(repoRoot);  P = get_paths();                                  % [path] config_local.m or repo defaults (get_paths.m)
+rerunDir = fullfile(P.outRoot, 'legacy_v1_rerun');                    % [path] a rerun writes here, never over v1 derivatives
+if ~exist(rerunDir, 'dir'); mkdir(rerunDir); end                      % [path]
+cfg.derivRoot = P.derivRoot;   % [path] v1 derivatives (read-only)
+cfg.outDir    = rerunDir;       % [path] all outputs of a rerun
 
 cfg.subjects = arrayfun(@(x)sprintf('sub-%02d',x),1:42,'uni',0);
 
@@ -24,9 +29,9 @@ cfg.overlap = 0.50;
 
 cfg.nfft = [];
 
-cfg.saveFigure = fullfile(cfg.derivRoot,'PSD_Fz_AllSubjects.png');
+cfg.saveFigure = fullfile(cfg.outDir,'PSD_Fz_AllSubjects.png');   % [path]
 
-cfg.saveCSV = fullfile(cfg.derivRoot,'IBF_features_rawPSD.csv');
+cfg.saveCSV = fullfile(cfg.outDir,'IBF_features_rawPSD.csv');   % [path]
 
 %% ------------------------------------------------------------------------
 % TABLE
@@ -267,7 +272,7 @@ grid on
 
 exportgraphics(...
     fig2,...
-    fullfile(cfg.derivRoot,'IBF_Fz_scatter.png'),...
+    fullfile(cfg.outDir,'IBF_Fz_scatter.png'),...   % [path]
     'Resolution',300);
 
 close(fig2);
@@ -314,7 +319,7 @@ grid on
 
 exportgraphics(...
     fig2,...
-    fullfile(cfg.derivRoot,'IBF_Cz_scatter.png'),...
+    fullfile(cfg.outDir,'IBF_Cz_scatter.png'),...   % [path]
     'Resolution',300);
 
 close(fig2);
@@ -361,7 +366,7 @@ grid on
 
 exportgraphics(...
     fig2,...
-    fullfile(cfg.derivRoot,'IBF_F3_scatter.png'),...
+    fullfile(cfg.outDir,'IBF_F3_scatter.png'),...   % [path]
     'Resolution',300);
 
 close(fig2);
@@ -408,7 +413,7 @@ grid on
 
 exportgraphics(...
     fig2,...
-    fullfile(cfg.derivRoot,'IBF_F4_scatter.png'),...
+    fullfile(cfg.outDir,'IBF_F4_scatter.png'),...   % [path]
     'Resolution',300);
 
 close(fig2);
@@ -455,7 +460,7 @@ grid on
 
 exportgraphics(...
     fig2,...
-    fullfile(cfg.derivRoot,'IBF_C3_scatter.png'),...
+    fullfile(cfg.outDir,'IBF_C3_scatter.png'),...   % [path]
     'Resolution',300);
 
 close(fig2);
@@ -502,7 +507,7 @@ grid on
 
 exportgraphics(...
     fig2,...
-    fullfile(cfg.derivRoot,'IBF_C4_scatter.png'),...
+    fullfile(cfg.outDir,'IBF_C4_scatter.png'),...   % [path]
     'Resolution',300);
 
 close(fig2);
@@ -597,7 +602,7 @@ end
 % SAVE MATLAB DATA
 % -------------------------------------------------------------------------
 
-save(fullfile(cfg.derivRoot,'IBF_rawPSD_results.mat'),...
+save(fullfile(cfg.outDir,'IBF_rawPSD_results.mat'),...   % [path]
     'T',...
     'cfg');
 
@@ -648,7 +653,7 @@ ChannelSummary.StdAmplitude  = StdAMP;
 ChannelSummary.NDetectedPeaks = NPeak;
 
 writetable(ChannelSummary,...
-    fullfile(cfg.derivRoot,'ChannelSummary.csv'));
+    fullfile(cfg.outDir,'ChannelSummary.csv'));   % [path]
 
 %% ------------------------------------------------------------------------
 % HISTOGRAMS
@@ -672,7 +677,7 @@ for c = 1:numel(cfg.channels)
     grid on
 
     exportgraphics(gcf,...
-        fullfile(cfg.derivRoot,...
+        fullfile(cfg.outDir,...   % [path]
         sprintf('%s_IBF_histogram.png',ch)),...
         'Resolution',300);
 
@@ -728,14 +733,14 @@ SubjectSummary.Edge30 = ...
     double(abs(T.C4_IBF-30)<eps);
 
 writetable(SubjectSummary,...
-    fullfile(cfg.derivRoot,'SubjectSummary.csv'));
+    fullfile(cfg.outDir,'SubjectSummary.csv'));   % [path]
 
 %% ------------------------------------------------------------------------
 % SAVE FIG FILE
 % -------------------------------------------------------------------------
 
 savefig(fig,...
-    fullfile(cfg.derivRoot,'PSD_Fz_AllSubjects.fig'));
+    fullfile(cfg.outDir,'PSD_Fz_AllSubjects.fig'));   % [path]
 
 %% ------------------------------------------------------------------------
 % EXPORT PSD CURVES
@@ -747,7 +752,7 @@ PSD.Subjects = cfg.subjects;
 
 PSD.Frequency = f;
 
-save(fullfile(cfg.derivRoot,'PSD_Metadata.mat'),'PSD','-v7.3');
+save(fullfile(cfg.outDir,'PSD_Metadata.mat'),'PSD','-v7.3');   % [path]
 
 %% ------------------------------------------------------------------------
 % FINISHED
@@ -805,7 +810,7 @@ for s = 1:numel(cfg.subjects)
 
 end
 
-save(fullfile(cfg.derivRoot,'PSD_Fz_AllSubjects.mat'),'PSD_Fz','-v7.3');
+save(fullfile(cfg.outDir,'PSD_Fz_AllSubjects.mat'),'PSD_Fz','-v7.3');   % [path]
 
 %% ------------------------------------------------------------------------
 % SAVE INDIVIDUAL PSD (ALL CHANNELS)
@@ -862,7 +867,7 @@ for s = 1:numel(cfg.subjects)
 
 end
 
-save(fullfile(cfg.derivRoot,'PSD_AllChannels.mat'),'PSD_All','-v7.3');
+save(fullfile(cfg.outDir,'PSD_AllChannels.mat'),'PSD_All','-v7.3');   % [path]
 
 %% ------------------------------------------------------------------------
 % PEAK TABLE
@@ -883,7 +888,7 @@ for c = 1:numel(cfg.channels)
 end
 
 writetable(PeakTable,...
-    fullfile(cfg.derivRoot,'PeakTable.csv'));
+    fullfile(cfg.outDir,'PeakTable.csv'));   % [path]
 
 %% ------------------------------------------------------------------------
 % CHANNEL PRESENCE CHECK
@@ -922,7 +927,7 @@ if ~isempty(MissingChannels)
         'VariableNames',{'Subject','Channel'});
 
     writetable(MissingTable,...
-        fullfile(cfg.derivRoot,'MissingChannels.csv'));
+        fullfile(cfg.outDir,'MissingChannels.csv'));   % [path]
 
 end
 
@@ -938,7 +943,7 @@ Parameters.overlap = cfg.overlap;
 Parameters.channels = cfg.channels;
 Parameters.derivRoot = cfg.derivRoot;
 
-save(fullfile(cfg.derivRoot,'Parameters.mat'),'Parameters');
+save(fullfile(cfg.outDir,'Parameters.mat'),'Parameters');   % [path]
 
 %% ------------------------------------------------------------------------
 % EXPORT PER-SUBJECT FIGURES
@@ -1033,7 +1038,7 @@ for s = 1:numel(cfg.subjects)
 
     exportgraphics( ...
         gcf, ...
-        fullfile(cfg.derivRoot,subject,[subject '_Fz_PSD.png']), ...
+        fullfile(cfg.outDir,[subject '_Fz_PSD.png']), ...   % [path]
         'Resolution',300);
 
     close(gcf);
@@ -1073,7 +1078,7 @@ assert(cfg.windowSec>0,...
 % LOG FILE
 % -------------------------------------------------------------------------
 
-logFile = fullfile(cfg.derivRoot,'extract_IBF_log.txt');
+logFile = fullfile(cfg.outDir,'extract_IBF_log.txt');   % [path]
 
 fid = fopen(logFile,'w');
 
@@ -1118,7 +1123,7 @@ fclose(fid);
 
 cfg.creationDate = datestr(now);
 
-save(fullfile(cfg.derivRoot,'extract_IBF_config.mat'),'cfg');
+save(fullfile(cfg.outDir,'extract_IBF_config.mat'),'cfg');   % [path]
 
 %% ------------------------------------------------------------------------
 % CLEANUP
@@ -1206,7 +1211,7 @@ for s = 1:numel(cfg.subjects)
 
 end
 
-save(fullfile(cfg.derivRoot,'ROI_PSD.mat'),'ROI_PSD','-v7.3');
+save(fullfile(cfg.outDir,'ROI_PSD.mat'),'ROI_PSD','-v7.3');   % [path]
 
 %% ------------------------------------------------------------------------
 % ROI FIGURE
@@ -1237,7 +1242,7 @@ title('ROI PSD');
 
 exportgraphics( ...
     gcf,...
-    fullfile(cfg.derivRoot,'ROI_PSD.png'),...
+    fullfile(cfg.outDir,'ROI_PSD.png'),...   % [path]
     'Resolution',300);
 
 close(gcf);
@@ -1287,7 +1292,7 @@ ROI_Table.IBF = ROI_IBF;
 ROI_Table.Amplitude = ROI_AMP;
 
 writetable(ROI_Table,...
-    fullfile(cfg.derivRoot,'ROI_IBF.csv'));
+    fullfile(cfg.outDir,'ROI_IBF.csv'));   % [path]
 
 %% ------------------------------------------------------------------------
 % ROI SCATTER
@@ -1312,7 +1317,7 @@ title('ROI Beta Peak');
 grid on
 
 exportgraphics(gcf,...
-    fullfile(cfg.derivRoot,'ROI_IBF.png'),...
+    fullfile(cfg.outDir,'ROI_IBF.png'),...   % [path]
     'Resolution',300);
 
 close(gcf);
@@ -1321,7 +1326,7 @@ close(gcf);
 % FINAL SAVE
 % -------------------------------------------------------------------------
 
-save(fullfile(cfg.derivRoot,'Workspace_IBF.mat'));
+save(fullfile(cfg.outDir,'Workspace_IBF.mat'));   % [path]
 
 %% ------------------------------------------------------------------------
 % PSD QC REPORT
@@ -1347,13 +1352,13 @@ QC.TotalDetected = ...
     + double(QC.C4_Peak);
 
 writetable(QC,...
-    fullfile(cfg.derivRoot,'QC_Report.csv'));
+    fullfile(cfg.outDir,'QC_Report.csv'));   % [path]
 
 %% ------------------------------------------------------------------------
 % EXPORT EXCEL
 % -------------------------------------------------------------------------
 
-xlsFile = fullfile(cfg.derivRoot,'IBF_Results.xlsx');
+xlsFile = fullfile(cfg.outDir,'IBF_Results.xlsx');   % [path]
 
 writetable(T,xlsFile,'Sheet','Features');
 
@@ -1367,7 +1372,7 @@ writetable(QC,xlsFile,'Sheet','QC');
 % SAVE ALL VARIABLES
 % -------------------------------------------------------------------------
 
-save(fullfile(cfg.derivRoot,'IBF_Project.mat'),...
+save(fullfile(cfg.outDir,'IBF_Project.mat'),...   % [path]
     'T',...
     'ROI_Table',...
     'ChannelSummary',...

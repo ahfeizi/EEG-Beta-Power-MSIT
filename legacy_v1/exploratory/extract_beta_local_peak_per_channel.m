@@ -14,7 +14,11 @@
 % frequency/amplitude columns are left NaN rather than forced to an edge
 % value.
 
-derivRoot   = fullfile(pwd, 'derivatives');   % <-- EDIT if needed: your local output/derivatives folder
+repoRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));   % [path] legacy_v1/<folder>/<this> -> repository root
+addpath(repoRoot);  P = get_paths();                                  % [path] config_local.m or repo defaults (get_paths.m)
+rerunDir = fullfile(P.outRoot, 'legacy_v1_rerun');                    % [path] a rerun writes here, never over v1 derivatives
+if ~exist(rerunDir, 'dir'); mkdir(rerunDir); end                      % [path]
+derivRoot = P.derivRoot;                                           % [path] v1 derivatives (read-only)
 targetChans = {'Fz', 'Cz', 'F3', 'F4', 'C3', 'C4'};
 subjects    = arrayfun(@(i) sprintf('sub-%02d', i), 1:42, 'uni', 0);
 
@@ -102,6 +106,6 @@ for s = 1:numel(subjList)
 end
 fprintf('Subjects with NO local peak in ANY of the 6 channels: %s\n', strjoin(fullyMonotonic, ', '));
 
-outFile = fullfile(derivRoot, 'beta_local_peaks_per_channel.csv');
+outFile = fullfile(rerunDir, 'beta_local_peaks_per_channel.csv');   % [path]
 writetable(results, outFile);
 fprintf('Saved -> %s\n', outFile);

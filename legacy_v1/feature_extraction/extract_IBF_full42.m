@@ -3,24 +3,18 @@
 % settings.aperiodic_mode = 'knee'. Output filename is set automatically to match
 % (beta_features_full42_fixed.csv / beta_features_full42_knee.csv), corresponding
 % to methods 3 and 4 in Table 1 of the manuscript.
-%
-% *** ONE-TIME SETUP REQUIRED before this script will run ***
-% This script calls fooof(), provided by the fooof_mat MATLAB wrapper, which
-% calls the Python `fooof` package under the hood via MATLAB's pyenv interface.
-% If fooof(...) errors out ("undefined function" or a Python/pyenv error), you
-% have not completed setup yet. See README.md, section "FOOOF / Python setup",
-% for the full walkthrough. Quick checklist:
-%   1) A Python 3.10 environment with `pip install fooof` completed
-%   2) pyenv('Version', '<path to that python3.10 executable>')  run once in MATLAB
-%   3) fooof_mat (https://github.com/fooof-tools/fooof_mat) added to the MATLAB path
-derivRoot = fullfile(pwd, 'derivatives');   % <-- EDIT if needed: your local output/derivatives folder   % <-- EDIT if needed
+repoRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));   % [path] legacy_v1/<folder>/<this> -> repository root
+addpath(repoRoot);  P = get_paths();                                  % [path] config_local.m or repo defaults (get_paths.m)
+rerunDir = fullfile(P.outRoot, 'legacy_v1_rerun');                    % [path] a rerun writes here, never over v1 derivatives
+if ~exist(rerunDir, 'dir'); mkdir(rerunDir); end                      % [path]
+derivRoot = P.derivRoot;                                           % [path] v1 derivatives (read-only)
 subjects  = arrayfun(@(i) sprintf('sub-%02d', i), 1:42, 'uni', 0);
-
+% [path] as run: addpath(<local fooof_mat folder>) -- see README, "FOOOF / Python setup"
 freq_range = [3, 40];
 betaBand   = [13, 30];     % canonical beta range (matches manuscript Methods)
 
 settings = struct();
-settings.aperiodic_mode    = 'fixed';   % <-- TOGGLE: 'fixed' or 'knee' (run once for each)
+settings.aperiodic_mode    = 'knee';   % <-- TOGGLE: 'fixed' or 'knee' (run once for each)
 settings.peak_width_limits = [1, 8];
 settings.max_n_peaks       = 6;
 settings.min_peak_height   = 0.05;
@@ -77,6 +71,6 @@ end
 
 disp(results)
 
-outFile = fullfile(derivRoot, sprintf('beta_features_full42_%s.csv', lower(settings.aperiodic_mode)));
+outFile = fullfile(rerunDir, sprintf('beta_features_full42_%s.csv', lower(settings.aperiodic_mode)));   % [path]
 writetable(results, outFile);
 fprintf('Saved: %s\n', outFile);

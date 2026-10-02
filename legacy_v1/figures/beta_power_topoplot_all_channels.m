@@ -4,7 +4,11 @@
 % this keeps every channel's value separate and displays the full spatial
 % pattern as a scalp map. No information is discarded.
 
-derivRoot = fullfile(pwd, 'derivatives');   % <-- EDIT if needed: your local output/derivatives folder
+repoRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));   % [path] legacy_v1/<folder>/<this> -> repository root
+addpath(repoRoot);  P = get_paths();                                  % [path] config_local.m or repo defaults (get_paths.m)
+rerunDir = fullfile(P.outRoot, 'legacy_v1_rerun');                    % [path] a rerun writes here, never over v1 derivatives
+if ~exist(rerunDir, 'dir'); mkdir(rerunDir); end                      % [path]
+derivRoot = P.derivRoot;                                           % [path] v1 derivatives (read-only)
 subjects  = arrayfun(@(i) sprintf('sub-%02d', i), 1:42, 'uni', 0);
 
 betaBand   = [13, 30];   % Hz
@@ -62,7 +66,7 @@ topoplot(grandAvg, refChanlocs, 'electrodes','on', 'style','both');
 colorbar;
 title(sprintf('Grand-average raw beta power (%d-%d Hz), all %d subjects', ...
     betaBand(1), betaBand(2), numel(validSubj)));
-exportgraphics(gcf, fullfile(derivRoot, 'beta_power_topoplot_grandaverage.png'), 'Resolution', 200);
+exportgraphics(gcf, fullfile(rerunDir, 'beta_power_topoplot_grandaverage.png'), 'Resolution', 200);   % [path]
 
 %% ---- per-subject topoplot grid (6x7) ----
 nRows = 6; nCols = 7;
@@ -81,10 +85,10 @@ end
 title(tl, sprintf('Per-subject raw beta power topography (%d-%d Hz) -- color capped at 95th percentile', ...
     betaBand(1), betaBand(2)), 'FontSize', 12);
 
-exportgraphics(gcf, fullfile(derivRoot, 'beta_power_topoplot_per_subject_grid.png'), 'Resolution', 200);
+exportgraphics(gcf, fullfile(rerunDir, 'beta_power_topoplot_per_subject_grid.png'), 'Resolution', 200);   % [path]
 
 %% ---- save the underlying per-channel data too ----
 chanLabels = {refChanlocs.labels}';
 T = array2table(allPowerMat', 'VariableNames', validSubj, 'RowNames', chanLabels);
-writetable(T, fullfile(derivRoot, 'beta_power_all_channels_all_subjects.csv'), 'WriteRowNames', true);
+writetable(T, fullfile(rerunDir, 'beta_power_all_channels_all_subjects.csv'), 'WriteRowNames', true);   % [path]
 fprintf('Saved full channel x subject table -> beta_power_all_channels_all_subjects.csv\n');

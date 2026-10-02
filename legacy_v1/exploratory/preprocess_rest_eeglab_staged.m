@@ -38,8 +38,12 @@ RUN_MODE = 'triage';     % <-- 'triage' | 'pilot' | 'full'
 
 
 % ---------------------------------------------------------------- CONFIG -----
-cfg.bidsRoot   = fullfile(pwd, 'raw_data');   % <-- EDIT if needed     % folder containing sub-XX/
-cfg.derivRoot  = fullfile(pwd, 'derivatives');   % <-- EDIT if needed    % output folder
+repoRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));   % [path] legacy_v1/<folder>/<this> -> repository root
+addpath(repoRoot);  P = get_paths();                                  % [path] config_local.m or repo defaults (get_paths.m)
+rerunDir = fullfile(P.outRoot, 'legacy_v1_rerun');                    % [path] a rerun writes here, never over v1 derivatives
+if ~exist(rerunDir, 'dir'); mkdir(rerunDir); end                      % [path]
+cfg.bidsRoot   = P.bidsRoot;  % [path] folder containing sub-XX/ (read-only)
+cfg.derivRoot  = rerunDir;    % [path] output folder
 cfg.taskLabel  = 'rest';                          % filename token for rest run
 
 cfg.allSubjects = arrayfun(@(i) sprintf('sub-%02d', i), 1:42, 'uni', 0);
