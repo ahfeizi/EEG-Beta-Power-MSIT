@@ -15,8 +15,8 @@ All analyses use the publicly available **Nencki-Symfonia** EEG-ERP dataset:
 - OpenNeuro accession: **ds004621** — https://openneuro.org/datasets/ds004621
 - 128-channel resting-state and MSIT+ (conflict/task) EEG recordings from 42 healthy adults.
 
-To reproduce the analyses, download ds004621 from OpenNeuro and set the dataset path
-in each script (see **Setup** below).
+To reproduce the analyses, download ds004621 from OpenNeuro and set your local paths once
+(see **Configure paths** below).
 
 ## Repository structure
 
@@ -77,13 +77,27 @@ file — run it twice (once per mode); the output filename is set automatically 
   Python `fooof` package via MATLAB's `pyenv` interface — Python 3.10 was used for
   development) for `legacy_v1/feature_extraction/extract_IBF_full42.m`
 
-## Setup
+## Configure paths
 
-Each script has a `bidsRoot` / `derivRoot` (or `cfg.bidsRoot` / `cfg.derivRoot`) variable
-near the top, marked `<-- EDIT`. Set these to:
+Scripts do not contain hard-coded paths. They call `get_paths()` (repository root), which
+returns four paths:
 
-- `bidsRoot` — local path to the downloaded ds004621 dataset
-- `derivRoot` — local path where intermediate/derivative outputs should be written
+| Field       | Meaning                                         | Access     | Default (inside the repo)     |
+|-------------|-------------------------------------------------|------------|-------------------------------|
+| `bidsRoot`  | the downloaded OpenNeuro ds004621 dataset       | read-only  | `raw_data/ds004621`           |
+| `derivRoot` | existing v1 derivatives (per-subject .set, CSV) | read-only  | `legacy_v1/derivatives`       |
+| `taskDeriv` | existing v1 MSIT+ derivatives                   | read-only  | `legacy_v1/derivatives`       |
+| `outRoot`   | where every new output is written               | read/write | `outputs/` (gitignored)       |
+
+To use your own locations:
+
+1. Copy `config_local_example.m` to `config_local.m` in the repository root.
+2. Replace the placeholder paths. Any field you omit keeps its default.
+3. Run scripts as usual; `get_paths()` picks up `config_local.m` automatically.
+
+`config_local.m` is listed in `.gitignore` and is never committed. Scripts only read from
+`bidsRoot`, `derivRoot` and `taskDeriv`, and write only under `outRoot`, so existing
+derivatives are never overwritten.
 
 ### FOOOF / Python setup (required for `extract_IBF_full42.m` only)
 

@@ -19,3 +19,7 @@ octave-workspace
 # OS junk
 .DS_Store
 Thumbs.db
+
+# Local paths (machine-specific; copy config_local_example.m) and default output folder
+config_local.m
+outputs/
