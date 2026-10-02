@@ -79,3 +79,60 @@ Fields: ID · date · stage · question · inputs · procedure · decision rule 
   - Under pre-stated rule (ii), the median RSI is **not** within 0.5–1.0 s, so RSI modelling is not mandated by that rule. Whether to add it anyway is a Stage 5 decision.
   - 6 stimuli have a response inside −0.2..0 s (flagged under rule (i)).
   - First-in-mini-block stimuli: 4773 of 16,729 (87–126 per subject).
+
+---
+
+## S2-1 · 2026-10-02 · Stage 2, pass 1 · Does the as-run legacy code reproduce the v1 outputs?
+
+- **Question.** Run unchanged, do the `legacy_v1/` scripts reproduce the v1 outputs behind draft v1? This is the empirical test of the as-run claim; audit item #3 context.
+- **Scripts rerun unchanged** (the normal approximation where they used it):
+  - `feature_extraction/extract_beta_avgpower_per_channel.m`
+  - `feature_extraction/control_band_55_95_power_RS.m`
+  - `statistics/beta_channel_stats_emg_test.m`
+  - `statistics/effect_size_rankbiserial.m`
+  - `statistics/tost_control_band_equivalence.m`
+  - `statistics/conflict_specificity_prestim_beta.m`
+  - `statistics/trial_counts_per_condition.m`
+  - `statistics/sensitivity_nearedge_threshold.m`
+  - `exploratory/statComparison_beta_power_MSIT_4Conds.m`
+  - `figures/figure3_corrected.m`
+- **Not rerun:**
+  - preprocessing;
+  - `msit_beta_erd_by_condition.m` (it preprocesses from raw);
+  - the five peak-detection scripts.
+- **Procedure** (`revision/stage2/stage2_pass1_run_legacy.m`, then `stage2_pass1_compare.m`; MATLAB R2022b, same computer):
+  - Each script runs in its own function workspace and writes to `<outRoot>/legacy_v1_rerun/`.
+  - Inputs are the v1 derivatives (read-only), so each link of the chain (`.set` → rest power → Table 2 / Figure 3) is tested against the exact v1 inputs it used. If every link reproduces, the chain reproduces.
+  - Run outcome (ok / error, seconds) → `<outRoot>/stage2/pass1_run_log.csv`.
+- **Comparison**, for each expected output (11 CSV, 5 PNG) → `<outRoot>/stage2/pass1_comparison.csv`:
+  - (i) SHA-256 vs the **original v1 file** in `derivRoot` / `taskDeriv`. This is the primary reference: the true as-run bytes.
+  - (ii) For CSVs, SHA-256 vs `legacy_v1/derivatives/` (stored byte-for-byte since commit 0f36c54).
+  - (iii) If (i) differs:
+    - CSV: a line-ending-insensitive comparison, then cell by cell (numeric: maximum absolute and relative difference; text: exact);
+    - PNG: pixel comparison.
+- **Decision rule:**
+  - **IDENTICAL** (bytes equal the original): the as-run claim is empirically confirmed for that output.
+  - **FORMAT_OR_FP_ONLY** (only line endings differ, numeric differences ≤ 1e-10 relative, or a PNG that is pixel-identical with different bytes): "reproduced up to formatting / floating point". Reported; the as-run claim holds for the numbers.
+  - **DIFFERENT** (a larger numeric difference, different rows/columns/text, or different pixels): the as-run claim fails for that output. It is reported and investigated (input change vs code difference) before pass 2 builds on that script. No manuscript number changes.
+  - **The script fails to run in batch mode:** "not reproducible as-is" for its outputs. Reported; the legacy code is NOT edited.
+  - **PNG outcomes are informational only.** The as-run claim rests on the CSVs.
+- **Known case, stated in advance.** `sensitivity_nearedge_threshold.m` reads the FOOOF CSVs rewritten on 2026-09-01; see `legacy_v1/README.md`, note 3. A difference only at thresholds other than 0.5 Hz would point to an input change, not to the script.
+- **Outputs.** `<outRoot>/legacy_v1_rerun/*`, `<outRoot>/stage2/pass1_run_log.csv`, `<outRoot>/stage2/pass1_comparison.csv`.
+
+## S2-2 · 2026-10-02 · Stage 2, pass 2 · Were the v1 conclusions sensitive to the Wilcoxon method?
+
+- **Question.** v1 used MATLAB's normal approximation for some Wilcoxon signed-rank tests. If every one were exact, which v1 conclusions would change? Audit item #3.
+- **Scope.** Documentation of method sensitivity ONLY. Pass 2 is **not** a source of manuscript numbers: after the full rerun (Stage 3), every manuscript number comes from Stages 4–6 on the new pipeline.
+- **Procedure.** New code `revision/stage2/stage2_pass2_exact_wilcoxon.m` reads only v1 CSVs (read-only) and writes to `<outRoot>/stage2/`. Recomputed with `signrank(..., 'method', 'exact')`:
+  - (a) channel screening: one-sample signed-rank of the within-subject z-scored beta power for each of the 125 channels, plus Benjamini–Hochberg FDR at q = .05, exactly as in v1 otherwise;
+  - (b) the planned FS-vs-00 contrast of pre-stimulus beta at Fz, Cz and C4;
+  - (c) Table 2 rest vs task (already exact in v1), as a control check;
+  - (d) the exploratory post-hoc pairwise tests of `statComparison_beta_power_MSIT_4Conds.m` (no reported number; for completeness).
+- **Page's L:** not recomputed (option (a)). It stays a one-sided normal approximation, to be stated in Methods; Stage 6 redoes the conflict analysis.
+- **Output.** One row per test: the v1 p (and its method), the exact p, the difference, and the significance status at the v1 thresholds (nominal α = .05; FDR set membership; Bonferroni .05/3 where v1 used it).
+- **Decision rule:**
+  - **(c) does not reproduce the v1 p-values exactly:** stop and investigate before interpreting (a), (b) or (d).
+  - **The FDR-significant set changes for any of the six candidate channels (Fz, Cz, C4, C3, F3, F4), or F4 (v1 p = .057) crosses .05:** flag for Stage 4 (#9).
+  - **Any FS-vs-00 p crosses .05:** flag for Stage 6.
+  - **Otherwise:** "the exact method changes no v1 conclusion", with all differences reported.
+  - In every case, no manuscript text or number changes in Stage 2.
