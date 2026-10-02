@@ -80,14 +80,15 @@ file — run it twice (once per mode); the output filename is set automatically 
 ## Configure paths
 
 Scripts do not contain hard-coded paths. They call `get_paths()` (repository root), which
-returns four paths:
+returns five paths:
 
 | Field       | Meaning                                         | Access     | Default (inside the repo)     |
 |-------------|-------------------------------------------------|------------|-------------------------------|
 | `bidsRoot`  | the downloaded OpenNeuro ds004621 dataset       | read-only  | `raw_data/ds004621`           |
 | `derivRoot` | existing v1 derivatives (per-subject .set, CSV) | read-only  | `legacy_v1/derivatives`       |
 | `taskDeriv` | existing v1 MSIT+ derivatives                   | read-only  | `legacy_v1/derivatives`       |
-| `outRoot`   | where every new output is written               | read/write | `outputs/` (gitignored)       |
+| `outRoot`   | where new tables, reports and figures are written | read/write | `outputs/` (gitignored)     |
+| `eegOutRoot` | where new continuous EEG files are written (large: tens of GB) | read/write | `outputs/eeg/` (gitignored) |
 
 To use your own locations:
 
@@ -96,7 +97,7 @@ To use your own locations:
 3. Run scripts as usual; `get_paths()` picks up `config_local.m` automatically.
 
 `config_local.m` is listed in `.gitignore` and is never committed. Scripts only read from
-`bidsRoot`, `derivRoot` and `taskDeriv`, and write only under `outRoot`, so existing
+`bidsRoot`, `derivRoot` and `taskDeriv`, and write only under `outRoot` or `eegOutRoot`, so existing
 derivatives are never overwritten.
 
 ### FOOOF / Python setup (required for `extract_IBF_full42.m` only)

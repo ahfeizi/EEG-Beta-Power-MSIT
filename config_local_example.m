@@ -8,4 +8,5 @@ p.bidsRoot  = '/path/to/ds004621';               % raw OpenNeuro ds004621 (read-
 p.derivRoot = '/path/to/v1/derivatives';         % existing v1 derivatives (read-only)
 p.taskDeriv = '/path/to/v1/derivatives/MSIT';    % existing v1 MSIT+ derivatives (read-only)
 p.outRoot   = '/path/to/new/outputs';            % all new outputs are written here
+p.eegOutRoot = '/path/to/large/eeg/outputs';    % new continuous EEG files (needs tens of GB)
 end
