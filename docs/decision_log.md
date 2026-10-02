@@ -136,3 +136,25 @@ Fields: ID · date · stage · question · inputs · procedure · decision rule 
   - **Any FS-vs-00 p crosses .05:** flag for Stage 6.
   - **Otherwise:** "the exact method changes no v1 conclusion", with all differences reported.
   - In every case, no manuscript text or number changes in Stage 2.
+
+### Outcome S2-1 (appended 2026-10-02 after the run; the rule above is unchanged)
+
+- **Run.** All 10 legacy scripts ran unchanged in MATLAB batch mode without error (`pass1_run_log.csv`).
+- **CSV outputs: 11/11 IDENTICAL.** SHA-256 equals the original v1 file and the `legacy_v1/derivatives/` copy for:
+  - `beta_avgpower_per_channel.csv`, `rest_control_band_power.csv`;
+  - `beta_distinct_channels_stats.csv`, `beta_emg_contamination_test.csv`;
+  - `beta_power_effect_sizes_rankbiserial.csv`, `Table2_with_effect_sizes.csv`;
+  - `control_band_TOST_equivalence.csv`;
+  - `prestim_beta_conflict_specificity.csv`, `trial_counts_per_condition.csv`;
+  - `nearEdge_sensitivity_analysis.csv`;
+  - `msit_beta_condition_comparison_summary.csv`.
+- **Conclusion under the rule.**
+  - The as-run claim is **empirically confirmed** for every CSV these scripts produce, including the chain `.set` → rest power → Table 2 inputs.
+  - The known case is resolved: the near-edge sensitivity output is byte-identical at **all** thresholds, so the 2026-09-01 rewrite of the FOOOF CSVs changed nothing that the script reads.
+- **PNG outputs (informational only):**
+  - **FORMAT_OR_FP_ONLY** (pixel-identical, file bytes differ): `fig_control_band_TOST.png`, `fig_prestim_conflict_specificity.png`, `fig_nearEdge_threshold_sensitivity.png`.
+  - **DIFFERENT**, in image height only:
+    - `fig3_rest_vs_task_beta_and_control_CORRECTED.png` (1758×2773 vs 1752×2773);
+    - `beta_avgpower_heatmap_subject_x_channel.png` (1616×949 vs 1441×949).
+  - This is consistent with a different figure geometry when rendering in batch mode. For Figure 3, the panel titles (percent changes and p-values) and the plotted points are identical on visual inspection. Under S2-1, PNGs do not bear on the as-run claim.
+- **Next.** Pass 2 (S2-2) may build on these scripts: no DIFFERENT CSV outcome.
