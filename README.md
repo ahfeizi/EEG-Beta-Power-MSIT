@@ -21,50 +21,49 @@ in each script (see **Setup** below).
 ## Repository structure
 
 ```
-preprocessing/        Resting-state EEG preprocessing pipeline (EEGLAB: triage -> pilot -> full)
-msit_task/             MSIT+ task epoching, baseline/pre-stimulus beta power, control-band power
-feature_extraction/    Individual beta frequency (IBF) / beta-power feature extraction —
-                        the five peak-detection methods reported in Table 1 (see below)
-statistics/             Whole-scalp channel statistics, EMG-contamination test,
-                        MSIT 4-condition comparison. All Wilcoxon signed-rank tests use
-                        'method','exact' (see Methods in the manuscript).
-figures/                Scripts that regenerate all manuscript figures (spectra, scalp maps,
-                        paired rest-vs-task beta power, heatmaps)
-exploratory/            Early/diagnostic scripts kept for methodological transparency:
-                        subject-inclusion diagnostics, early peak-detection prototypes, and
-                        superseded pilot-scale (5-subject) versions of the feature-extraction
-                        scripts. Not part of the final reported pipeline.
-derivatives/            Small aggregated output tables (CSV) used to regenerate figures/stats
-                        without re-running the full EEGLAB pipeline. No raw/per-sample EEG data.
+legacy_v1/              As-run record of the v1 analysis (code release v1.0.0). Do not use
+                        for new analyses.
+  preprocessing/        Resting-state EEG preprocessing (EEGLAB: triage -> pilot -> full)
+  msit_task/            MSIT+ preprocessing, pre-stimulus beta and control-band power
+  feature_extraction/   The five beta peak-detection methods (Table 1 of draft v1),
+                        rest beta and control-band power
+  statistics/           Whole-scalp channel statistics and EMG-contamination test
+  figures/              Figure scripts of draft v1
+  exploratory/          Early, diagnostic and superseded scripts kept for transparency
+  derivatives/          Aggregated output tables (CSV) of v1. No raw/per-sample EEG data.
+revision/               Code of the revision (v1.1), stage by stage
+docs/                   Decision log (decision rules written before each new analysis)
 ```
+
+Paths changed between v1.0.0 and this version: every v1 script moved from
+`<folder>/` to `legacy_v1/<folder>/`; scripts that were superseded or never produced an
+output were moved to `legacy_v1/exploratory/` or removed (they remain in tag `v1.0.0`).
 
 ## Table 1 (beta peak detection methods) -> script mapping
 
 | Method (Table 1)              | *n* lacking peak | Script                                       | Output CSV |
 |--------------------------------|:---:|-----------------------------------------------|------------|
-| Heuristic detrending           | 23 (54.8%) | `feature_extraction/Extract_beta_detrend_SGF_full42.m` | `beta_features_full42_detrend_sgf.csv` |
-| Alpha-masked reanalysis        | 22 (52.4%) | `feature_extraction/extract_beta_alphamasked_full42.m` | `beta_features_full42_alphamasked.csv` |
-| FOOOF/specparam (fixed)        | 24 (57.1%) | `feature_extraction/extract_IBF_full42.m` (run with `settings.aperiodic_mode = 'fixed'`) | `beta_features_full42_fixed.csv` |
-| FOOOF/specparam (knee)         | 20 (47.6%) | `feature_extraction/extract_IBF_full42.m` (run with `settings.aperiodic_mode = 'knee'`)  | `beta_features_full42_knee.csv` |
-| Savitzky-Golay (raw spectrum)  | 37 (88.1%) | `feature_extraction/extract_IBF_SGF.m`                  | `beta_features_full42_sgf.csv` |
+| Heuristic detrending           | 23 (54.8%) | `legacy_v1/feature_extraction/Extract_beta_detrend_SGF_full42.m` | `beta_features_full42_detrend_sgf.csv` |
+| Alpha-masked reanalysis        | 22 (52.4%) | `legacy_v1/feature_extraction/extract_beta_alphamasked_full42.m` | `beta_features_full42_alphamasked.csv` |
+| FOOOF/specparam (fixed)        | 24 (57.1%) | `legacy_v1/feature_extraction/extract_IBF_full42.m` (run with `settings.aperiodic_mode = 'fixed'`) | `beta_features_full42_fixed.csv` |
+| FOOOF/specparam (knee)         | 20 (47.6%) | `legacy_v1/feature_extraction/extract_IBF_full42.m` (run with `settings.aperiodic_mode = 'knee'`)  | `beta_features_full42_knee.csv` |
+| Savitzky-Golay (raw spectrum)  | 37 (88.1%) | `legacy_v1/feature_extraction/extract_IBF_SGF.m`                  | `beta_features_full42_sgf.csv` |
 
 **Note on `extract_IBF_full42.m`:** this single script produces both the FOOOF-fixed and
 FOOOF-knee results depending on the `settings.aperiodic_mode` toggle near the top of the
 file — run it twice (once per mode); the output filename is set automatically to match.
 
-## Pipeline order (final, reported pipeline)
+## Pipeline order (v1, as run)
 
-1. `preprocessing/preprocess_rest_eeglab_staged_Pilot.m` — resting-state preprocessing
+1. `legacy_v1/preprocessing/preprocess_rest_eeglab_staged_Pilot.m` — resting-state preprocessing
    (filtering, ASR, ICA/ICLabel, epoching). Run with `RUN_MODE = 'triage'`, then `'pilot'`,
    then `'full'`.
-2. `msit_task/msit_beta_erd_by_condition.m` — MSIT+ preprocessing + pre-stimulus
+2. `legacy_v1/msit_task/msit_beta_erd_by_condition.m` — MSIT+ preprocessing + pre-stimulus
    (baseline) vs. post-stimulus beta power and control-band (55–95 Hz) power, by condition.
-3. `feature_extraction/` — the five beta-peak-detection methods in Table 1 (see mapping above).
-4. `feature_extraction/control_band_55_95_power_RS.m` — resting-state control-band power.
-5. `statistics/beta_channel_stats_emg_test.m` — whole-scalp channel statistics + EMG
+3. `legacy_v1/feature_extraction/` — the five beta-peak-detection methods in Table 1 (see mapping above).
+4. `legacy_v1/feature_extraction/control_band_55_95_power_RS.m` — resting-state control-band power.
+5. `legacy_v1/statistics/beta_channel_stats_emg_test.m` — whole-scalp channel statistics + EMG
    contamination test (beta vs. control-band power correlation).
-6. `figures/paired_figure_rest_task_beta_power.m` — rest vs. task pre-stimulus beta power
-   figure (paired, Wilcoxon signed-rank, exact method).
 
 ## Requirements
 
@@ -76,7 +75,7 @@ file — run it twice (once per mode); the output filename is set automatically 
   Learning Toolbox (`signrank`)
 - [FOOOF](https://fooof-tools.github.io/fooof/) MATLAB wrapper (`fooof_mat`, calling the
   Python `fooof` package via MATLAB's `pyenv` interface — Python 3.10 was used for
-  development) for `feature_extraction/extract_IBF_full42.m`
+  development) for `legacy_v1/feature_extraction/extract_IBF_full42.m`
 
 ## Setup
 
@@ -88,7 +87,7 @@ near the top, marked `<-- EDIT`. Set these to:
 
 ### FOOOF / Python setup (required for `extract_IBF_full42.m` only)
 
-`feature_extraction/extract_IBF_full42.m` (methods 3 and 4 in Table 1) calls a MATLAB
+`legacy_v1/feature_extraction/extract_IBF_full42.m` (methods 3 and 4 in Table 1) calls a MATLAB
 function `fooof()`, which is not built into MATLAB or EEGLAB — it comes from the
 **fooof_mat** wrapper, which itself calls the Python `fooof` / specparam package via
 MATLAB's `pyenv` interface. All other scripts in this repository are plain MATLAB/EEGLAB
