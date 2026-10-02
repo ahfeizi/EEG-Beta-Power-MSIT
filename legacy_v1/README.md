@@ -126,6 +126,7 @@ The table compares each executed script's last-modified time with the times of t
 | `exploratory/f_1_Channel.m` | removed (fragment, not standalone) |
 | `derivatives/*.csv` | `legacy_v1/derivatives/` |
 | — (not in v1.0.0) | `statistics/effect_size_rankbiserial.m`, `tost_control_band_equivalence.m`, `conflict_specificity_prestim_beta.m`, `trial_counts_per_condition.m`, `sensitivity_nearedge_threshold.m`; `figures/figure3_corrected.m` |
+| — (not in v1.0.0) | `legacy_v1/derivatives/`: `Table2_with_effect_sizes.csv`, `beta_power_effect_sizes_rankbiserial.csv`, `control_band_TOST_equivalence.csv`, `prestim_beta_conflict_specificity.csv`, `trial_counts_per_condition.csv`, `nearEdge_sensitivity_analysis.csv`. These are the v1 outputs of the five statistics scripts above, copied byte-identical from the v1 derivative folders. |
 
 **Executed copy vs v1.0.0 content.** Several v1.0.0 files differ in content from the executed copies kept here:
 - `beta_channel_stats_emg_test.m` and `statComparison_beta_power_MSIT_4Conds.m`: v1.0.0 has `'method','exact'`, which was never run;
