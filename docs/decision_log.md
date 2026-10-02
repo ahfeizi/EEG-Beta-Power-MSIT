@@ -204,3 +204,17 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
 - **Disk-space gate.** Before the 3-subject test and again before the 42-subject run, check the free space on both drives. **Stop** if:
   - the `eegOutRoot` drive would have < 15 GB left after the projected output, or
   - the `outRoot` drive has < 5 GB free.
+
+## S3a-D2 · 2026-10-02 · Channel set and reference
+
+- **Facts.**
+  - All 84 raw files (42 subjects × rest/MSIT+) have the same 127 EEG channels.
+  - Only `TP9 LEFT EAR` and `TP10 RIGHT EAR` have no entry in EEGLAB's `standard-10-5-cap385` template; their true placement (mastoid vs earlobe) is unknown.
+  - The online reference is FCz, which is not in the recording.
+  - No digitised positions exist, so all channel locations come from the `standard-10-5-cap385` template.
+- **D2a: drop TP9/TP10** (as in v1). Template coordinates could be wrong for these two, which would distort interpolation, topographies and ICLabel. They are not analysis channels.
+- **D2b: recover FCz at re-referencing.**
+  - FCz is added as a zero-valued channel with its template coordinates.
+  - The data are then re-referenced to the common average with FCz declared as the original reference (`pop_reref` with `refloc`).
+  - The average then includes the reference site, and FCz gets its signal back. The final montage is 126 channels: 125 recorded + FCz.
+  - **Consequence for D9:** after average referencing (and after interpolating any removed channels), the data rank is lower than the channel count. ICA must use the actual rank.
