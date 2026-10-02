@@ -218,3 +218,27 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - The data are then re-referenced to the common average with FCz declared as the original reference (`pop_reref` with `refloc`).
   - The average then includes the reference site, and FCz gets its signal back. The final montage is 126 channels: 125 recorded + FCz.
   - **Consequence for D9:** after average referencing (and after interpolating any removed channels), the data rank is lower than the channel count. ICA must use the actual rank.
+
+## S3a-D3 · 2026-10-02 · Cropping to the analysed data (rest; task rule pending as D3e)
+
+- **Facts** (from the raw `*_task-rest_events.tsv` of all 42 subjects).
+  - In the 41 subjects with all four markers:
+    - S12₁→S10 = 300.003–300.007 s;
+    - S10→S11 = 55.014–55.015 s;
+    - S11→S12₂ = 5.016–5.017 s;
+    - at least 312.7 s of data follow S12₂.
+  - **sub-25** has only two `S 12` markers:
+    - S12₁→S12₂ = 357.79 s, 2.25 s shorter than the others' 360.04 s;
+    - only 298.19 s of data follow S12₂.
+- **D3a, block timing.** Rest block k = [S12ₖ, S12ₖ + 300.0 s), clipped at the end of the recording. S10 is used only as a consistency check: it must equal S12₁ + 300 s within 0.01 s, otherwise the subject is flagged and processing stops for that subject.
+- **D3b, when to crop.** Crop after filtering and line-noise removal and **before** bad-channel detection, ASR and ICA. Cleaning decisions then rest only on the analysed data, and filtering before cropping keeps filter edge effects out of the blocks.
+  - The same principle applies to MSIT+; its exact cropping rule is decision S3a-D3e, approved separately.
+  - The data quantity for ICA is addressed in D8.
+- **D3c, sub-25.**
+  - Block 1 = [S12₁, S12₁ + 297.75 s), i.e. 300 s minus the 2.25 s gap deficit. This excludes any break data, whether the deficit arose in block 1 or in the break.
+  - Block 2 = [S12₂, end of recording) = 298.19 s (truncated).
+  - sub-25 is flagged in QC. The split-half reliability analysis reports results with and without sub-25.
+- **D3d, block identity.**
+  - Events `rest_b1_start`, `rest_b1_end`, `rest_b2_start` and `rest_b2_end` are inserted, with a `boundary` event between the blocks.
+  - `EEG.etc.restBlocks` stores each block's original start time in the raw file (s), its duration (s) and the sub-25 flag.
+- **Rule for Stages 4–6 (binding).** Spectral segments (Welch windows or any other segment) must **never cross a boundary event**: segment within blocks only.
