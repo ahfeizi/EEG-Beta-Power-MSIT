@@ -265,3 +265,25 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
 - **Rule for Stages 5–6 (binding).**
   - The first trial of each task block is preceded by a break, not by the previous trial's ITI. **Default:** exclude it from all pre-stimulus analyses, and report the count per subject.
   - Note: every block-first trial is also a first-in-mini-block trial, so this slightly reduces the first-in-mini-block (unpredictable-condition) trial count available in Stage 6. Stage 0 found 87–126 first-in-mini-block stimuli per subject; about one block-first trial per block is removed from that set.
+
+## S3a-D4 · 2026-10-03 · Filters and order
+
+- **Facts** (from the installed code: EEGLAB 2023.0, firfilt 2.8).
+  - `pop_eegfiltnew` designs windowed-sinc (Hamming), zero-phase FIR filters.
+  - For a high-pass with passband edge E < 2 Hz, the transition band is E, so the −6 dB point is at E/2.
+  - `pop_resample` (1000 → 500 Hz) applies its own Kaiser anti-aliasing filter (fc = 0.9, df = 0.2 of the new Nyquist): passband up to about 200 Hz, −6 dB at about 225 Hz, stopband at 250 Hz.
+  - The `pop_resample` code warns that resampling data with a DC offset can create edge transients; the raw files have large DC offsets and drifts.
+- **D4a, high-pass:** passband edge 0.5 Hz (−6 dB at 0.25 Hz). This removes drift ahead of bad-channel detection and ASR and leaves a flat passband well below any spectral fit range. The separate 1 Hz copy used to fit ICA is handled in D9.
+- **D4b, low-pass:** no separate low-pass; the data keep content up to the anti-aliasing passband (about 200 Hz).
+  - Reason: the 100–200 Hz range is kept for a possible stronger EMG index (audit #10, the EMG limitation). It cannot be recovered later, whereas a band can always be selected at analysis time.
+  - Consequence for D5: line noise must be removed at 50, 100, 150 and 200 Hz.
+- **D6 default, fixed now:** bad-channel detection runs on a temporary copy low-passed at 100 Hz, and its result (the list of channels) is applied to the full-band data. Otherwise high-frequency EMG would decide which channels get interpolated, which interacts directly with the paper's EMG question. ASR is open (D7).
+- **D4c, order:**
+  1. high-pass 0.5 Hz at 1000 Hz (DC and drift removed before resampling);
+  2. resample to 500 Hz;
+  3. line-noise removal (D5);
+  4. crop to blocks (D3, D3e).
+
+  Filtering is applied to the whole continuous recording; firfilt filters each side of a raw `boundary` event separately.
+- **D4d, design reporting:** the Methods report the filter type, window, order, passband edge, −6 dB point, transition band and zero-phase application.
+- **Filter-edge rule:** to be proposed as S3a-D4e. It depends on the exact filter half-length and on the block positions relative to recording edges and raw boundaries.
