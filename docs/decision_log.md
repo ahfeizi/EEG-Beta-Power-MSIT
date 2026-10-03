@@ -242,3 +242,26 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - Events `rest_b1_start`, `rest_b1_end`, `rest_b2_start` and `rest_b2_end` are inserted, with a `boundary` event between the blocks.
   - `EEG.etc.restBlocks` stores each block's original start time in the raw file (s), its duration (s) and the sub-25 flag.
 - **Rule for Stages 4–6 (binding).** Spectral segments (Welch windows or any other segment) must **never cross a boundary event**: segment within blocks only.
+
+## S3a-D3e · 2026-10-03 · Cropping MSIT+ to task blocks (symmetric with rest, D3b)
+
+- **Facts** (from the raw `*_task-msit_events.tsv` of all 42 subjects).
+  - Every task block (about 10 mini-blocks) ends with `S 10` (start of a break). There are 12 blocks in 39 subjects, 11 in sub-17 and sub-38, and 9 in sub-21.
+  - The last response → `S 10` interval is 1.88–5.71 s.
+  - `S 10` → next stimulus is usually 10.02 s (short break), up to 178.5 s (between runs).
+  - `S 12` ("beginning of the run") occurs 2–4 times per subject, only at run transitions, never before the first stimulus.
+  - The first stimulus comes 3.2–67.1 s after the recording starts; 26.9–110.6 s of data follow the last response.
+  - Inside blocks, the largest gap between consecutive trial events is normally ≤ 4.4 s. Five unmarked pauses of 19.4–56.1 s occur (sub-17, sub-23 ×2, sub-29, sub-38), almost certainly breaks with a missing `S 10`.
+- **D3e-1, block boundaries.** The task recording is split into blocks at every `S 10` or `S 12` marker **and** at every gap > 10 s between consecutive trial events (stimulus or response).
+- **D3e-2, block extent.** Each block = [first stimulus − 1.0 s, last trial event + 1.5 s].
+  - The 1.5 s end margin is below the shortest observed last response → `S 10` interval (1.88 s), so no break data enter.
+  - The 1.0 s start margin covers pre-stimulus windows of up to 1 s.
+  - Cropping happens after filtering and line-noise removal and before bad-channel detection, ASR and ICA (D3b).
+- **D3e-3, a block must contain ≥ 1 stimulus.** Any segment produced by the rule that contains no stimulus (for example a stray response during a break) is discarded and logged in QC.
+- **D3e-4, block identity.**
+  - Events `task_bN_start` and `task_bN_end` are inserted, with a `boundary` event between blocks.
+  - `EEG.etc.taskBlocks` stores, per block: the original start time in the raw file (s), the duration (s), the number of stimuli, and a flag if the block was split by the 10 s rule.
+  - The S3a-D3 rule (no spectral segment crosses a boundary) applies.
+- **Rule for Stages 5–6 (binding).**
+  - The first trial of each task block is preceded by a break, not by the previous trial's ITI. **Default:** exclude it from all pre-stimulus analyses, and report the count per subject.
+  - Note: every block-first trial is also a first-in-mini-block trial, so this slightly reduces the first-in-mini-block (unpredictable-condition) trial count available in Stage 6. Stage 0 found 87–126 first-in-mini-block stimuli per subject; about one block-first trial per block is removed from that set.
