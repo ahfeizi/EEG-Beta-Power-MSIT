@@ -353,3 +353,39 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
     - Smallest kept count over all 42 subjects, per condition (both affected subjects lie above it): F0 66 (sub-21), FS 79 (sub-15), 00 79 (sub-21), S0 68 (sub-21). First-in-mini-block: F0 17 (sub-21), FS 20 (sub-17), 00 22 (six subjects), S0 17 (sub-21).
   - **No minimum trial count has been set yet** (it belongs to D12). Whether any subject × condition falls below it is checked when D12 is decided, from `d4e_trials_by_condition.csv` and the post-rejection counts.
   - Also confirmed: 3 segments without a stimulus are discarded under D3e-3 (sub-07, sub-24, sub-37 MSIT+, one each).
+
+## S3a-D5-0 · 2026-10-04 · Line-noise diagnostic (outcome-blind), before the D5 choice
+
+- **Question.** How strong and how stable is line noise at 50, 100, 150 and 200 Hz in each recording? The answer selects the recordings for testing D5 option (b) and decides whether (a′) is admissible.
+- **Approval.** Reading the binary `.eeg` files is approved for this diagnostic only (2026-10-04).
+- **Outcome-blind constraint (binding).**
+  - Spectra are computed only at f₀ − 3 … f₀ + 3 Hz around f₀ ∈ {50, 100, 150, 200}, by a direct DFT at exactly those frequencies.
+  - Nothing is computed, saved or printed in 13–30 Hz or 55–95 Hz. The script asserts this.
+- **Facts fixed beforehand.**
+  - Target rate after resampling: 500 Hz (S3a-D1), so the Nyquist frequency is 250 Hz and all four frequencies lie below it.
+  - The anti-aliasing passband of `pop_resample` ends at about 200 Hz (S3a-D4). Its gain at 197–203 Hz is computed from the installed design and reported.
+  - Planned order (S3a-D4c): high-pass 0.5 Hz at 1000 Hz → resample to 500 Hz → line-noise removal (D5, on each raw segment) → crop to blocks (D3/D3e/D4e).
+- **Inputs.**
+  - The raw `.vhdr`/`.eeg` of all 84 recordings, loaded with `pop_loadbv` in groups of 16 channels (memory).
+  - The D4e block extents (`<outRoot>/stage3/d4e_block_clipping.csv`).
+- **Procedure** (`revision/stage3/stage3_d5_0_line_noise.m`).
+  1. Insert the block start/end as events, then resample to 500 Hz with `pop_resample` (boundaries respected, as in the pipeline). No high-pass: its gain at ≥ 47 Hz is unity, so each chunk is linearly detrended instead.
+  2. Cut each clipped block into non-overlapping 10 s chunks; a remainder < 10 s is dropped.
+  3. Per chunk and channel: Hann window, one-sided PSD at f₀ ± 3 Hz in 0.1 Hz steps (= the 10 s DFT bins).
+  4. **Floor:** a straight line (dB vs Hz) fitted to the flank bins 1.5 ≤ |f − f₀| ≤ 3 Hz.
+  5. **Peak excess** = max over |f − f₀| ≤ 0.5 Hz of (PSD dB − floor). **Peak frequency** = that bin, refined by parabolic interpolation of the dB values.
+  6. Per recording × channel × f₀:
+     - `excess_db`: excess on the chunk-averaged PSD (the primary strength measure), with its peak frequency;
+     - per-chunk excess: median and maximum;
+     - **amplitude CV** across chunks of √(max(PSD_peak − floor_peak, 0));
+     - **frequency drift** (SD and range of the per-chunk peak frequency), computed over chunks whose excess is ≥ 6 dB (NaN if fewer than 2).
+  7. Kept channels = the 125 left after S3a-D2a (TP9/TP10 dropped). TP9/TP10 are computed but reported separately.
+- **Decision rules.**
+  - **R1, (a′) admissibility.** Frequency f₀ is *absent* if `excess_db` < 3 dB in every kept channel of every recording. (a′) is admissible only if 150 and/or 200 Hz are absent; otherwise every line frequency below Nyquist enters D5.
+  - **R2, worst recordings.** Severity S = max over f₀ of the median over kept channels of `excess_db`. The 3 recordings with the highest S are the "worst" set for testing option (b), alongside the 3 D14 test subjects (not yet chosen). If a worst recording belongs to a D14 test subject, the next one in rank is taken. Instability (amplitude CV, drift) is reported descriptively but is not used for selection.
+  - **R3, notch width check for fallback (a).** If any chunk with excess ≥ 6 dB has its peak more than 0.5 Hz from f₀, the default ±2 Hz notch of option (a) is re-examined before (a) could be used.
+  - The (b) residual criterion is proposed after D5-0 and logged before the (b) test runs.
+- **Outputs** (`<outRoot>/stage3/d5_0/`):
+  - `line_noise_by_channel.csv` (one row per recording × channel × f₀);
+  - `line_noise_by_recording.csv`;
+  - `run_info.txt` (time, SHA-256 of this entry's text as read by the script, the anti-aliasing gains).
