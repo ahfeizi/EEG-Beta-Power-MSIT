@@ -389,3 +389,49 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - `line_noise_by_channel.csv` (one row per recording × channel × f₀);
   - `line_noise_by_recording.csv`;
   - `run_info.txt` (time, SHA-256 of this entry's text as read by the script, the anti-aliasing gains).
+
+## S3a-D2-reopen · 2026-10-04 · Digitised electrode positions exist: the D2 fact is contradicted, D2 reopened
+
+- **Facts** (`sourcedata/`: file names, and the `.bvct`/`.bvef` XML only; reading both approved 2026-10-04).
+  - `sourcedata/` holds only `sub-XX/coords/` and `sub-XX/logfiles/`: 39 `sub-XX_captrak.bvct`, 3 `sub-XX_captrak.bvef` (sub-12, sub-23, sub-24), and task logs (168 MSIT+, 168 oddball, 82 SRT). There are no original Recorder files (`.eeg`/`.vhdr`/`.vmrk`/`.ahdr`/workspace).
+  - Each `.bvef` has 132 entries with integer-rounded spherical coordinates only (Theta/Phi/Radius; no X/Y/Z). The values differ between the three subjects, so they are individual, but their provenance (digitised or not) is unknown.
+    - Entries named Nasion, LPA and RPA are present, with subject-specific integer spherical values. Whether they are digitised fiducials is unknown.
+    - Signs differ between files (e.g. Fz is (−57, −89) in sub-12 and (58, 90) in sub-23). Hypothesis: the same point in two representations, since in BESA-style spherical coordinates (θ, φ) ≡ (−θ, φ + 180), and (−57, −89) → (57, 91) ≈ (58, 90) after rounding. To be verified by converting to X/Y/Z before any use.
+    - GND, Nasion, LPA and RPA have no Number; the others are numbered 1–128 with FCz = 64. Their order by Number equals the `channels.tsv` order, and the `.vhdr` of these three subjects equals `channels.tsv`.
+  - Each `.bvct` (BrainVision CapTrak, file version 1.10) has 132 digitised points (X/Y/Z): the 127 recorded EEG labels, FCz (the online reference), GND, and the fiducials Nasion, LPA and RPA. There are no head-shape points. `<Channel>` is 0 for every point, so a position is not linked to a data column. Cap sizes: 52 cm (6 subjects), 54 cm (16), 56 cm (13), 58 cm (4). `RecordingDateTime` is empty.
+  - Each `.bvct` also contains an ActiCap `ElectrodeLayout` (132 entries, identical in all 39 files) with Group (splitter box) and Number (0–31).
+- **Consequence.** The S3a-D2 statement "No digitised positions exist, so all channel locations come from the `standard-10-5-cap385` template" is wrong.
+  - 39 subjects: CapTrak-digitised X/Y/Z plus digitised fiducials.
+  - sub-12, sub-23, sub-24: only individual but integer-rounded spherical coordinates (`.bvef`), of unknown provenance, with fiducial entries of unknown provenance.
+  - If individual positions are used, this quality difference between the two groups must be reported.
+
+  **D2 is reopened**, in particular:
+  - individual CapTrak positions vs the template;
+  - TP9/TP10, whose positions are digitised.
+
+  D2a/D2b stay in force until a new entry supersedes them. The coordinate frame and units of the `.bvct` must be established before any use.
+
+## S3a-D4e-4-issue · 2026-10-04 · Channel labels differ between .vhdr and channels.tsv (sub-13, sub-41, sub-42): open
+
+- **Facts.**
+  - All 84 `*_channels.tsv` list the 127 channels in the same order. That order equals the manufacturer's ActiCap order (Group, Number) from the `.bvct` layout, with slot (3, 0) = FCz (the reference) absent.
+  - 78 of the 84 `.vhdr` have exactly this order.
+  - The `.vhdr` of three subjects deviate. In each subject the rest and MSIT+ headers are identical and the label set equals `channels.tsv`.
+    - sub-13: positions 121/124 swapped (FFT8h ↔ FCC6h).
+    - sub-41: positions 5/6 swapped (FC5 ↔ FT9).
+    - sub-42: FFC2h is at position 127 instead of 93; positions 93–126 are shifted up by one.
+- **The open question:** why does the data order deviate from the manufacturer order in these three subjects?
+  - (a) The data columns were reordered before export, and the `.vhdr` labels are right.
+  - (b) The data are in manufacturer order, and the `.vhdr` labels were changed.
+- Text files cannot decide between them.
+  - For (a): the `channels.tsv` of these subjects did not inherit the deviations, so it was not generated from these headers. And sub-42's pattern (one channel moved to the end) matches an EEGLAB remove-and-append (the files were exported from EEGLAB).
+  - Neither fact shows which label describes each data column, and the `.bvct` `<Channel>` field cannot (all 0).
+- **Status:** open. Stage 3 keeps the D4e-4 stop-on-mismatch for these three subjects until a decision is logged. A possible resolution, an outcome-blind neighbour-correlation test, is proposed separately and has not been run.
+
+## S3a-D5-0-exc · 2026-10-04 · D5-0 exception: provisional .vhdr labels for sub-13, sub-41, sub-42
+
+- D5-0's channel check stops on these subjects. **For D5-0 only**, their channels are labelled as in the `.vhdr`, and every output row of these recordings carries `labels_provisional = 1`.
+- No D5-0 rule outcome depends on which labelling is correct:
+  - kept channels = all but TP9/TP10, which sit at positions 10/21 in both files;
+  - R1 and R3 use maxima over kept channels, and R2 uses medians over kept channels.
+- Stage 3 is not affected: the stop-on-mismatch rule stays.
