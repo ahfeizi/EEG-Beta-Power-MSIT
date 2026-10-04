@@ -287,3 +287,69 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   Filtering is applied to the whole continuous recording; firfilt filters each side of a raw `boundary` event separately.
 - **D4d, design reporting:** the Methods report the filter type, window, order, passband edge, −6 dB point, transition band and zero-phase application.
 - **Filter-edge rule:** to be proposed as S3a-D4e. It depends on the exact filter half-length and on the block positions relative to recording edges and raw boundaries.
+
+## S3a-D4e · 2026-10-04 · Filter-edge rule: blocks are clipped away from segment edges
+
+- **Facts** (installed code: EEGLAB 2023.0, firfilt 2.8, bva-io 1.75, EEG-BIDS 10.5; raw text files only).
+  - Filters applied to the continuous data before cropping (designed with the installed code by `revision/stage3/stage3_filter_halflengths.m`, saved by `stage3_compute_H.m` to `<outRoot>/stage3/filter_halflengths.csv`):
+    - D4a high-pass at 1000 Hz (`pop_eegfiltnew`, passband edge 0.5 Hz): order 6600, half-length 3300 samples = 3.300 s;
+    - `pop_resample` anti-aliasing filter (1000 → 500 Hz, Kaiser): order 66 at 1000 Hz, half-length 33 samples = 0.033 s.
+  - firfilt and `pop_resample` pad each continuous segment with its edge value. A segment is delimited by the recording start/end and by every `boundary` event.
+  - bva-io (`parsebvmrk.m`) turns every `New Segment` and `DC Correction` marker into a `boundary` event. Every other marker gets its description as event type, so `Stimulus` markers described `boundary` (EEGLAB's own export of boundary events; the `.vmrk` files say "Data created from the EEGLAB software") are boundaries too. There are no `DC Correction` markers. `pop_loadbv` keeps each marker's position as its latency (integer; the first sample of the new segment for a boundary).
+  - Survey of all 84 `.vhdr`/`.vmrk` files (`revision/stage3/stage3_raw_boundaries_d4e.py` → `<outRoot>/stage3/raw_boundaries.csv`): **15 internal raw boundaries in 7 recordings**: sub-17 MSIT+ (2), sub-19 MSIT+ (1), sub-23 rest (1), sub-23 MSIT+ (4), sub-25 rest (3), sub-29 MSIT+ (2), sub-38 MSIT+ (2). The other 77 recordings are one continuous segment. `SamplingInterval` is 1000 µs in all 84 headers.
+  - `events.tsv` contains none of these boundaries. Apart from them, its rows equal the `.vmrk` stimulus markers exactly (sample = onset × 1000) in all 84 recordings.
+  - `pop_importbids` with `bidsevent` = on replaces `EEG.event` with the `events.tsv` rows (`bids_importeventfile.m`), so it would drop every raw boundary. It also sets latency = onset × srate + 1, one sample later than the `.vmrk` position.
+  - `pop_resample` (installed code) splits the data at every boundary, resamples each segment separately, and maps each event's latency relative to its own segment start. Synthetic test (`revision/stage3/stage3_verify_boundary_handling.m`; high-pass then resample; 3 segments of 10001/10002/9998 samples with DC jumps up to 1500 µV; boundaries at integer latencies, one duplicated): all 4 checks PASS.
+    - Boundary latencies after resampling equal the independently computed segment starts.
+    - Stimulus latencies keep their time relative to their segment start.
+    - Joint result = each segment processed alone (max difference 0 µV), so neither filter crosses a boundary.
+    - A 10 Hz sine of the original time is still aligned with its events at ≥ H from the edges (max error 0.00066).
+    - `eeg_checkset` removes the duplicated boundary (warning only; one boundary per position remains).
+  - sub-25 rest: the first raw boundary lies 300.004 s after S12₁, where S10 falls in the other subjects (300.003–300.007 s). Block 1 is therefore continuous for a full 300 s; the 2.25 s deficit of D3c lies in the break, which is split into segments of 54.091 s and 0.192 s. Under D4e-1, block 1 ends at boundary − H (earlier than S12₁ + 297.75 s), so the D3c choice no longer changes the data.
+- **D4e-1, rule (option A).** Every block (rest, D3; task, D3e) is clipped so that it lies entirely at least H from every segment edge (recording start/end, every raw boundary):
+  - start = max(start under D3/D3e, previous edge + H);
+  - end = min(end under D3/D3e, next edge after the start − H). A raw boundary inside a block is that block's next edge.
+  - If a raw boundary inside a block had stimuli after it within the block, the block would need to be split. No rule exists for that case: the pipeline stops for that subject. It does not occur in the 42 subjects.
+- **D4e-2, H = the sum of the half-lengths of every filter applied to the continuous data before cropping.** The filters run in cascade, so a sample is free of every filter's edge padding only at ≥ the sum from an edge.
+  - Now **3.333 s** (3.300 + 0.033).
+  - H is never hard-coded: `stage3_filter_halflengths.m` designs each filter with the installed code from `stage3_params.m`, and the pipeline and the survey read H from it.
+  - D5 adds its line-noise step to that function. A step that is not a simple FIR (e.g. CleanLine, ZapLine) must state its effective contribution to H.
+- **D4e-3, logging.** Every clip (samples clipped at each end, and the reason) is stored in `EEG.etc.restBlocks` / `EEG.etc.taskBlocks` and in the QC, with the stimuli that fall outside the clipped block.
+- **D4e-4, loading (approved with conditions).** Raw boundaries must survive loading, so the pipeline loads each recording with `pop_loadbv` (events and boundaries from the `.vmrk`), with these binding conditions:
+  - `pop_loadbv` does not import BIDS metadata. Channel labels and types (`*_channels.tsv`) and electrode positions (template, S3a-D2) are applied separately and verified against `*_channels.tsv`; any mismatch stops the subject.
+  - The event check is sample-exact: every non-boundary event must equal an `events.tsv` row (latency = onset × 1000, same `event_type`) and vice versa. Any mismatch stops the subject.
+  - Boundary handling by `pop_resample` was confirmed in the installed code and by the synthetic test above.
+- **Effect** (H = 3.333 s; `<outRoot>/stage3/d4e_block_clipping.csv`). 13 of 588 blocks are clipped (3 rest, 10 task); 575 are unchanged.
+
+  | Subject | Block | Clipped at start (s) | Clipped at end (s) | Edge | New duration (s) | Stimuli lost |
+  |---|---|---|---|---|---|---|
+  | sub-05 | task 1 | 0.403 | 0 | recording start | 81.268 | 0 |
+  | sub-17 | task 1 | 0.566 | 0 | recording start | 78.546 | 0 |
+  | sub-17 | task 3 | 0 | 1.234 | raw boundary | 91.763 | 0 |
+  | sub-22 | rest 1 | 1.388 | 0 | recording start | 298.612 | – |
+  | sub-23 | task 10 | 0 | 1.479 | raw boundary | 46.749 | 0 |
+  | sub-23 | task 11 | 0 | 4.395 | raw boundary inside block | 57.337 | 2 |
+  | sub-25 | rest 1 | 0 | 1.079 | raw boundary | 296.671 | – |
+  | sub-25 | rest 2 | 0 | 3.333 | recording end | 294.858 | – |
+  | sub-25 | task 1 | 1.160 | 0 | recording start | 78.501 | 1 |
+  | sub-28 | task 1 | 0.214 | 0 | recording start | 87.459 | 0 |
+  | sub-29 | task 1 | 0 | 3.701 | raw boundary inside block | 59.898 | 1 |
+  | sub-38 | task 9 | 0 | 1.558 | raw boundary | 75.963 | 0 |
+  | sub-38 | task 10 | 0.320 | 0 | raw boundary | 91.225 | 0 |
+
+  - sub-23 task 11: the boundary comes 0.439 s after the last stimulus (its response falls in the gap). sub-29 task 1: the boundary comes 1.133 s after the last response.
+  - **Lost stimuli** (`<outRoot>/stage3/d4e_lost_stimuli.csv`): 4, all listed. None is first-in-mini-block except sub-25's, which is block-first and already excluded under D3e.
+
+    | Subject | Block | Onset (s) | Condition | First in mini-block | Block-first |
+    |---|---|---|---|---|---|
+    | sub-23 | task 11 | 1161.939 | F0 | no | no |
+    | sub-23 | task 11 | 1164.189 | F0 | no | no |
+    | sub-25 | task 1 | 3.174 | FS | yes | yes |
+    | sub-29 | task 1 | 88.513 | 00 | no | no |
+
+  - **Trials per subject × condition** (`<outRoot>/stage3/d4e_trials_by_condition.csv`; raw event counts, before any artifact rejection; kept = inside the clipped block and not block-first):
+    - sub-23 F0: 98 stimuli, 5 block-first, 2 lost → 91 kept (24 first-in-mini-block, 67 later). Other conditions: no loss.
+    - sub-29 00: 110 stimuli, 3 block-first, 1 lost → 106 kept (27 first-in-mini-block, 79 later). Other conditions: no loss.
+    - Smallest kept count over all 42 subjects, per condition (both affected subjects lie above it): F0 66 (sub-21), FS 79 (sub-15), 00 79 (sub-21), S0 68 (sub-21). First-in-mini-block: F0 17 (sub-21), FS 20 (sub-17), 00 22 (six subjects), S0 17 (sub-21).
+  - **No minimum trial count has been set yet** (it belongs to D12). Whether any subject × condition falls below it is checked when D12 is decided, from `d4e_trials_by_condition.csv` and the post-rejection counts.
+  - Also confirmed: 3 segments without a stimulus are discarded under D3e-3 (sub-07, sub-24, sub-37 MSIT+, one each).
