@@ -35,3 +35,16 @@ The result is **byte-identical** to the current `revision/stage3/stage3_d5_0_lin
   between 14:02 and 16:55 local. The reconstruction is therefore the most likely executed version,
   not a verified one.
 - SHA-256 of the reconstruction: `9ea3b34f39b563ae1e1021b8b7764e3a26eddea20447048fc76e61606bd742ca`.
+
+## Note added 2026-10-06: D5 option scenarios
+
+`d5_option_scenarios/notch4/` and `d5_option_scenarios/notch2/` were moved here unchanged
+(SHA-256 identical before and after the move) from the scratchpad of session `1680c193…`.
+They are the outputs of `revision/stage3/stage3_raw_boundaries_d4e.py`, run on 2026-10-04 12:51
+with a **hand-edited** `filter_halflengths.csv` whose notch rows (0.826 s each) were typed in,
+not produced by `stage3_filter_halflengths.m`:
+
+- `notch4/`: option (a), 4 notches. This is the source of the figures "32 blocks clipped, 35 stimuli lost".
+- `notch2/`: option (a′), 2 notches. This is the source of "23 blocks clipped, 15 stimuli lost".
+
+These figures are **unverified** and are not used for any decision.

@@ -1,0 +1,16 @@
+subject,block,sample,onset_s,where,code,condition,first_in_miniblock,block_first
+sub-05,task_b1,3931,3.931,before_new_start,S 7,00,1,1
+sub-17,task_b1,3768,3.768,before_new_start,S 8,S0,1,1
+sub-17,task_b3,278723,278.723,after_new_end,S 6,FS,0,0
+sub-23,task_b10,1063802,1063.802,after_new_end,S 5,F0,0,0
+sub-23,task_b11,1160106,1160.106,after_new_end,S 5,F0,1,0
+sub-23,task_b11,1161939,1161.939,after_new_end,S 5,F0,0,0
+sub-23,task_b11,1164189,1164.189,after_new_end,S 5,F0,0,0
+sub-25,task_b1,3174,3.174,before_new_start,S 6,FS,1,1
+sub-28,task_b1,4120,4.120,before_new_start,S 7,00,1,1
+sub-29,task_b1,86279,86.279,after_new_end,S 7,00,0,0
+sub-29,task_b1,88513,88.513,after_new_end,S 7,00,0,0
+sub-35,task_b1,4650,4.650,before_new_start,S 6,FS,1,1
+sub-38,task_b1,4556,4.556,before_new_start,S 5,F0,1,1
+sub-38,task_b9,957300,957.300,after_new_end,S 7,00,0,0
+sub-38,task_b10,1013914,1013.914,before_new_start,S 7,00,1,1

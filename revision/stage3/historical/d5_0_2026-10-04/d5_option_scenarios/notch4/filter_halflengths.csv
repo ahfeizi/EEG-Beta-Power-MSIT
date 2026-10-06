@@ -1,0 +1,7 @@
+filter,design_rate_hz,order,half_samples,half_s
+"high-pass 0.5 Hz (pop_eegfiltnew)",1000,6600,3300,3.3
+"anti-aliasing (pop_resample, Kaiser)",1000,66,33,0.033
+"notch 50 (scenario)",500,826,413,0.826
+"notch 100 (scenario)",500,826,413,0.826
+"notch 150 (scenario)",500,826,413,0.826
+"notch 200 (scenario)",500,826,413,0.826

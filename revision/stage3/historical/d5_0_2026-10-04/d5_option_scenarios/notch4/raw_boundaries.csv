@@ -1,0 +1,16 @@
+subject,task,marker,sample,onset_s,datapoints,seg_before_s,seg_after_s
+sub-17,msit,Mk236:NewSegment,283206,283.206,1298860,283.205,38.495
+sub-17,msit,Mk237:NewSegment;Mk238:Stimulus/boundary,321701,321.701,1298860,38.495,977.160
+sub-19,msit,Mk3:Stimulus/boundary,26701,26.701,1345040,26.700,1318.340
+sub-23,rest,Mk9:NewSegment,696921,696.921,733140,696.920,36.220
+sub-23,msit,Mk751:NewSegment,1067986,1067.986,1551180,1067.985,15.135
+sub-23,msit,Mk752:Stimulus/boundary,1083121,1083.121,1551180,15.135,81.507
+sub-23,msit,Mk807:NewSegment,1164628,1164.628,1551180,81.507,0.493
+sub-23,msit,Mk808:NewSegment;Mk809:Stimulus/boundary,1165121,1165.121,1551180,0.493,386.060
+sub-25,rest,Mk6:NewSegment,304708,304.708,660686,304.707,54.091
+sub-25,rest,Mk7:NewSegment,358799,358.799,660686,54.091,0.192
+sub-25,rest,Mk8:Stimulus/boundary;Mk9:NewSegment;Mk10:Stimulus/boundary,358991,358.991,660686,0.192,301.696
+sub-29,msit,Mk59:NewSegment,90246,90.246,1478660,90.245,12.335
+sub-29,msit,Mk60:Stimulus/boundary,102581,102.581,1478660,12.335,1376.080
+sub-38,msit,Mk724:NewSegment,961083,961.083,1349540,961.082,48.818
+sub-38,msit,Mk725:Stimulus/boundary;Mk726:NewSegment;Mk727:Stimulus/boundary,1009901,1009.901,1349540,48.818,339.640

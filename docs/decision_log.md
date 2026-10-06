@@ -539,3 +539,9 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - It cannot be shown that nothing else changed the file on disk between 14:02 and 16:55 local. The reconstruction is the most likely executed version, not a verified one.
 - `revision/stage3/stage3_d5_0_line_noise.m` stays in place: S3a-D5-0 names that path, and its `entryHash` finds `docs/decision_log.md` relative to its own folder.
 - None of these files produces a number used anywhere. The 78 cached D5-0 files remain unused (S3a-D5-0-crash).
+
+### Note (2026-10-06, appended; the entry above is unchanged)
+- The D5 option scenario files behind the data-cost figures quoted in the 2026-10-04 session were moved unchanged (SHA-256 identical before and after) to `revision/stage3/historical/d5_0_2026-10-04/d5_option_scenarios/`:
+  - `notch4/`: option (a), 32 blocks clipped, 35 stimuli lost;
+  - `notch2/`: option (a′), 23 blocks clipped, 15 stimuli lost.
+- Each folder holds the survey outputs and the **hand-edited** `filter_halflengths.csv` (the notch rows were typed in). The figures stay unverified and unused.
