@@ -2,3 +2,7 @@
 # never convert their line endings, so they match the as-run outputs exactly.
 legacy_v1/derivatives/*.csv -text
 legacy_v1/diagnostics/*.png binary
+# Historical Stage 3 files are kept byte for byte (S3a-D5-0-hist): no line-ending conversion.
+revision/stage3/historical/** -text
+# The decision log is hashed per entry (S3a-D5-0, S3a-INF-1): always LF in the working tree.
+docs/decision_log.md text eol=lf
