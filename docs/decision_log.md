@@ -954,3 +954,57 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - **Pass:** `isequaln` on every variable of §3 (D5-0). Otherwise the function is not used.
 - **Entry-hash locator:** fixed under S3a-D5-0-amend1 (`stage3_log_entry.m`, exact heading line; the D5-0 computation is unchanged).
   - Every entry hash that S3a-INF-1 records (§9) uses the same rule: exact header line, CR removed, text up to the next `\n## `.
+
+## S3a-INF-1-clar1 · 2026-10-06 · Clarifications of S3a-INF-1 for the implementation (Amirhossein's answers, 2026-10-06)
+
+- **Status:** decisions made in chat on 2026-10-06, before the implementation was run on any real data. S3a-INF-1 is unchanged; where this entry is more specific, it governs.
+- **1. Burn-in workload** (S3a-INF-1 §10 named only "the same synthetic workload"). Each iteration runs one D5 block and one GEMM block:
+  - **D5 block:** the D5-0 kernel on seeded synthetic data, as `d50_probe` 'synth': 8 groups × 97 chunks of 16 channels × 10 s at 500 Hz; per chunk, linear detrend, Hann window, DFT product `E.' * x`, one-sided PSD scaling and `linePeaks`.
+  - **GEMM block:** a 2000 × 2000 matrix multiply (2 threads), the thermal-ladder load.
+  - **Rationale:** the D5-0 kernel tests bitwise reproducibility of the exact MKL path of the batch; GEMM gives the heaviest sustained load, maximising the chance of exposing silent hardware errors.
+  - **Comparison:** within each process, each block's result is compared bitwise with that block's iteration-1 result. Across the two processes, every iteration's result hash and the final results are compared bitwise. Mismatch counts are reported per block type and per comparison kind.
+- **2. "Burn-in 60 min" = a fixed iteration count, about 60 min per process.**
+  - The count is calibrated once with a short timed run (a few iterations of each block type) and then fixed so that one process takes about 60 min at 85 % maximum processor state.
+  - The count and the calibration result are recorded in a note below this entry **before** the real burn-in runs.
+  - A then B run sequentially, with the runner's cool-down and GATE_C gate between them.
+- **3. Burn-in timeout:** 3 × (calibrated time per iteration × fixed count), about 180 min per process. A timeout fails acceptance, as for other jobs. The computed value is recorded with the count.
+- **4. Acceptance timeout:** fixed 30 min per job during acceptance (hang detection only; a timeout still fails acceptance per §8). Reason: the 127 s probe ran with 4 threads at 99 %; with 2 threads at 85 %, runs may be roughly 2× or more slower, so 3 × 127 s = 381 s risks false timeouts. Every replica's wall time is recorded.
+- **5. Batch timeouts via `timeouts.json`** (S3a-INF-1 §6: 3 × the acceptance median per recording type):
+  - written only from an acceptance run whose verdict is PASS, and only from successfully completed replicas (MSIT+ from sub-06 × 11, rest from sub-06 rest × 3); it records the source summary paths and their SHA-256;
+  - Batch mode refuses to start unless it finds a PASS acceptance summary and a `timeouts.json` derived from it (matching hashes), with an entry for every recording type in the batch. Both SHA-256 values go into the batch summary.
+- **6. Disagreeing compares** (§3: a "different" verdict is recomputed by a second compare process). If the two compares disagree:
+  - the recording is treated as different (sent to C) and flagged `compare_inconsistent` in state and summary;
+  - it counts toward the ≥ 2 stop rule exactly like an A ≠ B mismatch (a deterministic compare giving two answers on the same files is itself evidence of a silent error);
+  - in acceptance mode, any `compare_inconsistent` event fails acceptance.
+- **7. Pre-checks at batch start** (stop if any is not met; all checks and results go into the batch summary header):
+  1. acceptance: a sub-06 MSIT+ × 11 acceptance summary with verdict PASS, plus the burn-in (PASS) and the sub-06 rest × 3 results it covers;
+  2. maximum processor state: AC and DC both 85 % (`powercfg`, read-only);
+  3. raw copy: `verified_manifest.tsv` exists, `bidsRoot` points to the D: copy, and the post-reboot `verify` mode completed with all files matching (its report's SHA-256 is recorded);
+  4. configuration match: the environment fingerprint and the relevant runner configuration fields (threads, `MKL_CBWR`, MATLAB/EEGLAB paths and versions, maximum processor state) are identical to those recorded in the passing acceptance;
+  5. acceptance recency: the acceptance runs started after the S3a-HW-1 hardware change.
+- **8. Scope of the implementation session:** S3a-INF-1 infrastructure and `stage3_d5_0_compute_one.m` only.
+  - The D4e-4 label test (S3a-D4e-4-test) and a D5-0 assembly step (R1–R3 from the canonical A/B outputs) are deferred.
+  - The runner's job interface stays generic (job type = a MATLAB function plus parameters, with an output-path contract, used for A/B/C and compare), so that both can later run under the same runner with A/B verification without changing the infrastructure.
+- **9. Facts found during the implementation (2026-10-06):**
+  - **Launch:** `bin\win64\MATLAB.exe -batch … -logfile …` launched directly runs in a single process (no child process), so the recorded PID is the computing process. The exit code is passed through, and `-logfile` captures the output.
+  - **`parallel.Settings` `Pool.AutoCreate` was still 1 (true)** in a probe on 2026-10-06. The §1 assertion makes every real job fail until it is set to false.
+  - **Power plan:** `powercfg` reports maximum processor state AC 85 %, DC 85 %.
+- **10. Implementation choices (approved by Amirhossein, 2026-10-07), with his additions:**
+  1. **Header change during a job:** the job runs to its end, flagged `thermal_unmonitored`, and the batch then stops (`STOPPED_HWINFO_HEADER`).
+  2. **Failed compare process:** one retry; if it fails again, the recording is `failed`. **Addition:** a crashed compare counts as a MATLAB crash and fails acceptance.
+  3. **Acceptance after a failure:** all replicas still run, to collect the full crash record. The verdict is unaffected.
+  4. **The 10 min gate timer** counts only while the HWiNFO log is fresh.
+  5. **`StepSeeds`** is empty; D5-0 and the burn-in reseed with SEED_GLOBAL. **Addition:** the runner refuses a job that declares a random step (`randomSteps`) without a seed in `StepSeeds`.
+  6. **The `set` compare kind** is not bound. **Addition:** the runner refuses `.set` compares until their specification is logged.
+  - Also: Acceptance and BurnIn modes exit with code 4 on a FAIL verdict, so that a chained command stops.
+- **11. Burn-in balance (Amirhossein, 2026-10-07): not changed.**
+  - The GEMM block takes about 4 % of the iteration time (0.370 of 8.250 s, below). So the burn-in does **not** achieve a sustained ladder-level load.
+  - Acceptance (sub-06 MSIT+ × 11) remains the primary hardware test.
+- **12. Burn-in calibration** (run 2026-10-07; synthetic only; recorded here before the real burn-in, per item 2):
+  - **Run:** `Invoke-Stage3Batch.ps1 -Mode BurnIn -Calibrate -Iterations 3`, at maximum processor state AC/DC 85 % (`powercfg`).
+    - It used the **test configuration** with a fake HWiNFO log, because HWiNFO was not running and `Pool.AutoCreate` was still true (which the real configuration asserts). It therefore measures time only.
+    - The calibration batch lies in the session scratchpad and is not used by the runner.
+  - **Per iteration:** D5 8.22, 7.93 and 7.49 s; GEMM 0.37, 0.39 and 0.35 s. Mean 8.250 s (D5 7.880 s, GEMM 0.370 s); 0 within-process mismatches.
+  - **Fixed iteration count:** N = round(3600 / 8.250) = **436**, i.e. 3597 s expected per process.
+  - **Burn-in timeout:** ⌈3 × 436 × 8.250⌉ = **10791 s** per process.
+  - Both values are in `runner_config.psd1` (`BurnInIterations = 436`, `BurnInIterationSeconds = 8.25`). BurnIn mode then needs neither `-Iterations` nor `-CalibrationBatch`.
