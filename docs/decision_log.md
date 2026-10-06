@@ -470,3 +470,57 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - **Consequence for D9:** the number of deficient dimensions per recording (after TP9/TP10 removal) is carried into the ICA rank decision.
   - **Consequence for D11:** channels found to be interpolated before export are listed per subject.
 - **Outputs (if approved):** `<outRoot>/stage3/d4e4_test/neighbour_scores.csv`, `rank_predictability_by_recording.csv`, `predictability_by_channel.csv`.
+
+## S3a-D5-0-crash · 2026-10-04 · D5-0 run: MATLAB heap corruption, four system crashes, hardware hypothesis
+
+- **Status: diagnostic record. No decision.** No D5-0 line-noise value has been inspected; the checks below look only at file structure, exit codes and system logs.
+- **Machine.** Intel i7-4720HQ (4 cores / 8 threads); MATLAB R2022b with MKL 2021.3 (AVX2); 12 GB RAM in two unmatched Samsung DDR3-1600 SODIMMs (4 GB `M471B5173EB0-YK0` + 8 GB `M471B5273DH0-CK0`).
+- **D5-0 run** (driver: one fresh MATLAB process per recording, at most 2 tries; `<outRoot>/stage3/d5_0/driver_log.txt`, 14:26–16:52):
+  - 78/84 recordings cached in `per_recording/`.
+  - sub-13, sub-41, sub-42 (6 recordings) stopped on the channel-label assert. The run used the script as it was before the S3a-D5-0-exc edit (file saved 16:55:45, after the driver ended).
+  - The final assembly call computed and saved `sub-06_msit.mat` (16:52:36), which had failed twice in the driver, then stopped on the sub-13 label assert. No CSV and no `run_info.txt` exist.
+- **MATLAB heap corruption** (`0xc0000374`, faulting module `ntdll.dll`; Windows Application log, event 1000): 10 events between 14:22 and 17:33.
+  - 1 in the earlier single-session run (14:22, `run_log_stderr.txt`).
+  - 7 in the driver, all on MSIT+: sub-06 (both tries), sub-11, sub-17 (try 1; try 2 succeeded), sub-24, sub-26, sub-42 (try 1). In 3 of them (sub-11, sub-24, sub-26) the process crashed **after** saving its `.mat`. No rest run crashed (36 rest runs in the driver).
+  - 2 in the bisection probes below.
+  - Confound: MSIT+ recordings are both the longest jobs (75–108 chunks vs 58–60 for rest) and the ones with many events. Recording type alone cannot separate a load effect from an event-handling effect.
+- **Bisection on sub-06 MSIT+** (`d50_probe.m` in the session scratchpad; a fresh MATLAB per run; results discarded, nothing written to `<outRoot>`):
+
+  | Mode | Stages run | Runs | Heap crashes | Runtime |
+  |---|---|---|---|---|
+  | load | `pop_loadbv` per 16-channel group | 3 | 0 | ~4 s |
+  | loadevt | + block events, `eeg_checkset` | 3 | 0 | ~5 s |
+  | resample | + `pop_resample` | 3 | 0 | ~100 s |
+  | nostim | resample with stimulus events removed | 3 | 0 | ~20 s |
+  | synth | random data, detrend + DFT product only | 6 | 0 | ~5 s |
+  | nodft | full pipeline without the DFT product | 6 | 0 | 101–121 s |
+  | full | as D5-0 | 8 completed + 1 cut by the shutdown | 2 | 106–127 s |
+
+  - Where the error appeared: in `full_3` it was printed right after "resampling event latencies…"; in `b2_full_2` it came **after** `PROBE_DONE`, i.e. at process exit, after all computation.
+  - Heap corruption is detected at a later heap operation, not where it happens, and `-batch` output can be buffered. So these runs do **not** localise the fault to the chunk loop. They show only that the crashes occurred in `full` runs. With 2 crashes in 8 `full` runs and 0 in 6 `nodft` runs, `full` and `nodft` cannot be told apart.
+  - Event handling in `pop_resample` takes most of the runtime (resample ~100 s vs nostim ~20 s).
+- **System crashes** (System log: Kernel-Power 41 and WER 1001). Four unclean restarts in about 27 h:
+
+  | Restart | Bugcheck | Meaning | Activity at the time |
+  |---|---|---|---|
+  | 2026-10-03 16:31:57 | 0x7F, arg 0x8 | unexpected kernel-mode trap (double fault) | not determined |
+  | 2026-10-03 21:39:56 | 0x7E, 0xC0000005 | kernel-mode access violation | not determined (no file writes found 21:00–21:40) |
+  | 2026-10-04 14:12:13 | 0x3B, 0xC000001D | **illegal instruction in kernel mode** | single-session D5-0 run; its log stops at 14:11:26 in the middle of resampling, with no MATLAB error |
+  | 2026-10-04 19:32:44 | 0 (none) | no bugcheck: power cut, thermal trip or hard hang; no power-button press recorded | D5-0 probe `b2_full_6`; last file write 17:40:15, in the middle of resampling |
+
+  - Event 6008 gives 17:32:20 as the time of the last shutdown, but files were written until 17:40:15. That 6008 time is a heartbeat, not the crash time.
+  - Only one kernel dump remains (`C:\Windows\MEMORY.DMP`, 14:12:16); each new dump overwrites the previous one.
+- **Hypotheses.**
+  - **H-HW (hardware):** instability under sustained heavy load, from RAM, CPU/VRM heat or the power supply. This explains both the nondeterministic user-mode heap corruption (the same recording passes or fails) and the kernel crashes.
+    - Supporting: four kernel crashes with four different codes, including an illegal instruction in kernel mode; two of the four happened during D5-0 load.
+    - User-mode MATLAB code cannot by itself bugcheck the kernel.
+    - Not proven: a faulty driver could also produce varied bugchecks.
+  - **H-SW (software):** a bug in MATLAB, MKL or EEGLAB on the multithreaded or event-resampling path. This explains the heap corruption but not the kernel crashes, unless both causes are present.
+- **Integrity after the 19:32 restart** (checked 2026-10-04):
+  - `git fsck --full --strict` was clean in all three repositories (root, `eeg-beta-project`, `Paper`). The only dangling objects are the empty blob (`eeg-beta-project`) and one unreferenced 46,872-byte blob (`Paper`).
+  - The uncommitted files are intact: `docs/decision_log.md` (no NUL bytes, ends on a complete line) and `revision/stage3/stage3_d5_0_line_noise.m` (untracked, complete through its final `end`).
+  - No project file changed in the 30 min before the crash. The only writes were scratchpad probe logs.
+  - All 78 `per_recording/*.mat` files load, and each was checked for: the expected variables; 127 labels identical to `channels.tsv`; 244 grid frequencies; one equal `nChunk` per 16-channel group; `avgP`, `exc`, `fpk` and `amp` of the expected shape, all finite and with positive `avgP`.
+  - SHA-256 hashes of the 78 files were recorded (`d50_cache_sha256_2026-10-04.txt`, currently in the session scratchpad; to move to `<outRoot>/stage3/d5_0/` if approved), so any later change can be detected.
+  - **Limit:** these checks cannot detect a value that is finite but wrong. Under H-HW, a recording that saved without a crash could still be silently corrupted. A recompute-and-compare check is needed before any D5-0 value is used.
+- **Consequence.** D5-0 outputs are not used, and no heavy MATLAB job runs, until (i) H-HW is tested and (ii) a recompute check passes. The test design is proposed separately and logged before it runs.
