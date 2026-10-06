@@ -524,3 +524,18 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - SHA-256 hashes of the 78 files were recorded (`d50_cache_sha256_2026-10-04.txt`, currently in the session scratchpad; to move to `<outRoot>/stage3/d5_0/` if approved), so any later change can be detected.
   - **Limit:** these checks cannot detect a value that is finite but wrong. Under H-HW, a recording that saved without a crash could still be silently corrupted. A recompute-and-compare check is needed before any D5-0 value is used.
 - **Consequence.** D5-0 outputs are not used, and no heavy MATLAB job runs, until (i) H-HW is tested and (ii) a recompute check passes. The test design is proposed separately and logged before it runs.
+
+## S3a-D5-0-hist · 2026-10-06 · D5-0: historical files moved into the repository; the executed script version
+
+- **Moved** on 2026-10-06, unchanged (same-volume moves), from Claude Code session scratchpads under `%TEMP%` to `revision/stage3/historical/d5_0_2026-10-04/` (marked historical in its `README.md`):
+  - `run_d5_0.ps1`: the D5-0 driver (14:26–16:52 local, 2026-10-04);
+  - `d50_probe.m`: the crash-bisection probe;
+  - `check_d50_cache.m`, `check_d50_cache.log`: the structural check of the 78 cached files cited in S3a-D5-0-crash;
+  - `d50_cache_sha256_2026-10-04.txt`: SHA-256 of the 78 cached files. This supersedes the location `<outRoot>/stage3/d5_0/` proposed in S3a-D5-0-crash;
+  - `d5_notch_design.m` and `d5_notch_design_output_2026-10-04.txt`: the synthetic design of the option (a) kernels (S3a-D5-opt). The output was captured verbatim from the session transcript; it was never saved to a file at the time.
+- **The exact executed version of `stage3_d5_0_line_noise.m` was not recorded.** The driver ran the version before the S3a-D5-0-exc edit (saved 16:55:45 local, after the driver ended). No hash or commit of that version exists. In this strict sense it is lost.
+  - A reconstruction exists: `stage3_d5_0_line_noise_pre_exc_reconstructed.m` (SHA-256 `9ea3b34f…742ca`), rebuilt from the tool calls in the session transcript (one `Write`, two `Edit`s).
+  - Re-applying the logged `-exc` patch to the reconstruction gives a file byte-identical to the current `revision/stage3/stage3_d5_0_line_noise.m`. So the logged edits account for the whole file.
+  - It cannot be shown that nothing else changed the file on disk between 14:02 and 16:55 local. The reconstruction is the most likely executed version, not a verified one.
+- `revision/stage3/stage3_d5_0_line_noise.m` stays in place: S3a-D5-0 names that path, and its `entryHash` finds `docs/decision_log.md` relative to its own folder.
+- None of these files produces a number used anywhere. The 78 cached D5-0 files remain unused (S3a-D5-0-crash).

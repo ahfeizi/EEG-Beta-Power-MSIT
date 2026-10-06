@@ -1,0 +1,36 @@
+% Console output of d5_notch_design.m (synthetic filter design only; no EEG data), as captured in the
+% Claude Code session transcript 1680c193-aca1-4d7b-92cd-99961fab6831.jsonl, line 521, 2026-10-04T09:20:46Z.
+% Extracted verbatim on 2026-10-06; EEGLAB start-up lines omitted.
+notch  50 Hz: order 826, half-length 413 samples = 0.826 s
+notch 100 Hz: order 826, half-length 413 samples = 0.826 s
+notch 150 Hz: order 826, half-length 413 samples = 0.826 s
+notch 200 Hz: order 826, half-length 413 samples = 0.826 s
+cascade of 4: summed half-length 3.304 s (combined kernel order 3304)
+    Hz    gain dB
+    13     -0.002
+    20     -0.004
+    30     -0.002
+    45      0.007
+    47     -0.000
+    48     -0.033
+    49     -6.051
+    50    -47.014
+    51     -6.049
+    52     -0.032
+    53      0.002
+    55      0.010
+    60      0.009
+    90      0.007
+    95      0.011
+    97     -0.000
+    98     -0.032
+   100    -46.431
+   102     -0.035
+   103     -0.001
+   105      0.011
+   145      0.011
+   150    -46.721
+   155      0.010
+   195      0.009
+   200    -46.866
+50-only notch: 47 -0.000, 48 -0.034, 53 0.002, 55 0.009 dB
