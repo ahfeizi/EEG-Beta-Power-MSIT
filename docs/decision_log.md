@@ -545,3 +545,179 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - `notch4/`: option (a), 32 blocks clipped, 35 stimuli lost;
   - `notch2/`: option (a′), 23 blocks clipped, 15 stimuli lost.
 - Each folder holds the survey outputs and the **hand-edited** `filter_halflengths.csv` (the notch rows were typed in). The figures stay unverified and unused.
+
+## S3a-D5-opt · 2026-10-06 · D5 options (a), (a′) and (b) defined; residual criterion of (b)
+
+- **Status: definition, logged before any D5-0 value is inspected.** The 78 per-recording files cached on 2026-10-04 exist, but no value in them has been read, and they are not used (S3a-D5-0-crash). The D5-0 recompute (S3a-INF-1) runs only after this entry is committed.
+- **History.** The options were proposed on 2026-10-04 (session transcript) and not logged until now. Amirhossein's provisional choices of 2026-10-04:
+  - (b) is the provisional choice;
+  - if (b) fails its residual criterion, (a) is used for **all** recordings (no mixing of methods across subjects);
+  - (b′) (CleanLine on the whole recording) and (c) (ZapLine-plus) are dropped;
+  - (a′) is admissible only if D5-0 R1 shows that 150 and 200 Hz are absent. Both lie below Nyquist at 500 Hz, so the "above Nyquist" alternative does not arise.
+- **Common to all options.**
+  - Applied at 500 Hz after resampling and before cropping (S3a-D4c).
+  - Applied to each raw segment separately. A segment is delimited by the recording start/end and every raw boundary (S3a-D4e).
+  - Line frequencies F_L = {50, 100, 150, 200} Hz (S3a-D4b), all below Nyquist (250 Hz).
+
+### (a) FIR band-stop at every f₀ in F_L
+- `pop_eegfiltnew(EEG, 'locutoff', f0-2, 'hicutoff', f0+2, 'revfilt', 1)`, firfilt 2.8 default design: windowed sinc, Hamming window, zero-phase. Four separate filters in cascade. firfilt filters each segment separately.
+- **Transition width 2 Hz.** `pop_eegfiltnew.m:221–230`: for a band-stop, maxDf = (hicutoff − locutoff)/2 = 2 Hz and df = min(max(0.25·maxDf, 2), maxDf) = 2 Hz.
+  - So the passband edges are f₀ ± 2 Hz, the −6 dB points f₀ ± 1 Hz, and the full stop-band attenuation is reached only at f₀ itself.
+  - Order = 3.3/(df/fs), rounded up to even, = 826.
+- **Design values** (synthetic run, `historical/d5_0_2026-10-04/d5_notch_design_output_2026-10-04.txt`):
+  - per filter: order 826, half-length 413 samples = 0.826 s;
+  - gain at f₀: −47.014 / −46.431 / −46.721 / −46.866 dB at 50 / 100 / 150 / 200 Hz;
+  - gain −6.051 and −6.049 dB at 49 and 51 Hz, and −0.033 and −0.032 dB at 48 and 52 Hz;
+  - |gain| ≤ 0.011 dB at the points evaluated in 13–30 and 55–95 Hz (13, 20, 30, 55, 60, 90, 95 Hz). This was checked at those points only, not on a dense grid (open point ii).
+- **H:** contribution 4 × 0.826 = 3.304 s, so H = 3.333 + 3.304 = **6.637 s**. When (a) is adopted, the notches are added to `stage3_filter_halflengths.m` and H is recomputed there.
+- **Data cost under D4e** (blocks clipped, stimuli lost) must be recomputed with that H before (a) is used. **The figures quoted on 2026-10-04 are UNVERIFIED and are not used:** (a) 32 blocks clipped, 35 stimuli lost (16 block-first) in 17 subjects; (a′) 23 blocks, 15 stimuli (7 block-first) in 8 subjects.
+  - They come from files that exist only in a Claude Code session scratchpad under `%TEMP%` (`…/1680c193…/scratchpad/notch4/` and `notch2/`), not in the repository or `outRoot`.
+  - Those files were produced by the committed survey script (`stage3_raw_boundaries_d4e.py`) from a **hand-edited** `filter_halflengths.csv` whose notch rows (0.826 s each) were typed in, not produced by `stage3_filter_halflengths.m`.
+
+### (a′) as (a), at 50 and 100 Hz only
+- H contribution 2 × 0.826 = 1.652 s, so H = 4.985 s.
+- Admissible only under D5-0 R1 (150 and 200 Hz absent).
+
+### (b) CleanLine 2.1, new implementation (`cleanLineNoise`), on each raw segment
+- Called directly by our wrapper, not via `cleanline.m`/`pop_cleanline` (whose default `newversion` is false). The parameters are the `cleanline.m` defaults of the new path (`cleanline.m:150–213`), except the line frequencies:
+  - `lineFrequencies` [50 100 150 200]; `p` 0.01; `fScanBandWidth` 2 Hz; `taperBandWidth` 2 Hz;
+  - `taperWindowSize` 4 s; `taperWindowStep` 1 s; `tau` 100; `pad` 2; `fPassBand` [0 250]; `maximumIterations` 10;
+  - all EEG channels present at that pipeline step.
+- **Mechanism** (`removeLinesMovingWindow.m`, `fitSignificantFrequencies.m`):
+  - In each 4 s window, a multitaper F-test is computed.
+  - For each f₀, the most significant frequency within f₀ ± 1 Hz (± `fScanBandWidth`/2) is taken. If it is significant at p < 0.01, a sinusoid with fitted amplitude and phase at that frequency is subtracted. Otherwise nothing is removed.
+  - Consecutive windows (3 s overlap) are blended with a sigmoid (tau 100).
+  - The procedure is repeated up to 10 times. An f₀ drops out once it is no longer significant or its dB reduction becomes negative.
+- **Segment rules.**
+  - A segment shorter than 4 s is not processed: `cleanLineNoise` needs one full window. The wrapper asserts that such a segment overlaps no block. Known case: sub-25 rest, a 0.192 s break segment.
+  - The last < 1 s of each segment (less than one window step) is left uncleaned. Blocks lie ≥ H = 3.333 s from every segment edge (D4e), so that tail never enters a block.
+  - **H contribution 0** (not a convolution; nothing crosses a segment edge).
+- **Determinism.** No random numbers. Channels are processed with `parfor` (`cleanLineNoise.m:57`), which runs serially only if no pool exists and `Pool.AutoCreate` is false (asserted under S3a-INF-1).
+- **Outcome-blindness.** `cleanLineNoise` internally computes multitaper spectra over `fPassBand` to judge its dB reduction. These are not saved, printed or inspected.
+
+### Residual criterion for (b): decided 2026-10-06
+- **Decision (Amirhossein, 2026-10-06):** R-b1 = 3 dB excess, R-b2 = flank change ≤ 0.5 dB.
+  - **Both values are conventions, not calibrated values.** 3 dB is the R1 "absent" threshold; 0.5 dB is a tolerance for "no change".
+  - Synthetic calibration B (below) shows that the control band is insensitive to a residual of 1–6 dB excess: the rise of 55–60 / 90–95 Hz power is ≤ 0.043 dB in every variant. It therefore supports the 3 dB value for the control band, but does not derive it.
+- **Test set:** the 3 D14 test subjects (rest and MSIT+) plus the 3 worst recordings by D5-0 R2.
+- **Measure:** exactly the D5-0 measure, on the data before and after (b). That means the same 10 s chunks inside the clipped blocks, Hann window, DFT at f₀ ± 3 Hz, straight-line floor on 1.5 ≤ |f − f₀| ≤ 3 Hz, and excess = maximum over |f − f₀| ≤ 0.5 Hz.
+- **(b) passes** if, in every tested recording, for every kept channel and every f₀:
+  - **R-b1 (residual):** the chunk-averaged excess after (b) is < **3 dB** (the R1 "absent" threshold);
+  - **R-b2 (no harm next to the line):** the mean PSD over the flank bins (1.5 ≤ |f − f₀| ≤ 3 Hz) changes by at most **0.5 dB** between before and after.
+- The per-chunk median and maximum residual excess are reported descriptively.
+- If (b) fails, (a) is used for all recordings. Its residual is reported with the same measure, but it is not a pass/fail test.
+- Outcome-blind as in D5-0: nothing in 13–30 or 55–95 Hz is computed, saved or printed.
+
+### Open point (i): is removal at 150 and 200 Hz needed? Decided 2026-10-06: (i-1)
+- **Facts.**
+  - Both frequencies lie below Nyquist.
+  - The `pop_resample` anti-aliasing filter (1000 → 500 Hz) has its **passband edge at 200 Hz** (fc 225 Hz, transition 200–250 Hz, design deviation 0.002, i.e. ≤ 0.017 dB in the passband). It therefore does **not** remove a 200 Hz line; attenuation starts above 200 Hz.
+  - The exact gains at 197–203 Hz are not determined (`run_info.txt` was never written). They can be computed from the design without data.
+- **Where 150/200 Hz lines matter:**
+  - any EMG index above 100 Hz (the reason D4b keeps 100–200 Hz);
+  - ASR (D7), ICA (D9) and ICLabel (D10), which see the full band (line peaks can be captured as "Line Noise" components).
+- **Where they do not matter:** D6 (bad channels, run on the 100 Hz low-passed copy), and power in 13–30 or 55–95 Hz with the estimators used so far (far from those bands).
+- **Options.**
+  - **(i-1) Keep all four line frequencies (current D4b).**
+    - What happens: line removal (D5) runs at 50, 100, 150 and 200 Hz in every recording; the data keep content up to the anti-aliasing passband edge (200 Hz).
+    - Gain: the 100–200 Hz range stays available for a stronger EMG index (audit #10); ASR, ICA and ICLabel see data without line peaks at 150/200 Hz, if the removal works.
+    - Cost: under (b), none in H. Under (a), 1.652 s of extra H (H = 6.637 s instead of 4.985 s), and two more 4 Hz spectral holes.
+  - **(i-2) Drop 150 and 200 Hz now.**
+    - What happens: line removal runs at 50 and 100 Hz only; lines at 150/200 Hz stay in the data.
+    - Consequence: no index above 100 Hz can be computed without contamination. ASR, ICA and ICLabel see full-band data with any 150/200 Hz lines (possible "Line Noise" components).
+    - Optional add-on: low-pass only the copy used to **fit** ICA (as the 1 Hz high-passed copy, D9), and apply the unmixing to the full-band data. ASR is not covered by this add-on.
+    - Cost: under (a), it saves 1.652 s of H compared with (i-1); under (b), it saves nothing.
+  - **(i-3) Let D5-0 R1 decide (rule already fixed for (a′)).**
+    - What happens: 150 and 200 Hz are dropped only if D5-0 shows them absent (`excess_db` < 3 dB in every kept channel of every recording); otherwise (i-1).
+    - Consequence: the choice is data-driven but outcome-blind (D5-0 sees only f₀ ± 3 Hz).
+  - **(i-4) Low-pass the continuous data before ASR/ICA** (none of (i-1)–(i-3) does this for ASR).
+    - What happens: a `pop_eegfiltnew` low-pass is applied to the continuous data at 500 Hz, before cropping (in the D4c chain after resampling, together with D5). Its stop-band ends below 148 Hz, so 150/200 Hz lines are removed by the low-pass, and D5 needs only 50 and 100 Hz.
+    - Consequence: **this reverses D4b** (no content kept above about the cutoff, so no EMG index above it). The design and its H cost (half-length at 500 Hz) for two candidate passband edges, 100 Hz (as v1 and the D6 copy) and the highest default-design edge whose stop-band ends below 148 Hz, are computed in the synthetic run below; no value is typed in.
+    - A variant that low-passes only the copies used to *fit* ASR and ICA is possible for ICA, but not cleanly for ASR, which corrects the data it is calibrated on.
+- **Cost summary.** Under (b), including 150/200 Hz costs no H and removes nothing where no significant line exists. Under (a), it costs 1.652 s of H. Under (i-4), the low-pass adds its half-length to H (computed below).
+- **Decision (Amirhossein, 2026-10-06): option (i-1).**
+  - D4b is kept: no low-pass, and 100–200 Hz is retained for the EMG index. (i-4) is rejected.
+  - 150 and 200 Hz are removed with the same method that D5 selects for 50 and 100 Hz: (b), or (a) if (b) fails its residual criterion.
+  - **Rationale:**
+    - D4b's EMG rationale stands.
+    - ASR's default spectral-shaping filter weights 80–250 Hz ×3 in its statistics (`asr_calibrate.m:125–134`: `yulewalk` design amplitudes [3 0.75 0.33 0.33 1 1 3 3] at [0 2 3 13 16 40 80 250] Hz for 500 Hz). Residual harmonics would therefore inflate ASR statistics.
+    - The harmonics would also contaminate the EMG index.
+    - ICLabel's PSD features cover 1–100 Hz (`eeg_rpsd(EEG, 100)`, `ICL_feature_extractor.m:48`) and are unaffected.
+  - **Consequence for the options:**
+    - F_L = {50, 100, 150, 200} Hz under (b) and under the fallback (a).
+    - (a′), (i-2) and (i-3) are withdrawn.
+    - **D5-0 R1 becomes report-only.** This is a direct consequence of the (i) decision, made before any D5-0 output was viewed. R1 is still computed and reported, but its outcome no longer changes the line frequencies.
+
+### Open point (ii): synthetic check that the 50 Hz stop band does not reach 55 Hz (logged as a test before it runs)
+- **(a), frequency response.** Compute the response of the full pre-cropping chain (D4a high-pass, anti-aliasing filter, the four notches) on a 0.01 Hz grid.
+  - Proposed pass rule: |gain| ≤ 0.05 dB for every f in [53, 95] Hz and [13, 30] Hz.
+  - This concerns filter design only, not data.
+- **(a) and (b), time domain.** Synthetic signal:
+  - a 50 Hz line, also at 50 ± 0.3 Hz and with slow frequency drift;
+  - unit sinusoids at 53, 55, 60, 75 and 95 Hz;
+  - white noise;
+  - generated at 1000 Hz and passed through the D4c chain.
+  - Proposed pass rule: the least-squares amplitude of each test sinusoid changes by ≤ 0.05 dB.
+  - For (b) additionally: the 50 Hz line is reduced to an excess < 3 dB, and a sinusoid at 51.5 Hz (outside the ±1 Hz scan band) is left unchanged.
+- **Stage 5 caveat (not a filter property).**
+  - With a 0.2 s Hann window, the main lobe spans ± 2/T = ±10 Hz around any line. **Both edges of the 55–95 Hz control band are therefore exposed:** a residual 50 Hz component leaks into 55–60 Hz, and a residual 100 Hz component into 90–95 Hz, whatever the filters' transition bands.
+  - The D5 residual therefore matters for the control band, and the residual criterion of (b) is calibrated against this leakage (synthetic calibration B below). Stage 5 must take it into account.
+
+### Synthetic calibrations (filter design and synthetic signals only, no EEG); logged 2026-10-06 before they run
+- **Script:** `revision/stage3/stage3_d5_opt_synthetic.m` (a function of its output folder). Settings as in S3a-INF-1 §1 (`maxNumCompThreads(2)`, `MKL_CBWR=AUTO`, `rng(1,'twister')`).
+- **Duplicate execution:** run twice in separate `matlab -batch` processes (A, B). A third process compares the two result files with `isequaln`. The results are reported only if A = B; otherwise nothing is reported and the mismatch is logged.
+- **Output:** `<outRoot>/stage3/d5_opt_synthetic/run_A|run_B/` (`results.mat`, `table_A_attenuation.csv`, `table_B_leakage.csv`, `table_i4_lowpass.csv`, `run_info.txt` with the fingerprint).
+- **A. Attenuation of (a)/(a′) near the line.** The kernels are designed exactly as in (a) (`pop_eegfiltnew`, ±2 Hz band-stop, at 500 Hz, on a zero-valued synthetic dataset). The gain (dB) of the (a) cascade (4 notches) and of the (a′) cascade (50 and 100 Hz) is reported at f₀ and at f₀ ± 0.1, 0.2, 0.5 and 1.0 Hz, for f₀ = 50 and 100 Hz (`freqz`). Descriptive; no rule.
+- **(i-4) low-pass design.** `pop_eegfiltnew(…, 'hicutoff', E)` at 500 Hz, default design, for E = 100 Hz, and for the largest integer E whose stop-band edge (E + default transition width) is < 148 Hz. Reported per E: order, transition width, −6 dB cutoff, stop-band edge, half-length (samples, s), and the resulting H. Descriptive; no rule.
+- **B. Leakage of a residual line into the control-band edges.**
+  - **Residual line of X dB:** a sinusoid at exactly f₀ (50.0 or 100.0 Hz), with amplitude a(X) such that its **expected** D5-0 excess is X dB above a white background. That is, (N₀ + Pₛ)/N₀ = 10^(X/10), where Pₛ is the line's PSD at the peak bin under the D5-0 estimator (10 s Hann window, the D5-0 PSD scaling). Pₛ is computed from the actual window, not typed in.
+  - **Stage 5 estimator (not yet decided; two variants):**
+    - primary = the v1 estimator: `pwelch(x, hann(100), [], [], 500)` on 100-sample segments (one segment, default nfft = 256);
+    - variant = the same window without zero-padding (nfft = 100).
+    - Band power = mean PSD over the bins with 55 ≤ f ≤ 60 Hz and with 90 ≤ f ≤ 95 Hz (the v1 inclusive rule).
+  - **Raise** = 10·log10(E[band power with line] / E[band power without line]). It is computed for each line (50, 100 Hz) × band (55–60, 90–95 Hz) × X ∈ {1, 2, 3, 6} dB, in two ways:
+    - **(1) exact expectation** from the window (random phase, so the cross-terms vanish) for a white background. For 1/f^α backgrounds (α = 1, 2, normalised to N₀ at f₀), the line term is exact, but the background at each bin is approximated by its value at the bin (smoothing by the window is ignored);
+    - **(2) Monte Carlo** for the white background: 20,000 segments, random phase, Gaussian noise, `rng(1)`. Reported as a check on (1).
+  - X ∈ {10, 15, 20, 30} dB are added **descriptively**, to show where 0.5 dB is crossed.
+- **Proposal rule for the (b) residual threshold (Amirhossein decides after seeing it):** the largest X in {1, 2, 3, 6} dB for which the raise is ≤ 0.5 dB in both bands, for both lines, under the white background, using the primary estimator. The variant estimator and the 1/f^α backgrounds are reported as sensitivity analyses. If they change the answer, that is stated.
+
+### Outcome of the synthetic calibrations (appended 2026-10-06 after the runs; the procedure above is unchanged)
+- **Run.** Replicas A and B in separate processes, 2026-10-06 (A finished 18:59:45). Both exited 0. `results.mat` is `isequaln` between A and B for every field, and the three CSV tables are byte-identical. Files: `<outRoot>/stage3/d5_opt_synthetic/run_A|run_B/`.
+  - Environment: MATLAB R2022b, MKL 2021.3, `version('-blas')` "CNR branch AVX2", 2 threads, `MKL_CBWR=AUTO`, firfilt 2.8.
+  - Values below are rounded to 3 decimals for display; exact values are in the CSV files.
+- **A. Gain (dB) of the band-stop cascades near the line** (`table_A_attenuation.csv`):
+
+  | f₀ | option | −1.0 | −0.5 | −0.2 | −0.1 | 0 | +0.1 | +0.2 | +0.5 | +1.0 Hz |
+  |---|---|---|---|---|---|---|---|---|---|---|
+  | 50 | (a) | −6.051 | −18.203 | −33.146 | −41.122 | −47.014 | −41.146 | −33.162 | −18.202 | −6.049 |
+  | 50 | (a′) | −6.049 | −18.203 | −33.146 | −41.121 | −47.013 | −41.144 | −33.160 | −18.202 | −6.048 |
+  | 100 | (a) | −6.045 | −18.197 | −33.041 | −40.826 | −46.431 | −40.871 | −33.072 | −18.201 | −6.048 |
+  | 100 | (a′) | −6.046 | −18.195 | −33.039 | −40.825 | −46.431 | −40.871 | −33.072 | −18.200 | −6.045 |
+
+  - Meaning: a line 0.5 Hz off f₀ is attenuated by only about 18 dB, and one 1 Hz off by about 6 dB. This is relevant to D5-0 R3 (peak drift > 0.5 Hz).
+- **(i-4) Low-pass designs** (`table_i4_lowpass.csv`; default `pop_eegfiltnew` low-pass at 500 Hz):
+
+  | Passband edge | Order | Transition | −6 dB | Stop-band edge | Half-length | Gain 150 / 200 Hz | H with (b) | H with (a′) |
+  |---|---|---|---|---|---|---|---|---|
+  | 100 Hz | 66 | 25.000 Hz | 112.500 Hz | 125.000 Hz | 33 samples = 0.066 s | −60.659 / −82.300 dB | 3.399 s | 5.051 s |
+  | 118 Hz (largest integer edge with stop-band < 148 Hz) | 56 | 29.464 Hz | 132.732 Hz | 147.464 Hz | 28 samples = 0.056 s | −53.449 / −96.888 dB | 3.389 s | 5.041 s |
+
+  - H is the current 3.333 s (`stage3_filter_halflengths.m`) plus the low-pass half-length, plus 1.652 s for the two notches of (a′).
+- **B. Rise (dB) of control-band-edge power caused by a residual line with expected D5-0 excess X** (`table_B_leakage.csv`; white background; exact expectation, with the Monte Carlo value in brackets):
+
+  | Estimator | Line → band | X = 1 | 2 | 3 | 6 dB |
+  |---|---|---|---|---|---|
+  | primary (nfft 256) | 50 Hz → 55–60 | 0.001 (0.001) | 0.002 (0.002) | 0.004 (0.004) | 0.011 (0.011) |
+  | primary (nfft 256) | 100 Hz → 90–95 | 0.001 (0.001) | 0.003 (0.003) | 0.005 (0.005) | 0.015 (0.015) |
+  | variant (nfft 100) | 50 Hz → 55–60 | 0.003 (0.003) | 0.006 (0.007) | 0.011 (0.011) | 0.033 (0.033) |
+  | variant (nfft 100) | 100 Hz → 90–95 | 0.003 (0.003) | 0.006 (0.006) | 0.011 (0.011) | 0.033 (0.033) |
+
+  - Cross terms (50 Hz → 90–95 Hz, 100 Hz → 55–60 Hz): < 1e-4 dB.
+  - 1/f^α backgrounds (α = 1, 2): the largest rise at X = 6 dB over every estimator, line and band is 0.043 dB (variant estimator, 50 Hz → 55–60 Hz, α = 2).
+  - Descriptive, X > 6 dB: the 0.5 dB rise is first exceeded between X = 20 and 30 dB with the primary estimator (100 Hz → 90–95 Hz: 0.484 dB at X = 20, 3.402 dB at X = 30), and between X = 15 and 20 dB with the variant estimator (0.327 dB at X = 15, 0.978 dB at X = 20; with α = 2 for 50 Hz: 0.425 and 1.245 dB).
+  - Monte Carlo agrees with the expectation to within 0.0004 dB for X ≤ 6 (largest absolute difference 0.000324 dB).
+- **Proposal under the pre-registered rule: X = 6 dB**, the largest tested value. The rule is **not binding** within {1, 2, 3, 6}. Every rise is ≤ 0.043 dB across all variants, so the sensitivity analyses do not change the answer. **Not adopted:** Amirhossein kept 3 dB as a convention (see "Residual criterion for (b): decided 2026-10-06").
+- **Limits of this calibration** (stated, not resolved):
+  - It covers only leakage into the control band through a 0.2 s Hann estimator, for a stationary line.
+  - It does not cover the other reasons for a residual criterion: line components in ICA/ICLabel (D9/D10), an index above 100 Hz, and the noise bias of the D5-0 measure. That bias exists because the maximum over 11 bins of a chunk-averaged noisy PSD is > 0 dB even without a line; it is not computed here.
+  - A threshold above 3 dB therefore needs a separate argument for those purposes.
