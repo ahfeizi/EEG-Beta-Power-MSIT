@@ -539,6 +539,15 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - **Limit:** these checks cannot detect a value that is finite but wrong. Under H-HW, a recording that saved without a crash could still be silently corrupted. A recompute-and-compare check is needed before any D5-0 value is used.
 - **Consequence.** D5-0 outputs are not used, and no heavy MATLAB job runs, until (i) H-HW is tested and (ii) a recompute check passes. The test design is proposed separately and logged before it runs.
 
+## S3a-HW-1 · 2026-10-06 · Hardware change: CPU thermal paste replaced
+
+- **Fact** (reported by Amirhossein): the CPU thermal paste was replaced on 2026-10-06, before the thermal ladder (first log row 19:40:46). The exact time or interval was not provided.
+- **Consequence for the crash record.** Every crash datum in S3a-D5-0-crash (the 10 MATLAB heap-corruption events and the 4 unclean restarts), and every D5-0 run of 2026-10-04, **predates this change**.
+  - The acceptance test of S3a-INF-1 (§8) evaluates the system **after** this change.
+  - The thermal ladder of S3a-INF-1 (§6; logs from 19:40 to 20:28 on 2026-10-06) was run after it.
+  - Whether the synthetic runs of S3a-D5-opt (finished 18:59 on 2026-10-06) ran before or after the change is not recorded. This has no practical bearing: those runs are filter design and synthetic signals only, and their replicas A and B were identical.
+- No conclusion about H-HW (S3a-D5-0-crash) is drawn from the change itself.
+
 ## S3a-D5-0-hist · 2026-10-06 · D5-0: historical files moved into the repository; the executed script version
 
 - **Moved** on 2026-10-06, unchanged (same-volume moves), from Claude Code session scratchpads under `%TEMP%` to `revision/stage3/historical/d5_0_2026-10-04/` (marked historical in its `README.md`):
