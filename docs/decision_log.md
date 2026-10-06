@@ -435,3 +435,38 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - kept channels = all but TP9/TP10, which sit at positions 10/21 in both files;
   - R1 and R3 use maxima over kept channels, and R2 uses medians over kept channels.
 - Stage 3 is not affected: the stop-on-mismatch rule stays.
+
+## S3a-D4e-4-test · 2026-10-04 · Proposed (not run): label test for sub-13/41/42 and a rank / predictability check on all 84 recordings
+
+- **Status: pre-registration draft. Nothing has run.** Both tests read binary `.eeg` files: test N reads 6 recordings, test P all 84. Each needs explicit approval.
+- **Outcome-blind constraint (both tests).**
+  - Data are band-passed to 1–10 Hz (`pop_eegfiltnew`, within raw segments) before any computation.
+  - Only time-domain channel × channel statistics (correlations, covariances, regressions) are computed. No spectrum is computed, and nothing in 13–30 Hz or 55–95 Hz is computed, saved or printed.
+  - Note: 1–10 Hz includes 8–10 Hz (alpha). If alpha must also be avoided, 1–7 Hz is the alternative.
+- **Common preparation.**
+  1. Load with `pop_loadbv` (by channel groups for memory), resample to 500 Hz (`pop_resample`, boundary-aware), band-pass 1–10 Hz.
+  2. Keep only the D4e-clipped blocks. A further margin equal to the band-pass half-length is dropped at each block edge; that half-length is computed by `stage3_filter_halflengths`-style design, not typed in.
+  3. Cut into non-overlapping 10 s chunks.
+  4. TP9/TP10 are excluded from all statistics. FCz is absent (online reference).
+- **Test N, neighbour correlation (sub-13, sub-41, sub-42; rest and MSIT+ analysed separately).**
+  - Common-average reference over the 125 channels; it does not depend on the labelling.
+  - Per chunk, a 125 × 125 Pearson correlation; per recording, the median over chunks of Fisher z.
+  - **Neighbours** of a label: its k = 6 nearest labels by Euclidean distance in the subject's own CapTrak X/Y/Z (`.bvct`; all three subjects have one), excluding TP9/TP10/FCz/GND/fiducials. k = 4 and k = 8 are reported as sensitivity.
+  - **Hypotheses:** H_vhdr (data column j has `.vhdr` label j) and H_tsv (data column j has `channels.tsv` label j).
+  - **Affected labels:** those whose column differs between the hypotheses (sub-13: FFT8h, FCC6h; sub-41: FC5, FT9; sub-42: the 35 labels at positions 93–127). None of Fz, Cz, C4 is affected.
+  - **Score** of label L under H: s_H(L) = mean z between column_H(L) and column_H(N) over the neighbours N of L.
+  - **Reference distribution:** s(U) for every unaffected label U (identical under both hypotheses).
+  - **Decision rule**, per subject:
+    - H is **supported** if, in both rest and MSIT+, (i) every affected label has s_H(L) ≥ the 5th percentile of s(U), and (ii) under the other hypothesis at least one affected label falls below that percentile.
+    - The labelling is then fixed to H for that subject, and the D4e-4 stop is lifted for it.
+    - If both or neither hypothesis meets (i)–(ii), or rest and MSIT+ disagree, the result is **ambiguous**: the affected channels are treated as unreliable for that subject (handling decided under D6/D11), and the stop stays until that decision.
+    - Expected power: high for sub-42 (35 shifted labels), lower for sub-41 (FC5 and FT9 are close and share neighbours), where an ambiguous result is plausible.
+- **Test P, rank and predictability (all 84 recordings).**
+  - On the 125 channels, as recorded (no re-referencing), concatenated chunks:
+    - **Covariance eigenvalues:** report the 5 smallest relative to the median eigenvalue (dB). A **deficient dimension** is an eigenvalue < −60 dB relative to the median.
+    - **Average reference before export:** per chunk, the RMS of the channel mean divided by the median channel SD. A value < 1e-4 in every chunk means the data were exported average-referenced.
+    - **Predictability:** per channel c, 1 − R² of an OLS regression of c on the other 124 channels, from the inverse covariance. A channel is **near-perfectly predicted** (consistent with interpolation) if 1 − R² < 1e-4 (−40 dB). The full distribution is reported, so the gap from naturally correlated neighbours is visible.
+    - **Predictor check** for each near-perfectly predicted channel: its 6 largest standardised weights, and whether they are its spatial neighbours. For sub-13/41/42 this is evaluated under both labellings. If an exported channel was interpolated from its true neighbours, the labelling under which the predictors are its neighbours is evidence for (a) or (b).
+  - **Consequence for D9:** the number of deficient dimensions per recording (after TP9/TP10 removal) is carried into the ICA rank decision.
+  - **Consequence for D11:** channels found to be interpolated before export are listed per subject.
+- **Outputs (if approved):** `<outRoot>/stage3/d4e4_test/neighbour_scores.csv`, `rank_predictability_by_recording.csv`, `predictability_by_channel.csv`.
