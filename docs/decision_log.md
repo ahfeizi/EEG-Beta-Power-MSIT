@@ -744,3 +744,43 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - It covers only leakage into the control band through a 0.2 s Hann estimator, for a stationary line.
   - It does not cover the other reasons for a residual criterion: line components in ICA/ICLabel (D9/D10), an index above 100 Hz, and the noise bias of the D5-0 measure. That bias exists because the maximum over 11 bins of a chunk-averaged noisy PSD is > 0 dB even without a line; it is not computed here.
   - A threshold above 3 dB therefore needs a separate argument for those purposes.
+
+## S3a-D1-amend · 2026-10-06 · Large outputs and a verified raw working copy move to D:; E: is no longer read by jobs
+
+- **Facts** (2026-10-06; volume and file metadata only, no file content read):
+  - **C:** Samsung SSD 860 EVO 250 GB (SATA), system drive. 22,550,908,928 bytes free (21.0 GiB; 26.7 GiB on 2026-10-05).
+  - **D:** Lexar 256 GB SSD, SATA (internal), NTFS, 238.0 GiB. 107,495,354,368 bytes free (100.1 GiB).
+  - **E:** WD Elements, USB HDD, 931.5 GiB, 71.0 GiB free. It holds the raw data and has 4 pending sectors (reported by Amirhossein, 2026-10-05).
+  - **Raw dataset size** (`ds004621` on E:, from file sizes):
+    - excluding `.git`: 1,340 files, 93,735,671,334 bytes (87.298 GiB); `.git` itself is 2,818 files, 2,047,791 bytes;
+    - **Stage 3 scope:** the 420 rest/MSIT+ files of S0-1 = 44,629,968,968 bytes (41.565 GiB), of which the 84 `.eeg` = 44,627,213,768 bytes;
+    - `sourcedata/sub-XX/coords`: 42 files, 2,751,515 bytes; top-level files: 14, 45,486 bytes.
+  - `BinaryFormat=IEEE_FLOAT_32` in the one header checked (sub-06 MSIT+); the other headers were not checked.
+  - `pop_saveset` writes EEG data as float32 (`pop_saveset.m:228`).
+  - NTFS last-access updates were enabled (`fsutil behavior query disablelastaccess` = 2, "System Managed"). Reading a file on E: could therefore let Windows update its last-access time stamp; this applies to every read before the change below.
+  - **Changed 2026-10-06 (Amirhossein): `fsutil behavior set disablelastaccess 1`.** This is a **global** setting (all NTFS volumes, not E: only). After a restart on 2026-10-06, `fsutil behavior query disablelastaccess` shows "DisableLastAccess = 1 (User Managed, Last Access Time Updates DISABLED)".
+    - From then on, reads on E: no longer update last-access time stamps. The raw copy (below) has not run yet, so it runs under this setting.
+- **Decision (Amirhossein, 2026-10-06).**
+  - **D1-amend-1, location.** `eegOutRoot` = a new folder on D: (proposed `D:\Revision_EEG`). This replaces `E:\Revision_EEG` of S3a-D1 option (i). Small tables, reports and figures stay under `outRoot` on C:.
+  - **D1-amend-2, raw working copy.** The Stage 3 scope (420 rest/MSIT+ files, the CapTrak coords, the top-level files) is copied once to D: (proposed `D:\Revision_Raw\ds004621`, same relative layout).
+    - The full dataset is not copied: 87.3 GiB would leave about 12.8 GiB on D:, below the 15 GB gate before any output exists.
+    - After verification, `bidsRoot` in `config_local.m` (gitignored) points to the copy. Stage 3 jobs read only the copy. E: stays the read-only original: it is not read by jobs and never written.
+  - **D1-amend-3, approval scope (Q3).** `.eeg` bytes on E: are read only to copy them and to hash them. Their content is not parsed.
+- **Copy and verification procedure** (`revision/stage3/stage3_raw_copy_verify.py`; three separate runs; nothing runs without approval):
+  1. `manifest`: the OpenNeuro 1.0.3 snapshot metadata for every file in scope is fetched with the S0-1 query and frozen in `<outRoot>/stage3/raw_copy/reference_manifest_1.0.3.tsv`.
+     - S0-1 stored no hashes, only per-file statuses, so the reference ids are fetched again.
+     - Reference kind as in S0-1: SHA-256 (the git-annex key) for annexed files, the **git blob SHA-1** for non-annexed files.
+     - Network access is approved for this step only (public OpenNeuro 1.0.3 metadata; Amirhossein, 2026-10-06). Every raw API response is saved verbatim, with its request and a time stamp, as `reference_raw_responses_1.0.3_<timestamp>.jsonl` next to the manifest. The SHA-256 of both files goes to `reference_manifest_1.0.3.tsv.sha256`.
+  2. `copy`: each file is read once from E:. The same bytes are hashed (SHA-256 and git-blob SHA-1) and written to `*.partial` on D:, then fsync'ed.
+     - The file is renamed to its final name only if its size and reference hash match.
+     - Failures (mismatch, read error) are deleted and logged. There is no retry inside a run; a later run copies only the missing files.
+  3. `verify`: a separate run, preferably after a reboot so that files are read from the disk and not from the Windows file cache. Every file on D: is re-read and compared with the reference and with its copy-time SHA-256.
+- **Decision rule.**
+  - **All files match both, and D: holds no unexpected file:** `verified_manifest.tsv` (relative path, size, SHA-256) is written, and `bidsRoot` is switched to the copy.
+  - **Otherwise:** the failing files are copied again in a new run. A file that fails in two runs stops the procedure and is reported. E: is never written.
+  - **Every Stage 3 job** hashes (SHA-256) every raw file it reads and compares it with `verified_manifest.tsv`. A mismatch fails the job, with no retry, until the copy is re-verified.
+- **Space check** (upper-bound arithmetic from file sizes; not a measurement):
+  - After the copy, D: has 62,862,588,399 bytes (58.5 GiB) free.
+  - One continuous version of all 84 recordings, uncropped, at 500 Hz, 126 channels, float32, is at most 44,627,213,768 × (500/1000) × (126/127) = 22,137,909,192 bytes (20.6 GiB). S3a-D1 option (b) keeps two versions: ≤ 41.2 GiB.
+  - That leaves ≥ 18,586,770,015 bytes (17.3 GiB, 18.6 GB), above the 15 GB gate. This holds **only if** replica B is deleted as soon as A = B is verified (S3a-INF-1) and nothing else is stored on D:.
+  - The margin is narrow. The S3a-D1 gate stays binding, now evaluated on D: (≥ 15 GB left after the projected output) and on C: (≥ 5 GB free), before the 3-subject test and before the 42-subject run.
