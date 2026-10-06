@@ -390,6 +390,20 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - `line_noise_by_recording.csv`;
   - `run_info.txt` (time, SHA-256 of this entry's text as read by the script, the anti-aliasing gains).
 
+## S3a-D5-0-amend1 · 2026-10-06 · D5-0 script: exact-heading locator for the entry hash (computation unchanged)
+
+- **Placement.** This amendment sits directly under S3a-D5-0 as its own `## ` entry. A `###` note inside S3a-D5-0 would become part of that entry's hashed text and change its hash. S3a-D5-0 itself is unchanged.
+- **Defect.** `entryHash` (`stage3_d5_0_line_noise.m:207–218` at commit `0150366`) located the entry with `strfind(txt, '## S3a-D5-0')` and asserted exactly one match.
+  - Since S3a-D5-0-exc was logged, that string also matches the `-exc`, `-crash` and `-hist` headings (and now this one), so the assembly step would stop at line 151.
+  - It never reached that line: the 2026-10-04 assembly stopped earlier, on the sub-13 label assert.
+- **Change: the locator only.**
+  - New function `revision/stage3/stage3_log_entry.m`: it finds the single line starting with `## <ID> ` followed by a non-space character (the `·` separator), and errors unless exactly one line matches.
+  - The text rule and the hash are unchanged: text from the heading to the next line starting with `## `, CR removed, SHA-256 of the UTF-8 bytes.
+  - The D5-0 computation (chunking, DFT, `linePeaks`, R1–R3) is not touched.
+- **run_info.txt** of the D5-0 run records the hashes of S3a-D5-0, S3a-D5-opt and S3a-INF-1.
+- **Test:** `revision/stage3/test_decision_log_ids.m`. Every level-2 heading of the log must carry an ID followed by a separator, and every ID must resolve to exactly one heading.
+- **Equivalence check** (prepared 2026-10-06): the old `entryHash`, applied to the log as committed in `c137f53` (where its locator still matched once), and the new function, applied to the same file and to the current log, must give the same S3a-D5-0 hash. Result (two separate runs, identical output): all three equal `265005415f3af701d8f266af2ee2264a61cca44bf3e470754b6e5037ebfb603a`. So the S3a-D5-0 text is unchanged since `c137f53`, and the new locator gives the old hash. The ID test passed: 22 level-2 headings, 22 IDs, each resolving to exactly one heading; the separator decodes as U+00B7.
+
 ## S3a-D2-reopen · 2026-10-04 · Digitised electrode positions exist: the D2 fact is contradicted, D2 reopened
 
 - **Facts** (`sourcedata/`: file names, and the `.bvct`/`.bvef` XML only; reading both approved 2026-10-04).

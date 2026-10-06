@@ -148,7 +148,10 @@ writetable(TR, fullfile(outDir, 'line_noise_by_recording.csv'));
 fid = fopen(fullfile(outDir, 'run_info.txt'), 'w');
 out = @(varargin) [fprintf(varargin{:}), fprintf(fid, varargin{:})];
 out('S3a-D5-0 run finished %s\n', char(datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss')));
-out('SHA-256 of the S3a-D5-0 log entry as read by this script: %s\n', entryHash(fullfile(fileparts(fileparts(here)), 'docs', 'decision_log.md')));
+logFile = fullfile(fileparts(fileparts(here)), 'docs', 'decision_log.md');
+for id = ["S3a-D5-0", "S3a-D5-opt", "S3a-INF-1"]                % S3a-D5-0-amend1: exact heading locator
+    out('SHA-256 of the %s log entry as read by this script: %s\n', id, stage3_log_entry(logFile, char(id)));
+end
 out('Recordings: %d; chunk %d s; grid f0 +/- 3 Hz in 0.1 Hz steps\n', numel(recs), chunkLen);
 [p, q] = rat(S.fsOut / S.fsRaw, 1e-12);
 m = pop_firwsord('kaiser', 2, 0.2 / max([p q]), 0.002);
@@ -202,19 +205,6 @@ function n = numChannels(vhdr)
 txt = fileread(vhdr);
 tok = regexp(txt, 'NumberOfChannels=(\d+)', 'tokens', 'once');
 n = str2double(tok{1});
-end
-
-function h = entryHash(logFile)
-txt = fileread(logFile);
-a = strfind(txt, '## S3a-D5-0');
-assert(numel(a) == 1, 'S3a-D5-0 entry not found exactly once');
-rest = txt(a:end);
-b = regexp(rest(3:end), '\n## ', 'once');
-if ~isempty(b), rest = rest(1:b + 1); end
-rest = strrep(rest, sprintf('\r'), '');                    % hash independent of LF/CRLF checkout
-md = java.security.MessageDigest.getInstance('SHA-256');
-raw = typecast(md.digest(uint8(unicode2native(rest, 'UTF-8'))), 'uint8');
-h = lower(reshape(dec2hex(raw, 2)', 1, []));
 end
 
 function out = ternary(c, a, b)
