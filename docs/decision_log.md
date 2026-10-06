@@ -784,3 +784,173 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - One continuous version of all 84 recordings, uncropped, at 500 Hz, 126 channels, float32, is at most 44,627,213,768 × (500/1000) × (126/127) = 22,137,909,192 bytes (20.6 GiB). S3a-D1 option (b) keeps two versions: ≤ 41.2 GiB.
   - That leaves ≥ 18,586,770,015 bytes (17.3 GiB, 18.6 GB), above the 15 GB gate. This holds **only if** replica B is deleted as soon as A = B is verified (S3a-INF-1) and nothing else is stored on D:.
   - The margin is narrow. The S3a-D1 gate stays binding, now evaluated on D: (≥ 15 GB left after the projected output) and on C: (≥ 5 GB free), before the 3-subject test and before the 42-subject run.
+
+## S3a-INF-1 · 2026-10-06 · Proposed (not run): crash-tolerant A/B execution of every heavy Stage 3 job; first use = full D5-0 recompute
+
+- **Status: pre-registration draft. Nothing has run.** It governs every heavy MATLAB job until the H-HW hypothesis of S3a-D5-0-crash is resolved.
+  - The 2026-10-04 D5-0 cache (78/84) is not used and is **not compared** with the new results: it was computed with a different thread count, so a difference would not show corruption.
+  - **Thread count of earlier runs** (observed by Amirhossein, 2026-10-06): `maxNumCompThreads` returned **4** before being set to 2. Earlier runs, including the 2026-10-04 D5-0 cache, therefore used 4 threads.
+- **Outcome-blind:** neither the runner nor the comparison computes, saves or prints anything in 13–30 or 55–95 Hz. A comparison reports only three things: equal (yes/no), the number of differing elements, and the maximum absolute difference.
+- **Decisions applied (Amirhossein, 2026-10-06):** ID approved; Q2 → S3a-D1-amend; Q3 → S3a-D1-amend; Q4–Q9 below; Q10 handled by Amirhossein outside this entry (power plan, Windows Update, HWiNFO licence).
+
+### 1. Process isolation, identical configuration, inputs and outputs
+- **Runner.** An outer runner in Windows PowerShell 5.1 (`Invoke-Stage3Batch.ps1`). One command starts or resumes a batch (`-BatchId`).
+- **One job = one fresh `matlab -batch` process.** Jobs run sequentially, never two at once. Replicas are run in the order A, then B (then C, §4).
+- **Environment**, set by the runner for the child process only (no system setting changes): `MKL_CBWR=AUTO`.
+  - **Unverified:** no MathWorks documentation was found that R2022b honours `MKL_CBWR`.
+  - Intel documents that a call to `mkl_cbwr_set` overrides the variable; whether MATLAB makes such a call is unknown.
+  - Non-STRICT CNR assumes a constant thread count.
+  - Code outside MKL (FFTW, MATLAB-internal multithreaded built-ins, Signal Processing MEX files) is not covered.
+  - Observation (2026-10-06): the version string reports a CNR branch with and without MKL_CBWR; whether CNR mode is active is not established; synthetic A=B is first empirical evidence only.
+  - Acceptance (§8) decides empirically.
+- **At job start** (`stage3_job.m`):
+  - `maxNumCompThreads(2)`;
+  - `rng(SEED_GLOBAL, 'twister')` with **SEED_GLOBAL = 1**;
+  - write the environment fingerprint, which must be identical across replicas (otherwise the comparison is invalid and the job counts as failed). It contains:
+    - `version`, `version('-blas')`, `version('-lapack')`, `maxNumCompThreads`, `getenv('MKL_CBWR')`, `fftw('planner')`;
+    - `which` for `eeglab`, `pop_loadbv`, `pop_resample`, `resample` and the job function;
+    - SHA-256 of `path`, of `~/eeg_options.m` and of `runner_config.psd1`;
+    - `isempty(gcp('nocreate'))` and `parallel.Settings().Pool.AutoCreate`.
+  - **Asserted:** no parallel pool exists, `Pool.AutoCreate == false` (set by Amirhossein), and `option_parallel == 0`.
+- **Inputs.** Raw files come only from the verified D: copy (S3a-D1-amend). Before use, each job checks the SHA-256 of every raw file it reads against `verified_manifest.tsv`. E: is not read.
+- **Outputs.**
+  - Replicas, state and journal go to `<eegOutRoot>/stage3_runs/<BatchId>/` on D:.
+  - The final summary is also copied to `<outRoot>/stage3/runs/` on C:.
+  - Nothing is written to E:.
+
+### 2. Determinism audit (installed code, EEGLAB 2023.0) and seeds
+- **Seeds (Q4).** SEED_GLOBAL = 1. Per-step seeds are fixed constants listed in `runner_config.psd1`. The step's constant is set (`rng(seed, 'twister')`) immediately before every step that draws random numbers.
+  - Where a function reseeds internally, its internal seed governs that function. In the current code this applies to `clean_channels` (`rng('default')`), PICARD (5489), `runica` with `'reset_randomseed','no'` (`rand('state',0)`) and ICLabel (`rng('default')`). These internal seeds are recorded in `runner_config.psd1` as "internal".
+  - Our constant then governs the code that follows the function. This matters especially after ICLabel's `rng('shuffle')`.
+
+| Step / function | Source of nondeterminism | Handling |
+|---|---|---|
+| `pop_loadbv` (bva-io 1.75), `eeg_checkset` | none found (no RNG, no parfor) | none |
+| `pop_resample` → Signal Processing `resample` (`option_donotusetoolboxes=0`) | internal multithreading of `resample`/`upfirdn`: not determined | fixed threads; empirical |
+| D5-0: `detrend`, `E.' * x` (complex GEMM), `A \ Ld` | MKL BLAS/LAPACK; summation order may depend on thread count or code branch | threads = 2, `MKL_CBWR=AUTO`; empirical |
+| firfilt (`pop_eegfiltnew`) | none found | none |
+| CleanLine 2.1 (D5 option b) | `parfor` (`cleanLineNoise.m:57`); PCT is installed | assert no pool and `AutoCreate=false` |
+| `clean_channels` (D6) | random channel subsets (`:179`, `rand` at `:190`); reseeded by `rng('default')` because `reset_rng` defaults to true (`:68`, `:113–114`) | deterministic; internal seed recorded |
+| ASR calibration cache (D7) | `clean_asr.m:170–175` calls `hlp_diskcache` (a cache on disk, shared across processes) if that function exists; on 2026-10-06 `which('hlp_diskcache','-all')` after `eeglab('nogui')` returned nothing, so the direct branch with `maxmem` is used | assert in the fingerprint that `which('hlp_diskcache')` is empty |
+| ASR (D7) | `asr_process.m:131–133` falls back to `hlp_memfree` (free RAM) when `maxmem` is too small, so chunking can depend on RAM; `asr_calibrate.m:120–121` likewise if `maxmem` is absent | pass an explicit `MaxMem`; assert the fallback branch is not taken. Riemannian variant: `rng(0)`, only if used |
+| `runica` (D9) | `reset_randomseed` defaults to true → `rand('state', sum(100*clock))` (`runica.m:203`, `:800–804`): **nondeterministic** | pass `'reset_randomseed','no'` |
+| PICARD 2.0 (D9) | fixed seed 5489; sets the global stream (`picard.m:275–276`) | deterministic; recorded |
+| `pop_runica` | `parfor` (`:349`) only if `option_parallel = 1`; the home `eeg_options.m` has 0 | assert |
+| ICLabel 1.6 (D10) | `eeg_rpsd.m:26–33`: `rng('default')`, `randperm`, then `rng('shuffle')`, which leaves the global RNG clock-seeded; `eeg_autocorr_welch.m:17–20` likewise if `pct_data ≠ 100` | reseed with the next step's constant before any later draw |
+| ICA in general | iterative; floating-point differences can be amplified | A/B is the test |
+| EEGLAB options and path | home `eeg_options.m` (`option_single=0`, `option_parallel=0`); other EEGLAB copies exist on disk (2023.1, 2024.2, a second 2023.0) | fingerprint (§1) |
+
+### 3. Comparison (a separate fresh MATLAB process, `stage3_compare.m`)
+- **Content only**, by `load` into variables, never on `.mat` bytes.
+- For each numeric array: `isequaln`. If it is false, report the number of differing elements (NaN = NaN counts as equal; NaN vs a number counts as different) and the maximum absolute difference over finite pairs.
+- **Fields compared for D5-0:** `res.label`, `res.avgP`, `res.exc`, `res.fpk`, `res.amp`, `nChunk`, `F`, `d`, `f0s` (all the variables in the file).
+- **Fields compared for future Stage 3 `.set` files:**
+  - `data`, `srate`, `nbchan`, `pnts`, `xmin`;
+  - `chanlocs` (labels and X/Y/Z);
+  - `event` (type, latency, duration);
+  - `etc.restBlocks` / `etc.taskBlocks`;
+  - the removed-channel list;
+  - `icaweights`, `icasphere`, `icawinv`, `icachansind`;
+  - the ICLabel classifications and the rejected-component list.
+- **Fields excluded:** `history`, `filename`, `filepath`, `datfile`, `setname`, `comments`, `saved`, any time stamp in `etc`, and `icaact` (derived).
+- A "different" verdict is recomputed once by a second compare process before C is started.
+
+### 4. Mismatch rule
+- **A = B:** the recording is **verified**. A is canonical, and its SHA-256 is recorded in the state file. **B is deleted at once** (space, S3a-D1-amend).
+- **A ≠ B:** run C. If C equals A or B, the recording is **verified, flagged** (the matching pair is kept as canonical; the odd replica is deleted). Otherwise it is **quarantined**.
+- **Stop the batch** when ≥ 2 recordings have had A ≠ B, **including those that C resolved (Q6)**, or when any kernel crash occurs after batch start (§7).
+
+### 5. State, atomicity, resume
+- **State file per recording** (`state/<rec>.json`). Status is one of `pending`, `running`, `A_done`, `B_done`, `C_done`, `verified`, `flagged`, `failed`, `quarantined`. The file also holds attempts per replica, PIDs, start/end times, exit codes, failure reasons, flags, and the canonical output's SHA-256 at verification.
+- **Atomic writes.** The runner writes `*.tmp` and then calls `[IO.File]::Replace`. MATLAB writes `*.partial.mat` and moves it to the final name only after `save` returns.
+- **Success** means exit code 0, the final-name file present, and a `DONE` marker line in the job log. A crash after saving still counts as a failed attempt, and its output is deleted.
+- **Resume after an interruption.** Every `running` entry is reset: its partial and final files are deleted and the attempt counts as failed.
+- **Resume after a kernel crash (Q9).** Each verified recording is checked:
+  - its canonical output must still have the recorded SHA-256, and it must load;
+  - otherwise the recording returns to `pending`.
+- **Journal.** An append-only `journal.csv`, one line per job event, flushed after each line. A truncated last line after a crash is ignored.
+
+### 6. Retry, timeout, thermal and disk gates
+- **Retries:** up to 2 per replica after a crash, a non-zero exit, a timeout or a thermal abort (≤ 3 attempts). When they are exhausted, the recording is `failed`. Acceptance mode has no retries (§8).
+- **Timeout:** 3 × the expected duration per recording type. The expected duration is the median replica time from acceptance: sub-06 MSIT+ × 11 for MSIT+, sub-06 rest × 3 for rest (§8).
+- **Kill:** `taskkill /PID <pid> /T /F` on the process tree. Acceptance checks that the recorded PID belongs to the computing process.
+- **Thermal**, read from the last row of the HWiNFO CSV (the file is opened with shared read):
+  - **(i) Before each job:** a cool-down of COOLDOWN_S = **120 s**, then wait until CPU package ≤ GATE_C = **70 °C (final, 2026-10-06)** or until 10 min have passed (logged as `gate_timeout`).
+  - **(ii) During a job:** if every sample in the last 30 s is ≥ 95 °C and those samples cover ≥ 28 s, the job is killed and logged as `thermal_abort`, counted as a failed attempt.
+  - **(iii) Stale CSV** (last row older than 60 s):
+    - a job that is running is allowed to finish, and its recording is flagged `thermal_unmonitored`;
+    - no new job starts until the CSV is fresh again (logged; Q5).
+  - The runner logs the start/end time, PID, exit code and attempt of every job, so the job log can be joined with the temperature log.
+- **HWiNFO log format (runner requirement).** HWiNFO can add columns in the middle of a log.
+  - **Header fingerprint:** at batch start, the runner records a fingerprint (SHA-256) of the full HWiNFO header line. It **stops the batch** if the header changes during the batch.
+  - **Temperature column:** the **first occurrence** of `CPU Package [°C]`, which is the DTS group ("CPU [#0]: Intel Core i7-4720HQ: DTS", index 72 in the 2026-10-06 logs; the second occurrence, index 92, is the "Enhanced" group). The runner **stops** if that name does not occur exactly twice in the header. Lookup by name alone is not used.
+  - **Field-count rule (kept):** any row whose field count differs from the header's is treated as stale (pause and log). After a mid-log insertion every later row is stale, so the runner stays paused until HWiNFO logging is restarted. Amirhossein disables non-essential sensors in HWiNFO logging.
+  - Rows whose first field is not a date are ignored. HWiNFO writes the header line again, plus a sensor-group line, at the end of a log.
+  - Verified in `test.CSV` (2026-10-06): the header has 295 fields; data rows 1–180 have 295 and rows 181–457 have 296. Comparing the header with the end-of-log header shows a single inserted column: `iGPU VID [V]` at index 294 (last column). Columns 0–293 are unchanged.
+  - The DTS column reads up to 2 °C higher than the Enhanced column in these logs (max 84 vs 83 °C in step 2, 95 vs 93 °C in step 1).
+- **Maximum processor state = 85 % (AC and DC)**, set by Amirhossein in the Windows power plan according to the ladder rule below.
+- **Ladder rule** (stated in chat before the tests on 2026-10-06, not committed beforehand):
+  - Steps of 99 → 85 → 70 % maximum processor state, 15 min each, with a fixed MATLAB load (2 threads, 2000×2000 matrix multiply).
+  - A step passes if the maximum CPU Package (DTS) is ≤ 90 °C, the mean over the last 10 min of load is ≤ 85 °C, and no thermal-throttling flag is ever Yes.
+  - Choose the highest passing step; if none passes, no heavy work.
+  - Applied: step 1 fails (maximum 95.0 °C > 90 °C); step 2 passes all three conditions. 85 % is therefore the highest passing step, and step 3 (70 %) was not needed.
+- **Thermal ladder** (2 threads, after the thermal-paste change S3a-HW-1). The values were recomputed from the HWiNFO logs (a scratch Python script in the session scratchpad, not in the repository; run twice with identical output) and agree with Amirhossein's reading. CPU Package = the DTS column.
+
+  | Step | Max processor state | Log (2026-10-06) | Load period | Max CPU Package | Mean, last 10 min of load | Samples ≥ 90 °C | CPU limit-reason fields = Yes | Median package power | Median total CPU usage | Verdict |
+  |---|---|---|---|---|---|---|---|---|---|---|
+  | 1 | 99 % | `cputhermo.CSV`, 19:40:46–20:11:28 | not separated (usage ≥ 15 % spans 8.0–1827.2 s, with 378 rows below 15 % inside) | 95.0 °C (4 samples, first at 1006.5 s; the HWiNFO screenshot also shows 95 °C) | – | 52 | IA Limit Reasons: 1 row; GT Limit Reasons: 2 rows | – | – | FAIL |
+  | 2 | 85 % | `test.CSV`, 20:13:03–20:28:18 | 2.0–906.7 s (Total CPU Usage ≥ 15 %; 1 row below inside) | 84.0 °C at 501.6 s | 78.337 °C (307.0–906.7 s, n = 300) | 0 | none | 18.207 W | 28.3 % | PASS |
+
+  - The dGPU fields "GPU Performance Limiters" and "Performance Limit - Utilization" are Yes in every row of both logs. They belong to the NVIDIA GTX 950M, not the CPU.
+  - **Log files.** The originals are on Amirhossein's Desktop. Copies, byte-identical to the originals, are in `<outRoot>/thermal_ladder/` (not in the repository):
+    - `cputhermo.CSV` (step 1), 1,195,000 bytes, SHA-256 `14fc6be84f85d0d4ec3627338abb99adf9305de3a95ec5d58c2875f0a9a8a32f`;
+    - `test.CSV` (step 2), 614,003 bytes, SHA-256 `9f6968e748d38758c779f8531d09fa53c89ee8c7a2f8edf2014681bc62ae9484`.
+  - No column whose name contains "Throttling" was Yes in either log. The CPU limit-reason fields listed in the table are the only CPU-side Yes values.
+- **Disk:** before each job, D: free space must be ≥ 15 GB + 3 × the largest replica output so far, and C: must have ≥ 5 GB free. Otherwise the batch pauses.
+
+### 7. System events
+- **After each batch, and on resume:** count, since batch start, the WHEA-Logger events (all IDs), BugCheck (WER-SystemErrorReporting 1001), Kernel-Power 41, and Application Error 1000 with `MATLAB.exe`. Per job, count Application Error 1000 within its time window.
+- **Any Kernel-Power 41 or BugCheck 1001 after batch start:** the batch state becomes `STOPPED_KERNEL`, and resume refuses to continue. Amirhossein starts a new batch explicitly; verified recordings carry over under the Q9 rule (§5).
+
+### 8. Acceptance mode (before any batch)
+- **Runs:** sub-06 MSIT+ × 11, under the rules of §1–§6, **without retries**.
+- **System state:** acceptance evaluates the system **after** the thermal-paste change (S3a-HW-1), at maximum processor state 85 %. All earlier crash data (S3a-D5-0-crash) predate that change.
+- **Pass** requires all of the following:
+  - all 11 replicas finish with exit code 0;
+  - **0 MATLAB crashes**: no Application Error 1000 for `MATLAB.exe` in the acceptance window and no non-zero exit (Q7);
+  - 0 timeouts and 0 thermal aborts;
+  - 0 kernel crashes;
+  - all 11 outputs content-identical, and all fingerprints identical.
+- **Rationale (Q7)** (arithmetic, not data):
+  - At the earlier crash rate of about 25% per run, allowing 2 crashes in 11 would pass with probability ≈ 0.455 even if nothing had changed.
+  - With tolerance 0 that probability is 0.75¹¹ ≈ 0.042.
+- **Timing calibration (not a pass criterion):** sub-06 rest × 3, same settings. The medians set the timeouts (§6). Any crash during calibration is still reported.
+- **Fail with differing replicas:** nondeterminism and hardware corruption cannot be told apart, so no batch runs. The next step (for example `maxNumCompThreads(1)`) is logged before it runs.
+
+### 9. Summary (written once, at batch end or stop)
+- `summary.csv`, one row per recording, with:
+  - final state, attempts per replica, crashes, thermal aborts and flags;
+  - the comparison result (equal / number differing / max |diff| per field);
+  - the maximum package temperature over its jobs.
+- `summary.txt` header: batch id, start/end times, system-event counts, and the SHA-256 of `runner_config.psd1` and of this entry.
+- Amirhossein reads only the summary. There is no polling during runs.
+
+### 10. Files to create (implementation session; none exists yet)
+- **Runner:**
+  - `revision/infra/Invoke-Stage3Batch.ps1`: runner with Batch and Acceptance modes;
+  - `revision/infra/runner_config.psd1`: all thresholds and seeds of this entry;
+  - `revision/infra/stage3_job.m`, `stage3_env_fingerprint.m`, `stage3_compare.m`.
+- **D5-0 in function form:**
+  - `revision/stage3/stage3_d5_0_compute_one.m`: the per-recording computation of `stage3_d5_0_line_noise.m` (lines 52–106), unchanged arithmetic, with an explicit output path. The original script is not edited.
+  - `revision/stage3/test_stage3_d5_0_compute_one.m`: **equivalence test on synthetic data only**. It is described below.
+- **Implementation-session scope (E):**
+  - `revision/infra/Test-ThermalLadder.ps1` (+ a MATLAB load function): a stepwise load test with temperature logging, for Amirhossein's revision of GATE_C;
+  - `revision/infra/stage3_burnin.m`: a deterministic burn-in. The same synthetic workload runs in two separate processes, and the results are compared bitwise;
+  - `revision/infra/Get-Stage3SystemEvents.ps1`: the §7 event counts.
+- **The equivalence test (C):**
+  - It writes synthetic BrainVision files (seeded random data, 127 channels with the real labels, one raw boundary, a synthetic `channels.tsv`) and a synthetic D4e block table to a temporary folder.
+  - It runs the **unchanged** `stage3_d5_0_line_noise.m`, and also the pre-`-exc` reconstruction, from a temporary copy of the `revision/stage3` layout whose own `get_paths.m` points at the synthetic folders. It then runs `stage3_d5_0_compute_one.m` on the same files.
+  - It is run under the identical configuration of §1, both in one process and across two processes.
+  - **Pass:** `isequaln` on every variable of §3 (D5-0). Otherwise the function is not used.
+- **Entry-hash locator:** fixed under S3a-D5-0-amend1 (`stage3_log_entry.m`, exact heading line; the D5-0 computation is unchanged).
+  - Every entry hash that S3a-INF-1 records (§9) uses the same rule: exact header line, CR removed, text up to the next `\n## `.
