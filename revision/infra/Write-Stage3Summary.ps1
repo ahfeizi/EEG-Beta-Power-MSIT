@@ -36,13 +36,13 @@ if ($batch.mode -eq 'Batch') {
         $r = [ordered]@{
             recording = $st.id; final_state = $st.status
             attempts_A = $st.attempts.A; attempts_B = $st.attempts.B; attempts_C = $st.attempts.C
-            crashes = @($h | Where-Object { $_.outcome -in @('crash', 'incomplete', 'failed', 'fingerprint_mismatch') }).Count
+            crashes = @($h | Where-Object { $_.outcome -in @('crash', 'incomplete') }).Count
+            other_failed = @($h | Where-Object { $_.outcome -in @('failed', 'fingerprint_mismatch') }).Count
             timeouts = @($h | Where-Object { $_.outcome -eq 'timeout' }).Count
-            thermal_aborts = @($h | Where-Object { $_.outcome -eq 'thermal_abort' }).Count
+            job_seconds = ($h | Where-Object { $null -ne $_.wallSeconds } | Measure-Object wallSeconds -Sum).Sum
             interrupted = @($h | Where-Object { $_.outcome -eq 'interrupted' }).Count
             app_errors_1000 = ($h | Measure-Object appErrors1000 -Sum).Sum
             flags = (@($st.flags) -join ';'); failure_reason = $st.failureReason
-            max_package_C = ($h | Where-Object { $null -ne $_.maxTempC } | Measure-Object maxTempC -Maximum).Maximum
             canonical_replica = $(if ($st.canonical) { $st.canonical.replica } else { '' })
             canonical_sha256 = $(if ($st.canonical) { $st.canonical.sha256 } else { '' })
             canonical_path = $(if ($st.canonical) { $st.canonical.path } else { '' })
@@ -54,7 +54,7 @@ if ($batch.mode -eq 'Batch') {
     $st = $states | Select-Object -First 1
     if ($st) {
         foreach ($h in @($st.history)) {
-            $r = [ordered]@{ replica = $h.replica; attempt = $h.attempt; outcome = $h.outcome; exit_code = $h.exitCode; wall_s = $h.wallSeconds; max_package_C = $h.maxTempC; app_errors_1000 = $h.appErrors1000; start = $h.start; end = $h.end; pid = $h.pid; reason = $h.reason }
+            $r = [ordered]@{ replica = $h.replica; attempt = $h.attempt; outcome = $h.outcome; exit_code = $h.exitCode; wall_s = $h.wallSeconds; app_errors_1000 = $h.appErrors1000; start = $h.start; end = $h.end; pid = $h.pid; reason = $h.reason }
             foreach ($c in @($st.compares | Where-Object { $_.label -like "*$($h.replica)" -and $_.label.Length -gt $h.replica.Length })) { Add-CompareColumns $r 'vs_ref' $c }
             $rows.Add([pscustomobject]$r)
         }
@@ -74,15 +74,20 @@ $t.Add("S3a-INF-1 batch summary"); $t.Add("batch id      : $($batch.batchId)"); 
 $t.Add("start / end   : $($batch.startTime) / $($batch.endTime)"); $t.Add("status        : $($batch.status) $($batch.stopReason)")
 $t.Add("runner config : $($batch.configPath)  SHA-256 $($batch.configSha256)")
 foreach ($p in $batch.entryHashes.PSObject.Properties) { $t.Add(("log entry     : {0} SHA-256 {1}" -f $p.Name, $p.Value)) }
-$t.Add("HWiNFO log    : $($batch.hwinfoCsv)  header SHA-256 $($batch.hwinfoHeaderSha256)  temperature column index $($batch.hwinfoTempIndex)")
 $t.Add(("system events since batch start: WHEA {0}; BugCheck 1001 {1}; Kernel-Power 41 {2}; Application Error 1000 (MATLAB.exe) {3}" -f $ev.WHEA, $ev.BugCheck1001, $ev.KernelPower41, $ev.AppError1000_MATLAB))
+# crash rate over every replica attempt of the batch (S3a-INF-1-amend1)
+$allH = @($states | ForEach-Object { @($_.history) })
+$nCr = @($allH | Where-Object { $_.outcome -in @('crash', 'incomplete') }).Count
+$sec = ($allH | Where-Object { $null -ne $_.wallSeconds } | Measure-Object wallSeconds -Sum).Sum
+$rate = if ($sec -gt 0) { '{0:N3}' -f ($nCr / ($sec / 3600)) } else { 'n/a' }
+$t.Add(("attempts      : {0}; crashed (non-zero exit or incomplete) {1}; job hours {2:N3}; crashes per job-hour {3}; kernel-crash recoveries {4}" -f $allH.Count, $nCr, ($sec / 3600), $rate, $batch.kernelRecoveries))
 if ($batch.mode -eq 'Batch') {
     if ($batch.timeoutsFile) { $t.Add("timeouts.json : $($batch.timeoutsFile)  SHA-256 $($batch.timeoutsSha256)") }
     $t.Add("timeouts (s)  : $(($batch.timeoutS | ConvertTo-Json -Compress))")
     $t.Add('pre-checks:')
     foreach ($c in @($batch.prechecks)) { $t.Add(("  [{0}] {1}: {2}" -f $(if ($c.ok) { 'ok' } else { 'FAIL' }), $c.check, $c.detail)) }
     $t.Add(("recordings: {0}; " -f $states.Count) + ((@($states | Group-Object status | ForEach-Object { "$($_.Name) $($_.Count)" })) -join '; '))
-    $t.Add("recordings with A != B or an inconsistent compare: $($batch.mismatchCount)")
+    $t.Add("recordings with A != B or an inconsistent compare: $($batch.mismatchCount) (no stop; the batch stops at $($cfg.MaxQuarantinedRecordings) quarantined)")
 }
 if ($acc) {
     $t.Add("kind          : $($acc.kind)   VERDICT: $($acc.verdict)")

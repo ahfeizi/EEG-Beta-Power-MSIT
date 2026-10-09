@@ -8,7 +8,6 @@
     RawRoot          = 'D:\Revision_Raw\ds004621'                               # verified raw copy; E: is not read by jobs
     VerifiedManifest = 'C:\Users\Amirhossein\Desktop\Prof. Nasrabadi\Revision_Output\stage3\raw_copy\verified_manifest.tsv'
     BlockTable       = 'C:\Users\Amirhossein\Desktop\Prof. Nasrabadi\Revision_Output\stage3\d4e_block_clipping.csv'
-    HwinfoCsv        = 'C:\HWiNFO\stage3_hwinfo.CSV'                           # SET to the HWiNFO CSV log path before any run
     ExtraMatlabPaths = @()
 
     # ---- process configuration (S3a-INF-1 sec. 1, sec. 2)
@@ -20,27 +19,20 @@
     InternalSeeds = @{ clean_channels = "rng('default')"; picard = '5489'; runica = "rand('state',0) with 'reset_randomseed','no'"; iclabel = "rng('default'), then rng('shuffle')" }
     StepSeeds     = @{}
 
-    # ---- thermal (S3a-INF-1 sec. 6), HWiNFO log format
-    CooldownS              = 120
-    GateC                  = 70
-    GateMaxWaitS           = 600
-    AbortC                 = 95
-    AbortWindowS           = 30
-    AbortMinCoverS         = 28
-    StaleS                 = 60
-    PollS                  = 2
-    HwinfoTempNameTemplate = 'CPU Package [{0}C]'       # {0} = degree sign; first occurrence = DTS group
-    HwinfoTempNameCount    = 2
-    ProcessorStateMaxPct   = 85                         # AC and DC (S3a-INF-1 sec. 6, ladder rule)
+    # ---- gates between jobs (S3a-INF-1 sec. 6; thermal monitoring removed by S3a-INF-1-amend1)
+    CooldownS               = 120                       # fixed cool-down before every job
+    PollS                   = 2
+    ProcessorStateMaxPct    = 85                        # AC and DC, pre-check 2 (S3a-INF-1 sec. 6, ladder rule)
     HardwareChangeNotBefore = '2026-10-06T19:40:46'     # S3a-HW-1: paste replaced before the ladder's first row
 
-    # ---- retries, timeouts, mismatch rule, disk (S3a-INF-1 sec. 4, 6, 8; S3a-INF-1-clar1)
-    MaxRetries            = 2
+    # ---- attempts, timeouts, acceptance, stop rule, disk (S3a-INF-1 sec. 4, 6, 8; clar1; amend1)
+    MaxAttemptsPerReplica    = 5                        # amend1: crashes are expected (BurnIn mode: 1)
+    AcceptanceMinCompleted   = 9                        # amend1: completed MSIT+ replicas of 11 needed for PASS
+    MaxQuarantinedRecordings = 3                        # amend1: the batch stops at >= 3 quarantined recordings
     BurnInIterations       = 436                         # fixed N, S3a-INF-1-clar1 (calibration 2026-10-07)
     BurnInIterationSeconds = 8.25                        # calibrated s per iteration; timeout 3 x 436 x 8.25 = 10791 s
     AcceptanceTimeoutS    = 1800                        # acceptance and burn-in calibration jobs (clar1)
     CompareTimeoutS       = 900
-    MaxMismatchRecordings = 2
     DiskMinFreeGB_EegOut  = 15
     DiskOutputFactor      = 3
     DiskMinFreeGB_OutRoot = 5

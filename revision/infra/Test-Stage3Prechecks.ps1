@@ -1,6 +1,7 @@
 <#
 .SYNOPSIS
-  Batch-start pre-checks of S3a-INF-1-clar1 (all must pass; the runner stops otherwise).
+  Batch-start pre-checks of S3a-INF-1-clar1, as amended by S3a-INF-1-amend1 (no burn-in);
+  all must pass; the runner stops otherwise.
   Returns one object per check: check, ok, detail. Read-only, except for one short MATLAB
   process that writes the current environment fingerprint into -WorkDir.
 #>
@@ -18,7 +19,7 @@ $out = New-Object System.Collections.Generic.List[object]
 function Add-Check([string]$Name, [bool]$Ok, [string]$Detail) { $out.Add([pscustomobject]@{ check = $Name; ok = $Ok; detail = $Detail }) }
 $jobs = Read-JsonArray $JobList
 
-# 1. acceptance PASS (burn-in, MSIT+ x 11) and rest timing, via timeouts.json with matching hashes
+# 1. acceptance PASS (MSIT+ x 11) and rest timing, via timeouts.json with matching hashes (burn-in dropped, amend1)
 $tf = Join-Path $runsRoot 'timeouts.json'
 $t = $null
 if (-not (Test-Path $tf)) { Add-Check '1_acceptance' $false "no $tf" }
@@ -29,8 +30,8 @@ else {
     foreach ($s in @($t.sources | Where-Object { $_.file -like '*acceptance.json' })) { $a = Read-Json $s.file; $verd[$s.role] = $a.verdict }
     $types = @($jobs | ForEach-Object { $_.recType } | Sort-Object -Unique)
     $missing = @($types | Where-Object { -not ($t.timeoutS.PSObject.Properties.Name -contains $_) })
-    $ok = ($bad.Count -eq 0) -and ($verd['burnin'] -eq 'PASS') -and ($verd['msit'] -eq 'PASS') -and ($verd['rest'] -eq 'TIMING_ONLY') -and ($missing.Count -eq 0)
-    Add-Check '1_acceptance' $ok ("timeouts.json {0}; source files changed: {1}; burn-in {2}; MSIT+ {3}; rest {4}; recording types without timeout: {5}" -f (Get-Sha256File $tf), $bad.Count, $verd['burnin'], $verd['msit'], $verd['rest'], ($missing -join ' '))
+    $ok = ($bad.Count -eq 0) -and ($verd['msit'] -eq 'PASS') -and ($verd['rest'] -eq 'TIMING_ONLY') -and ($missing.Count -eq 0)
+    Add-Check '1_acceptance' $ok ("timeouts.json {0}; source files changed: {1}; MSIT+ {2}; rest {3}; recording types without timeout: {4}" -f (Get-Sha256File $tf), $bad.Count, $verd['msit'], $verd['rest'], ($missing -join ' '))
 }
 
 # 2. maximum processor state, AC and DC
@@ -95,7 +96,7 @@ else {
 if ($null -eq $t) { Add-Check '5_acceptance_after_HW1' $false 'no timeouts.json' }
 else {
     $bound = [datetime]::Parse($cfg.HardwareChangeNotBefore, [System.Globalization.CultureInfo]::InvariantCulture)
-    $late = @('burnin', 'msit', 'rest' | Where-Object { [datetime]::Parse($t.acceptanceStart.$_) -gt $bound })
-    Add-Check '5_acceptance_after_HW1' ($late.Count -eq 3) ("starts burn-in {0}, MSIT+ {1}, rest {2}; bound {3}" -f $t.acceptanceStart.burnin, $t.acceptanceStart.msit, $t.acceptanceStart.rest, $cfg.HardwareChangeNotBefore)
+    $late = @('msit', 'rest' | Where-Object { [datetime]::Parse($t.acceptanceStart.$_) -gt $bound })
+    Add-Check '5_acceptance_after_HW1' ($late.Count -eq 2) ("starts MSIT+ {0}, rest {1}; bound {2}" -f $t.acceptanceStart.msit, $t.acceptanceStart.rest, $cfg.HardwareChangeNotBefore)
 }
 $out.ToArray()
