@@ -1008,3 +1008,65 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - **Fixed iteration count:** N = round(3600 / 8.250) = **436**, i.e. 3597 s expected per process.
   - **Burn-in timeout:** ⌈3 × 436 × 8.250⌉ = **10791 s** per process.
   - Both values are in `runner_config.psd1` (`BurnInIterations = 436`, `BurnInIterationSeconds = 8.25`). BurnIn mode then needs neither `-Iterations` nor `-CalibrationBatch`.
+
+## S3a-INF-1-amend1 · 2026-10-09 · Hardware fault accepted: processing continues on this laptop under A/B verification; thermal monitoring and the burn-in prerequisite removed
+
+- **Status:** decision by Amirhossein, 2026-10-09, before any acceptance run on real data. It amends S3a-INF-1 and S3a-INF-1-clar1; where they differ, this entry governs.
+- **Evidence** (batch folders under `D:\Revision_EEG\stage3_runs\`; Windows Application log, Application Error 1000):
+
+  | Burn-in replica | End | Wall time | Max CPU Package (DTS) | Exit code | Application Error 1000 (MATLAB.exe) |
+  |---|---|---|---|---|---|
+  | `burnin_4` A | crash | 546.4 s | 77 °C | −1073740940 (0xC0000374) | 2026-10-07T11:12:36, `ntdll.dll`, 0xc0000374 |
+  | `burnin_4` B | crash | 3152.1 s | 83 °C | −1073740940 (0xC0000374) | 2026-10-07T12:07:08, `ntdll.dll`, 0xc0000374 |
+  | `burnin_6` A | crash | 1567.4 s | 80 °C | −1073740940 (0xC0000374) | 2026-10-07T12:56:10, `ntdll.dll`, 0xc0000374 |
+  | `burnin_6` B | **not a heap-corruption crash**: after iteration 396/436 (≈ 48 min) MATLAB stopped with `Error writing to output stream` in `fprintf` | – | not recorded | not recorded | none |
+
+  - `burnin_4`: verdict FAIL, 0/2 replicas completed (`summary.txt` SHA-256 `df7e686778e3fcb0c19983ecabd34e8c98780b942853e514838abe463041ac5b`; `acceptance.json` `9c2cbb4f73453b81de5d0dc2b2d7fb936762e41866d7be68e7872598e47dc2ff`).
+  - `burnin_6`: no summary was written. The batch is still `RUNNING` and replica B is still marked `running`, so the runner process ended while B was running; the runner's end is not recorded. The output-stream error fits a lost stdout pipe after the runner ended. This is an inference, not verified. (`journal.csv` SHA-256 `99c1552e01e0e2d56e4aba4d0d2cc84add975930e5b1c023f73c2063b5637d55`; B `job.log` `76b8e691ec3d70f88fb010a3b5bd3fc7610d43d090ea4a6192da762ab4f4c9e9`.)
+  - **The files therefore show 3 heap-corruption crashes (0xC0000374) in 3 burn-in replicas that ended inside MATLAB.** Amirhossein's count of 4/4 includes `burnin_6` B, which the files do not show as a heap corruption.
+  - Iterations printed before the end, with within-process mismatches (D5 and GEMM vs iteration 1):
+    - `burnin_4` A: 75, all 0;
+    - `burnin_4` B: 436 of 436, all 0, so the crash came after the last iteration;
+    - `burnin_6` A: 207, all 0;
+    - `burnin_6` B: 396, all 0.
+  - Kernel crashes: Kernel-Power 41 at 2026-10-07T10:33:30, plus the four system crashes of S3a-D5-0-crash.
+  - **Reported by Amirhossein, not in the files:** the crashes also occurred with the 8 GB memory module removed. No other machine is available.
+- **Decision (Amirhossein).** Heavy jobs run on this laptop. Correctness rests on A/B(/C) content verification; MATLAB crashes are tolerated and counted.
+  1. **Thermal monitoring removed:** HWiNFO log, temperature gate (GATE_C), thermal abort, staleness and header rules (S3a-INF-1 §6 (i)–(iii), "HWiNFO log format"; clar1 10.1, 10.4).
+     - Reason: Amirhossein's judgment that temperature is ruled out as the cause. The crashes occurred at maxima of 77–83 °C, below the 95 °C abort level.
+     - **Kept:** the fixed 120 s cool-down before every job, the disk gate, and maximum processor state 85 % (pre-check 2).
+  2. **Burn-in dropped from the prerequisites** (clar1 items 5 and 7.1, and the burn-in part of 7.5). `Timeouts` mode and the pre-checks no longer require a burn-in. BurnIn mode remains available (one attempt per replica, verdict rule unchanged).
+  3. **Attempts:** at most **5 per replica** (`MaxAttemptsPerReplica = 5`) in Batch and Acceptance modes. This replaces "up to 2 retries" (§6) and "without retries" (§8).
+     - A failed compare process is retried up to 5 times per verdict. This replaces clar1 10.2: a compare crash no longer fails acceptance by itself.
+  4. **Acceptance** (sub-06 MSIT+ × 11; replaces the §8 pass rule and its Q7 rationale). Crashes, timeouts and kernel crashes are tolerated and counted.
+     - **PASS requires all of the following:**
+       - (a) ≥ **9** of the 11 replicas completed (`AcceptanceMinCompleted = 9`);
+       - (b) every completed replica content-identical to the reference replica (the first completed one), each confirmed by a successful compare;
+       - (c) **0** `compare_inconsistent` events;
+       - (d) identical environment fingerprints. Kept from §1/§8: a fingerprint mismatch means a different environment, not a crash.
+     - **Reported:** attempts, crashed attempts (non-zero exit or no DONE marker), timeouts, Application Error 1000 count, kernel events, and the **crash rate per job-hour** = crashed attempts / total wall-clock hours of all attempts.
+     - Rest × 3 stays a timing run (all replicas, up to 5 attempts each).
+     - **Decision rule:**
+       - PASS → `Timeouts` → D5-0 batch.
+       - FAIL → the chain stops, and the next step is logged here before it runs. As in §8, differing replicas mean nondeterminism and corruption cannot be told apart.
+  5. **Stop rules** (replace §4's "≥ 2 recordings with A ≠ B" and clar1 6's counting rule):
+     - no stop for A ≠ B; C decides, and a resolved recording is `flagged`;
+     - a `compare_inconsistent` compare is treated as different and flagged, with no stop;
+     - the batch stops at **≥ 3 quarantined** recordings (`STOPPED_QUARANTINE`).
+  6. **Kernel crash** (replaces §7 `STOPPED_KERNEL` and the new-batch carry-over of §5 Q9): resume with **the same command and BatchId**.
+     - On resume, if Kernel-Power 41 + BugCheck 1001 since batch start has increased since the last check:
+       - every `verified`/`flagged` recording's canonical output is re-hashed. If the file is missing or its SHA-256 differs from the value recorded at verification, the recording is reset;
+       - every recording in `A_done`, `B_done` or `C_done` is reset;
+       - `failed` and `quarantined` recordings are unchanged.
+     - In Acceptance mode, each completed replica is re-hashed against the SHA-256 recorded at its completion. A mismatching replica is reset, and its compares are set aside (kept in the record; any `compare_inconsistent` among them still counts).
+     - **Reset** means: outputs deleted, status `pending`, a fresh attempt budget, flag `reset_after_kernel_crash`.
+     - A state file that cannot be read is moved aside, and its recording starts again.
+     - The runner flushes every state file to disk before the atomic rename.
+  7. **Chain:** `revision/infra/Invoke-Stage3Chain.ps1` runs acceptance MSIT+ × 11 → rest × 3 → `Timeouts` → D5-0 job list (84 recordings) → D5-0 batch, under fixed BatchIds (`acc_msit_1`, `acc_rest_1`, `d5_0_1`). The same command resumes it after any crash.
+- **Unchanged:**
+  - outcome-blindness;
+  - the process configuration (§1);
+  - the comparison fields (§3);
+  - the A/B/C rule (§4, apart from its stop rule);
+  - the timeout rule (3 × the acceptance median; clar1 4 and 5);
+  - pre-checks 2–4, and pre-check 5 for MSIT+ and rest.
