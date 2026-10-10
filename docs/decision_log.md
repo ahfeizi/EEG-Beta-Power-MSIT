@@ -1097,3 +1097,18 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
 - **Reporting.** R1: report-only. R2: the full ranking; the step "if a worst recording belongs to a D14 test subject, the next one in rank is taken" is **pending**, because the D14 test subjects are not chosen. **These rules do not select the D5 option:** (b) stays provisional, pending its residual test (S3a-D5-opt); R3 matters only if (a) is used.
 - Outcome-blind as S3a-D5-0: only the f₀ ± 3 Hz grid is read.
 
+## S3a-D4e-4-test-approval · 2026-10-10 · S3a-D4e-4-test approved to run; band 1–10 Hz as committed; implementation
+
+- **Approval (Amirhossein, 2026-10-10, in chat):** reading the binary `.eeg` files of the verified D: copy (`D:\Revision_Raw\ds004621`) for this test: test N, 6 recordings (sub-13, sub-41, sub-42; rest and MSIT+); test P, all 84 recordings. This covers the timing replicas of S3a-INF-1-amend2 (sub-06 rest and MSIT+, 3 each).
+- **Band: 1–10 Hz, as committed.** Amirhossein's reasons: alpha is not covered by the outcome-blind rule (13–30 and 55–95 Hz), and keeping the committed band avoids reopening the pre-registration.
+- S3a-D4e-4-test is not edited by this note. The S3a-D4e-4-issue stop stays until the test's rules are applied and logged.
+- **Implementation (no rule changed):** job function `revision/stage3/stage3_d4e4_compute_one.m`, one job per recording (84), A/B, batch `d4e4_1`, compare kind `all`. It computes the statistics of tests P and N per recording. The decision rules (test N needs rest **and** MSIT+; test P's predictor-neighbour check) are applied by a later assembly step from the verified outputs, logged before it runs.
+- **Details fixed by the implementation where the entry is silent:**
+  - band-pass half-length: from the installed `pop_eegfiltnew` default design at 500 Hz, computed in the job and stored in each output;
+  - eigenvalues of the covariance of the concatenated chunks (mean removed, symmetrised); a non-positive eigenvalue counts as deficient (−∞ dB);
+  - the average-reference ratio is computed on the 125 channels as registered; the same ratio over all 127 channels is stored as an additional, descriptive value;
+  - predictability: 1 − R² = 1 / (Σ_cc (Σ⁻¹)_cc); standardised weights W_cj = −(Σ⁻¹)_cj / (Σ⁻¹)_cc · σ_j / σ_c; the 6 largest |W| per channel and rcond(Σ) are stored;
+  - test N: the Fisher-z diagonal is excluded, and the median over chunks is taken per pair. Neighbours are taken among the 125 recorded labels, by Euclidean distance in the digitised list (`<CapTrakElectrodeList>`) of the `.bvct`. k-nearest neighbours do not depend on the origin, orientation or unit of the coordinate frame, so the open frame/unit question of S3a-D2-reopen does not affect them;
+  - test P's predictor-neighbour check and test N's 5th-percentile rule are evaluated in the assembly; positions for the subjects without a `.bvct` (sub-12, sub-23, sub-24) are decided there.
+- **Synthetic test:** `revision/stage3/test_stage3_d4e4_compute_one.m` (spatially mixed synthetic sources; a swapped-label recording; an exactly interpolated channel).
+- **Outputs:** per recording, the canonical `out.mat` in the batch folder. The CSVs named in S3a-D4e-4-test are written by the assembly.
