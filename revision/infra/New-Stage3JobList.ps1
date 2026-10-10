@@ -10,9 +10,11 @@ param(
     [Parameter(Mandatory = $true)][ValidateSet('d5_0')][string]$Type,
     [Parameter(Mandatory = $true)][string]$Out,
     [string[]]$Only,
-    [string]$Config = (Join-Path $PSScriptRoot 'runner_config.psd1')
+    [string]$Config
 )
 $ErrorActionPreference = 'Stop'
+# PS 5.1 leaves $PSScriptRoot empty in param defaults of an advanced script run with -File
+if (-not $Config) { $Config = Join-Path $PSScriptRoot 'runner_config.psd1' }
 Import-Module (Join-Path $PSScriptRoot 'Stage3Runner.psm1') -Force
 $cfg = Import-Stage3Config $Config
 $rows = Import-Csv -LiteralPath $cfg.BlockTable

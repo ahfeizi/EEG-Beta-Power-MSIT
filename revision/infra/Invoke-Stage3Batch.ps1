@@ -36,10 +36,12 @@ param(
     [string]$MsitBatch,
     [string]$RestBatch,
     [string]$CarryOverFrom,
-    [string]$Config = (Join-Path $PSScriptRoot 'runner_config.psd1'),
+    [string]$Config,
     [switch]$SkipPrechecksForTest
 )
 $ErrorActionPreference = 'Stop'
+# PS 5.1 leaves $PSScriptRoot empty in param defaults of an advanced script run with -File
+if (-not $Config) { $Config = Join-Path $PSScriptRoot 'runner_config.psd1' }
 Import-Module (Join-Path $PSScriptRoot 'Stage3Runner.psm1') -Force
 $cfg = Import-Stage3Config $Config
 $infra = $PSScriptRoot

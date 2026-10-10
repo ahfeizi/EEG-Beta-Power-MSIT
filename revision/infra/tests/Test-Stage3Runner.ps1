@@ -163,6 +163,45 @@ if (Run-Test 'T8') {
     Check 'T8 changed output reset' ($n1.status -eq 'verified' -and $n1.attempts.A -eq 2 -and @($n1.flags) -contains 'reset_after_kernel_crash' -and $n1.canonical.path -ne $s1.canonical.path) "k1 $($n1.status); attempts A $($n1.attempts.A); flags $(@($n1.flags) -join ';'); canonical $($n1.canonical.path)"
     Check 'T8 unverified reset' ($n2.status -eq 'verified' -and @($n2.flags) -contains 'reset_after_kernel_crash' -and @($n2.history | Where-Object outcome -eq 'interrupted').Count -eq 1 -and $n2.attempts.A -eq 2) "k2 $($n2.status); attempts A $($n2.attempts.A) B $($n2.attempts.B); flags $(@($n2.flags) -join ';')"
     Check 'T8 unreadable state' ($n3.status -eq 'verified' -and @($j | Where-Object { $_.event -eq 'state_unreadable' -and $_.job -eq 'k3' }).Count -eq 1) "k3 $($n3.status); state_unreadable events $(@($j | Where-Object { $_.event -eq 'state_unreadable' }).Count)"
+}
+# ---------------------------------------------------------------- T9 chain: Timeouts step judged by its exit code only
+if (Run-Test 'T9') {
+    # synthetic finished acceptance runs, job lists and an ended batch, so the chain reaches its Timeouts step and then exits
+    $runs = Join-Path $eeg 'stage3_runs'
+    $t0 = ([datetime]::Parse($real.HardwareChangeNotBefore, [System.Globalization.CultureInfo]::InvariantCulture)).AddDays(1).ToString('s')
+    $accs = @{
+        c9_msit = [ordered]@{ kind = 'acceptance'; verdict = 'PASS'; recType = 'msit'; replicasRequested = 11; startTime = $t0; medianWallSeconds = 100; fingerprint = 'synthetic'; configSnapshot = 'synthetic' }
+        c9_rest = [ordered]@{ kind = 'timing'; verdict = 'TIMING_ONLY'; recType = 'rest'; replicasRequested = 3; startTime = $t0; medianWallSeconds = 50; wallSecondsSuccessful = @(50, 50, 50) }
+    }
+    foreach ($b in $accs.Keys) {
+        $d = Join-Path $runs $b; New-Item -ItemType Directory -Force -Path $d | Out-Null
+        Write-JsonAtomic (Join-Path $d 'acceptance.json') $accs[$b]
+        foreach ($f in @('summary.txt', 'summary.csv')) { Write-TextAtomic (Join-Path $d $f) 'synthetic' }
+    }
+    foreach ($f in @('jobs_acc_msit.json', 'jobs_acc_rest.json', 'jobs_d5_0.json')) { Write-TextAtomic (Join-Path $runs $f) '[]' }
+    New-Item -ItemType Directory -Force -Path (Join-Path $runs 'c9_d5') | Out-Null
+    Write-JsonAtomic (Join-Path $runs 'c9_d5\batch.json') ([ordered]@{ status = 'DONE'; stopReason = '' })
+    $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $infra 'Invoke-Stage3Chain.ps1'), '-Config', $cfgFile, '-MsitBatch', 'c9_msit', '-RestBatch', 'c9_rest', '-D50Batch', 'c9_d5')
+    $p = Start-Process powershell -ArgumentList (Join-Args $a) -PassThru -WindowStyle Hidden -RedirectStandardOutput (Join-Path $WorkDir 'chain_t9.out') -RedirectStandardError (Join-Path $WorkDir 'chain_t9.err')
+    $null = $p.Handle; $p.WaitForExit()
+    $clog = Get-Content -LiteralPath (Join-Path $runs 'chain.log') -Raw
+    Check 'T9 chain Timeouts step' ($p.ExitCode -eq 0 -and (Test-Path (Join-Path $runs 'timeouts.json')) -and $clog -match 'timeouts\.json written' -and $clog -notmatch 'CHAIN STOPPED') "exit $($p.ExitCode); timeouts.json $(Test-Path (Join-Path $runs 'timeouts.json')); chain.log: $(($clog -split "`r?`n" | Where-Object { $_ } | Select-Object -Last 2) -join ' | ')"
+}
+# ---------------------------------------------------------------- T10 default -Config under powershell -File (PS 5.1)
+if (Run-Test 'T10') {
+    # no -Config: the default must resolve to revision\infra\runner_config.psd1 (reads the real block table, writes only in WorkDir)
+    $out = Join-Path $WorkDir 't10_jobs.json'
+    $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $infra 'New-Stage3JobList.ps1'), '-Type', 'd5_0', '-Out', $out, '-Only', 'sub-06_msit')
+    $p = Start-Process powershell -ArgumentList (Join-Args $a) -PassThru -WindowStyle Hidden -RedirectStandardOutput (Join-Path $WorkDir 't10a.out') -RedirectStandardError (Join-Path $WorkDir 't10a.err')
+    $null = $p.Handle; $p.WaitForExit()
+    $n = if (Test-Path $out) { @(Read-JsonArray $out).Count } else { -1 }
+    Check 'T10 job list default -Config' ($p.ExitCode -eq 0 -and $n -eq 1) "exit $($p.ExitCode); jobs $n; stderr: $((Get-Content (Join-Path $WorkDir 't10a.err') -Raw) -replace '\s+', ' ')"
+    # runner without -Config: Timeouts mode without batches must stop at its own argument check, not at the default
+    $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $infra 'Invoke-Stage3Batch.ps1'), '-Mode', 'Timeouts', '-BatchId', 'x')
+    $p = Start-Process powershell -ArgumentList (Join-Args $a) -PassThru -WindowStyle Hidden -RedirectStandardOutput (Join-Path $WorkDir 't10b.out') -RedirectStandardError (Join-Path $WorkDir 't10b.err')
+    $null = $p.Handle; $p.WaitForExit()
+    $err = (Get-Content (Join-Path $WorkDir 't10b.err') -Raw) -replace '\s+', ' '
+    Check 'T10 runner default -Config' ($err -match 'needs -MsitBatch and -RestBatch' -and $err -notmatch 'Join-Path') "exit $($p.ExitCode); stderr: $($err.Substring(0, [math]::Min(200, $err.Length)))"
 }} finally {
     [System.IO.File]::WriteAllLines($report, $results)
     Write-Host "report -> $report"

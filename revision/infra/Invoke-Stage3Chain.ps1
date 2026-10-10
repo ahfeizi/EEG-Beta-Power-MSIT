@@ -26,9 +26,10 @@ function Say([string]$Msg) {
     Write-Host $l
 }
 function Invoke-Runner([string[]]$RunnerArgs) {
-    # child process: the runner ends with `exit`, which would otherwise end this chain
+    # child process: the runner ends with `exit`, which would otherwise end this chain.
+    # Its stdout goes to the host, so the function returns the exit code alone (not stdout + code).
     $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot 'Invoke-Stage3Batch.ps1'), '-Config', $Config) + $RunnerArgs
-    & powershell.exe @a
+    & powershell.exe @a | Out-Host
     $LASTEXITCODE
 }
 function Get-Verdict([string]$Batch) {
