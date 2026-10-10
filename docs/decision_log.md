@@ -1084,3 +1084,16 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
 - **Chain:** `revision/infra/Invoke-Stage3JobTypeChain.ps1` runs timing run(s) → `JobTimeouts` → Batch; the same command resumes it.
 - The outputs of the timing replicas are not used.
 
+## S3a-D5-0-asm · 2026-10-10 · D5-0 assembly as a runner job type (R1–R3 as committed)
+
+- **Status:** implementation; no rule is changed. Rules applied exactly as committed: S3a-D5-0 (R1–R3), S3a-D5-0-amend1 (entry locator; the three hashes in `run_info.txt`), S3a-D5-0-exc (provisional `.vhdr` labels for sub-13/41/42), S3a-D5-opt (open point (i), decision (i-1): **R1 report-only**).
+- **Inputs:** the canonical `out.mat` of each of the 84 recordings of batch `d5_0_1` only. Each file is checked against the SHA-256 recorded in its state file before it is loaded. The batch must be `DONE`, with every recording `verified`. The 78 files cached on 2026-10-04 (`<outRoot>/stage3/d5_0/per_recording/`) are not read.
+- **Job function** `revision/stage3/stage3_d5_0_assemble.m`: the table and rule arithmetic is copied unchanged from `stage3_d5_0_line_noise.m`. Equivalence on synthetic data: `test_stage3_d5_0_assemble.m` (the unchanged script and the job function + export give byte-identical CSVs and equal R1–R3 values).
+- **Run:** A/B in two processes (batch `d5asm_1`, compare kind `all`), timeouts per S3a-INF-1-amend2.
+- **Outputs** (`<outRoot>/stage3/d5_0/`, written by `stage3_d5_0_export.m` from the verified canonical output; an existing file is never overwritten):
+  - `line_noise_by_channel.csv`, `line_noise_by_recording.csv`, `run_info.txt` (as named in S3a-D5-0);
+  - additionally `line_noise_rules_by_recording.csv`: per recording the R1 maxima and ≥ 3 dB counts per f₀, R2 severity S and rank, the R3 maximum offset, and the provisional-label flag (derived from the recording table only).
+- `run_info.txt` records the SHA-256 of S3a-D5-0, S3a-D5-opt and S3a-INF-1 (amend1), and additionally of S3a-D5-0-amend1, S3a-D5-0-exc and this entry.
+- **Reporting.** R1: report-only. R2: the full ranking; the step "if a worst recording belongs to a D14 test subject, the next one in rank is taken" is **pending**, because the D14 test subjects are not chosen. **These rules do not select the D5 option:** (b) stays provisional, pending its residual test (S3a-D5-opt); R3 matters only if (a) is used.
+- Outcome-blind as S3a-D5-0: only the f₀ ± 3 Hz grid is read.
+
