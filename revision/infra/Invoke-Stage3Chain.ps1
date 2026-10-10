@@ -41,7 +41,7 @@ function Get-JobList([string]$Name, [string[]]$Only) {
     if (-not (Test-Path $f)) {
         if ($Only) { & (Join-Path $PSScriptRoot 'New-Stage3JobList.ps1') -Type d5_0 -Out $f -Only $Only -Config $Config }
         else { & (Join-Path $PSScriptRoot 'New-Stage3JobList.ps1') -Type d5_0 -Out $f -Config $Config }
-        Say "job list written: $f ($(@(Read-JsonArray $f).Count) jobs)"
+        Say "job list written: $f ($((Read-JsonArray $f).Count) jobs)"
     }
     $f
 }

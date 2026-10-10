@@ -83,6 +83,7 @@ $rate = if ($sec -gt 0) { '{0:N3}' -f ($nCr / ($sec / 3600)) } else { 'n/a' }
 $t.Add(("attempts      : {0}; crashed (non-zero exit or incomplete) {1}; job hours {2:N3}; crashes per job-hour {3}; kernel-crash recoveries {4}" -f $allH.Count, $nCr, ($sec / 3600), $rate, $batch.kernelRecoveries))
 if ($batch.mode -eq 'Batch') {
     if ($batch.timeoutsFile) { $t.Add("timeouts.json : $($batch.timeoutsFile)  SHA-256 $($batch.timeoutsSha256)") }
+    if ($batch.PSObject.Properties.Name -contains 'jobTimeoutsFile' -and $batch.jobTimeoutsFile) { $t.Add("job timeouts  : $($batch.jobTimeoutsFile)  SHA-256 $($batch.jobTimeoutsSha256) (S3a-INF-1-amend2)") }
     $t.Add("timeouts (s)  : $(($batch.timeoutS | ConvertTo-Json -Compress))")
     $t.Add('pre-checks:')
     foreach ($c in @($batch.prechecks)) { $t.Add(("  [{0}] {1}: {2}" -f $(if ($c.ok) { 'ok' } else { 'FAIL' }), $c.check, $c.detail)) }

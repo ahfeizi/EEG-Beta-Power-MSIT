@@ -1070,3 +1070,17 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - the A/B/C rule (§4, apart from its stop rule);
   - the timeout rule (3 × the acceptance median; clar1 4 and 5);
   - pre-checks 2–4, and pre-check 5 for MSIT+ and rest.
+
+## S3a-INF-1-amend2 · 2026-10-10 · Timeouts for job types other than D5-0 (first users: D5-0 assembly, D4e-4 test)
+
+- **Status:** implementation choice made under Amirhossein's session waiver of 2026-10-10 ("continue … unless a decision is genuinely mine"). It applies the **unchanged** timeout rule (3 × the median wall time of a timing run; S3a-INF-1 §6, clar1 items 4–5) to new job types. Amirhossein may revise it.
+- **Problem.** `timeouts.json` holds `msit` and `rest` from the D5-0 acceptance and timing runs. New job types do different work, so those values do not apply to them.
+- **Rule.**
+  - Each new job type has recording types of its own: `d5_0_asm`, `d4e4_rest`, `d4e4_msit`.
+  - Per type, a timing run: `Acceptance -TimingOnly`, 3 replicas, of one representative job (D4e-4: sub-06 rest and sub-06 MSIT+, as for D5-0; the assembly: its single job). As in acceptance, each replica has the fixed `AcceptanceTimeoutS` (30 min, hang detection only).
+  - Mode `JobTimeouts` writes `<EegOutRoot>\stage3_runs\timeouts_<name>.json`: timeout = ⌈3 × median wall time of the successful replicas⌉ per type, with the source files and their SHA-256. It refuses a source that is not a 3-replica timing run with at least one successful replica, or that started before the S3a-HW-1 bound.
+  - Batch mode `-JobTimeouts <file>` adds these types to the timeouts of `timeouts.json`. Pre-check 1 also verifies the source hashes of this file and counts its types as covered. **`timeouts.json` itself (behind `d5_0_1`) is not changed.**
+  - Pre-checks 2–5 are unchanged; the MSIT+ acceptance (`acc_msit_1`) still certifies the environment.
+- **Chain:** `revision/infra/Invoke-Stage3JobTypeChain.ps1` runs timing run(s) → `JobTimeouts` → Batch; the same command resumes it.
+- The outputs of the timing replicas are not used.
+

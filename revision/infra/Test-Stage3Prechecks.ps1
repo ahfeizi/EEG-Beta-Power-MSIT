@@ -8,7 +8,8 @@
 param(
     [Parameter(Mandatory = $true)][string]$Config,
     [Parameter(Mandatory = $true)][string]$JobList,
-    [Parameter(Mandatory = $true)][string]$WorkDir
+    [Parameter(Mandatory = $true)][string]$WorkDir,
+    [string]$JobTimeouts                                   # S3a-INF-1-amend2: job-type timeouts file
 )
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'Stage3Runner.psm1') -Force
@@ -29,9 +30,18 @@ else {
     $verd = @{}
     foreach ($s in @($t.sources | Where-Object { $_.file -like '*acceptance.json' })) { $a = Read-Json $s.file; $verd[$s.role] = $a.verdict }
     $types = @($jobs | ForEach-Object { $_.recType } | Sort-Object -Unique)
-    $missing = @($types | Where-Object { -not ($t.timeoutS.PSObject.Properties.Name -contains $_) })
+    $known = @($t.timeoutS.PSObject.Properties.Name)
+    $jtNote = ''
+    if ($JobTimeouts) {
+        $jt = Read-Json $JobTimeouts
+        $badJ = @($jt.sources | Where-Object { -not (Test-Path $_.file) -or (Get-Sha256File $_.file) -ne $_.sha256 })
+        $bad = @($bad) + $badJ
+        $known += @($jt.timeoutS.PSObject.Properties.Name)
+        $jtNote = "; job-type timeouts {0} {1} (source files changed: {2})" -f $JobTimeouts, (Get-Sha256File $JobTimeouts), $badJ.Count
+    }
+    $missing = @($types | Where-Object { $known -notcontains $_ })
     $ok = ($bad.Count -eq 0) -and ($verd['msit'] -eq 'PASS') -and ($verd['rest'] -eq 'TIMING_ONLY') -and ($missing.Count -eq 0)
-    Add-Check '1_acceptance' $ok ("timeouts.json {0}; source files changed: {1}; MSIT+ {2}; rest {3}; recording types without timeout: {4}" -f (Get-Sha256File $tf), $bad.Count, $verd['msit'], $verd['rest'], ($missing -join ' '))
+    Add-Check '1_acceptance' $ok ("timeouts.json {0}; source files changed: {1}; MSIT+ {2}; rest {3}; recording types without timeout: {4}{5}" -f (Get-Sha256File $tf), $bad.Count, $verd['msit'], $verd['rest'], ($missing -join ' '), $jtNote)
 }
 
 # 2. maximum processor state, AC and DC

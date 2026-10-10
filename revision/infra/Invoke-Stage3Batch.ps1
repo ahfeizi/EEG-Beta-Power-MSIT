@@ -15,6 +15,8 @@
                 replica A only and reports the time per iteration. Not a prerequisite (amend1).
     Timeouts    writes timeouts.json from a PASS MSIT+ acceptance and the rest timing run
                 (3 x median wall time per recording type).
+    JobTimeouts writes timeouts_<BatchId>.json for job types other than D5-0 from 3-replica timing
+                runs (-TimingBatches a,b,...; S3a-INF-1-amend2); Batch mode uses it via -JobTimeouts.
   Every job is one fresh `MATLAB.exe -batch` process; jobs never run in parallel. A disk gate and a
   fixed cool-down run before every job (thermal monitoring removed by amend1).
   Kernel crash (amend1): resume with the same command; every verified output is re-hashed against its
@@ -25,7 +27,7 @@
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)][ValidateSet('Batch', 'Acceptance', 'BurnIn', 'Timeouts')][string]$Mode,
+    [Parameter(Mandatory = $true)][ValidateSet('Batch', 'Acceptance', 'BurnIn', 'Timeouts', 'JobTimeouts')][string]$Mode,
     [Parameter(Mandatory = $true)][string]$BatchId,
     [string]$JobList,
     [int]$Replicas = 11,
@@ -36,6 +38,8 @@ param(
     [string]$MsitBatch,
     [string]$RestBatch,
     [string]$CarryOverFrom,
+    [string]$TimingBatches,                                # JobTimeouts mode: comma-separated timing batch ids
+    [string]$JobTimeouts,                                  # Batch mode: a timeouts_<name>.json (S3a-INF-1-amend2)
     [string]$Config,
     [switch]$SkipPrechecksForTest
 )
@@ -95,6 +99,41 @@ if ($Mode -eq 'Timeouts') {
     exit 0
 }
 
+# ============================================================== JobTimeouts mode (no jobs; S3a-INF-1-amend2)
+if ($Mode -eq 'JobTimeouts') {
+    if (-not $TimingBatches) { throw 'JobTimeouts mode needs -TimingBatches' }
+    $tf = Join-Path $runsRoot "timeouts_$BatchId.json"
+    if (Test-Path $tf) { Write-Host "TIMEOUTS NOT WRITTEN: $tf exists"; exit 3 }
+    $hwBound = [datetime]::Parse($cfg.HardwareChangeNotBefore, [System.Globalization.CultureInfo]::InvariantCulture)
+    $problems = @(); $timeoutS = [ordered]@{}; $medians = [ordered]@{}; $sources = @()
+    foreach ($b in @($TimingBatches -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })) {
+        $d = Join-Path $runsRoot $b
+        $a = Read-Json (Join-Path $d 'acceptance.json')
+        if ($a.kind -ne 'timing' -or [int]$a.replicasRequested -ne 3) { $problems += "$b is not a 3-replica timing run"; continue }
+        if (@($a.wallSecondsSuccessful).Count -lt 1) { $problems += "$b has no successful replica"; continue }
+        if ([datetime]::Parse($a.startTime) -le $hwBound) { $problems += "$b started before the S3a-HW-1 bound $($cfg.HardwareChangeNotBefore)"; continue }
+        if ($timeoutS.Contains($a.recType)) { $problems += "recording type $($a.recType) appears twice"; continue }
+        $timeoutS[$a.recType] = [int][math]::Ceiling(3 * [double]$a.medianWallSeconds)
+        $medians[$a.recType] = $a.medianWallSeconds
+        foreach ($f in @('acceptance.json', 'summary.txt', 'summary.csv')) {
+            $p = Join-Path $d $f
+            $sources += [pscustomobject]@{ role = $a.recType; batch = $b; file = $p; sha256 = (Get-Sha256File $p) }
+        }
+    }
+    if ($problems.Count -gt 0) { Write-Host ('TIMEOUTS NOT WRITTEN: ' + ($problems -join '; ')); exit 3 }
+    $t = [ordered]@{
+        written = (Get-Date).ToString('s')
+        rule = 'timeout = 3 x median wall time of the successful replicas of a 3-replica timing run of the job type (S3a-INF-1 sec. 6; S3a-INF-1-amend2)'
+        timeoutS = $timeoutS; medianWallSeconds = $medians; sources = $sources
+    }
+    Write-JsonAtomic $tf $t
+    $runsCopy = Join-Path $cfg.OutRoot 'stage3\runs'
+    if (-not (Test-Path $runsCopy)) { New-Item -ItemType Directory -Path $runsCopy | Out-Null }
+    Copy-Item -LiteralPath $tf -Destination (Join-Path $runsCopy (Split-Path $tf -Leaf)) -Force
+    Write-Host "$(Split-Path $tf -Leaf) written: $(($timeoutS | ConvertTo-Json -Compress)) -> $tf"
+    exit 0
+}
+
 # ============================================================== batch directory, lock, batch.json
 if (-not (Test-Path $batchDir)) { New-Item -ItemType Directory -Path $batchDir | Out-Null }
 foreach ($sub in @('state', 'jobs', 'compare')) { $p = Join-Path $batchDir $sub; if (-not (Test-Path $p)) { New-Item -ItemType Directory -Path $p | Out-Null } }
@@ -149,8 +188,8 @@ if ($resume) {
         calibrationBatch = $CalibrationBatch; carryOverFrom = $CarryOverFrom
         jobs = $jobs
         configPath = $cfg._Path; configSha256 = $cfg._Sha256
-        entryHashes = [pscustomobject]@{ 'S3a-INF-1' = (Get-LogEntryHash $logFile 'S3a-INF-1'); 'S3a-INF-1-clar1' = (Get-LogEntryHash $logFile 'S3a-INF-1-clar1'); 'S3a-INF-1-amend1' = (Get-LogEntryHash $logFile 'S3a-INF-1-amend1') }
-        prechecks = @(); timeoutsFile = ''; timeoutsSha256 = ''; timeoutS = $null
+        entryHashes = [pscustomobject]@{ 'S3a-INF-1' = (Get-LogEntryHash $logFile 'S3a-INF-1'); 'S3a-INF-1-clar1' = (Get-LogEntryHash $logFile 'S3a-INF-1-clar1'); 'S3a-INF-1-amend1' = (Get-LogEntryHash $logFile 'S3a-INF-1-amend1'); 'S3a-INF-1-amend2' = (Get-LogEntryHash $logFile 'S3a-INF-1-amend2') }
+        prechecks = @(); timeoutsFile = ''; timeoutsSha256 = ''; timeoutS = $null; jobTimeoutsFile = ''; jobTimeoutsSha256 = ''
         mismatchCount = 0; kernelEventsSeen = 0; kernelRecoveries = 0
     }
     Write-JsonAtomic $batchFile $batch
@@ -438,9 +477,22 @@ if ($Mode -eq 'Batch') {
             $checks += [pscustomobject]@{ check = 'ALL'; ok = $true; detail = 'SKIPPED: TestMode configuration with -SkipPrechecksForTest' }
             $batch.timeoutS = $cfg.TestTimeoutS
         } else {
-            $checks = & (Join-Path $infra 'Test-Stage3Prechecks.ps1') -Config $Config -JobList $JobList -WorkDir $batchDir
+            $checks = & (Join-Path $infra 'Test-Stage3Prechecks.ps1') -Config $Config -JobList $JobList -WorkDir $batchDir -JobTimeouts $JobTimeouts
             $tf = Join-Path $runsRoot 'timeouts.json'
             if (Test-Path $tf) { $batch.timeoutsFile = $tf; $batch.timeoutsSha256 = Get-Sha256File $tf; $batch.timeoutS = (Read-Json $tf).timeoutS }
+        }
+        if ($JobTimeouts) {
+            # S3a-INF-1-amend2: job-type timeouts are added to (never replace) those of timeouts.json
+            $jt = Read-Json $JobTimeouts
+            $badJ = @($jt.sources | Where-Object { -not (Test-Path $_.file) -or (Get-Sha256File $_.file) -ne $_.sha256 })
+            if ($badJ.Count -gt 0) { Stop-Batch 'STOPPED_PRECHECK' "$JobTimeouts : $($badJ.Count) source file(s) changed" 3 }
+            if ($null -eq $batch.timeoutS) { $batch.timeoutS = [pscustomobject]@{} }
+            elseif ($batch.timeoutS -is [hashtable]) { $batch.timeoutS = [pscustomobject]$batch.timeoutS }
+            foreach ($pr in $jt.timeoutS.PSObject.Properties) {
+                if ($batch.timeoutS.PSObject.Properties.Name -contains $pr.Name) { Stop-Batch 'STOPPED_PRECHECK' "$JobTimeouts redefines recording type $($pr.Name)" 3 }
+                $batch.timeoutS | Add-Member -NotePropertyName $pr.Name -NotePropertyValue $pr.Value
+            }
+            $batch.jobTimeoutsFile = $JobTimeouts; $batch.jobTimeoutsSha256 = Get-Sha256File $JobTimeouts
         }
         $batch.prechecks = @($checks)
         Save-Batch

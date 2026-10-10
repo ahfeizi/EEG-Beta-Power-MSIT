@@ -194,7 +194,7 @@ if (Run-Test 'T10') {
     $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $infra 'New-Stage3JobList.ps1'), '-Type', 'd5_0', '-Out', $out, '-Only', 'sub-06_msit')
     $p = Start-Process powershell -ArgumentList (Join-Args $a) -PassThru -WindowStyle Hidden -RedirectStandardOutput (Join-Path $WorkDir 't10a.out') -RedirectStandardError (Join-Path $WorkDir 't10a.err')
     $null = $p.Handle; $p.WaitForExit()
-    $n = if (Test-Path $out) { @(Read-JsonArray $out).Count } else { -1 }
+    $n = if (Test-Path $out) { (Read-JsonArray $out).Count } else { -1 }
     Check 'T10 job list default -Config' ($p.ExitCode -eq 0 -and $n -eq 1) "exit $($p.ExitCode); jobs $n; stderr: $((Get-Content (Join-Path $WorkDir 't10a.err') -Raw) -replace '\s+', ' ')"
     # runner without -Config: Timeouts mode without batches must stop at its own argument check, not at the default
     $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $infra 'Invoke-Stage3Batch.ps1'), '-Mode', 'Timeouts', '-BatchId', 'x')
@@ -202,6 +202,29 @@ if (Run-Test 'T10') {
     $null = $p.Handle; $p.WaitForExit()
     $err = (Get-Content (Join-Path $WorkDir 't10b.err') -Raw) -replace '\s+', ' '
     Check 'T10 runner default -Config' ($err -match 'needs -MsitBatch and -RestBatch' -and $err -notmatch 'Join-Path') "exit $($p.ExitCode); stderr: $($err.Substring(0, [math]::Min(200, $err.Length)))"
+}
+# ---------------------------------------------------------------- T11 job-type chain: timing -> JobTimeouts -> Batch (amend2)
+if (Run-Test 'T11') {
+    $runs = Join-Path $eeg 'stage3_runs'; New-Item -ItemType Directory -Force -Path $runs | Out-Null
+    $tt = { param($id) [ordered]@{ id = $id; func = 'stage3_testjob'; params = [ordered]@{ mode = 'ok'; sleepS = 2 }; recType = 'tt'; compareKind = 'all' } }
+    Write-TextAtomic (Join-Path $runs 'jobs_c11.json') (ConvertTo-Json -InputObject @((& $tt 'j1'), (& $tt 'j2')) -Depth 10)   # pre-written list: the chain uses it
+    $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $infra 'Invoke-Stage3JobTypeChain.ps1'), '-Config', $cfgFile, '-Type', 'd4e4', '-Name', 'c11', '-TimingJobs', 'j1', '-BatchId', 'c11_b', '-SkipPrechecksForTest')
+    $p = Start-Process powershell -ArgumentList (Join-Args $a) -PassThru -WindowStyle Hidden -RedirectStandardOutput (Join-Path $WorkDir 'chain_t11.out') -RedirectStandardError (Join-Path $WorkDir 'chain_t11.err')
+    $null = $p.Handle; $p.WaitForExit()
+    $tf = Join-Path $runs 'timeouts_c11.json'
+    $acc = Read-Json (Join-Path $runs 'c11_t_j1\acceptance.json')
+    $want = [int][math]::Ceiling(3 * [double]$acc.medianWallSeconds)
+    $jt = if (Test-Path $tf) { Read-Json $tf } else { $null }
+    $b = Get-Bt 'c11_b'
+    $starts = @(Get-Jn 'c11_b' | Where-Object { $_.event -eq 'job_start' } | ForEach-Object { $_.detail } | Sort-Object -Unique)
+    $ok = $p.ExitCode -eq 0 -and $acc.verdict -eq 'TIMING_ONLY' -and @($acc.wallSecondsSuccessful).Count -eq 3 -and $jt -and [int]$jt.timeoutS.tt -eq $want -and $b.status -eq 'DONE' -and (Get-St 'c11_b' 'j1').status -eq 'verified' -and (Get-St 'c11_b' 'j2').status -eq 'verified' -and ($starts -join ',') -eq "timeout $want s" -and $b.jobTimeoutsFile -eq $tf
+    Check 'T11 job-type chain' $ok "exit $($p.ExitCode); timing $($acc.verdict) median $($acc.medianWallSeconds) s; timeouts_c11 tt $($jt.timeoutS.tt) (want $want); batch $($b.status); job_start: $($starts -join ' | ')"
+    $fake = Join-Path $runs 'c11_fake'; New-Item -ItemType Directory -Force -Path $fake | Out-Null
+    Write-JsonAtomic (Join-Path $fake 'acceptance.json') ([ordered]@{ kind = 'acceptance'; verdict = 'PASS'; recType = 'zz'; replicasRequested = 11; startTime = (Get-Date).ToString('s'); medianWallSeconds = 1; wallSecondsSuccessful = @(1) })
+    $code = Invoke-Runner @('-Mode', 'JobTimeouts', '-BatchId', 'c11x', '-TimingBatches', 'c11_fake') 't11x'
+    Check 'T11 JobTimeouts guard' ($code -eq 3 -and -not (Test-Path (Join-Path $runs 'timeouts_c11x.json'))) "exit $code (3 = refused); $((Get-Content (Join-Path $WorkDir 'runner_t11x.out') -Raw) -replace '\s+', ' ')"
+    $code = Invoke-Runner @('-Mode', 'JobTimeouts', '-BatchId', 'c11', '-TimingBatches', 'c11_t_j1') 't11y'
+    Check 'T11 JobTimeouts no overwrite' ($code -eq 3) "exit $code; $((Get-Content (Join-Path $WorkDir 'runner_t11y.out') -Raw) -replace '\s+', ' ')"
 }} finally {
     [System.IO.File]::WriteAllLines($report, $results)
     Write-Host "report -> $report"
