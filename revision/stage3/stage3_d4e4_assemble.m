@@ -16,7 +16,8 @@ function stage3_d4e4_assemble(params, outFile)
 %     average-reference ratio (max over chunks; exported average-referenced if all < 1e-4),
 %     near-perfectly predicted channels (1 - R^2 < 1e-4) with their 6 largest standardised weights
 %     and how many of those predictors are among the channel's 6 nearest labels (subject's .bvct;
-%     NaN for subjects without a .bvct, decision pending); sub-13/41/42 under both labellings.
+%     for sub-12/23/24, which have none, the integer-rounded spherical .bvef converted to X/Y/Z,
+%     S3a-D4e-4-asm-amend1); sub-13/41/42 under both labellings.
 %   OUTCOME-BLIND: only the stored 1-10 Hz time-domain statistics are read.
 
 here = fileparts(mfilename('fullpath'));
@@ -99,10 +100,15 @@ for r = 1:numel(recs)
     vlabK = I.vhdrLabels(I.keptColumns); tlabK = I.tsvLabels(I.keptColumns);
     nn = []; nnLabels = strings(0, 1);
     bv = fullfile(char(params.rawRoot), 'sourcedata', char(s), 'coords', [char(s) '_captrak.bvct']);
+    bf = fullfile(char(params.rawRoot), 'sourcedata', char(s), 'coords', [char(s) '_captrak.bvef']);
     if ~isKey(pos, char(s)) && exist(bv, 'file') == 2
         stage3_check_input(bv, char(params.rawRoot), params.manifest);
-        [pn, pxyz] = readCapTrak(bv); pos(char(s)) = {pn, pxyz};
+        [pn, pxyz] = readCapTrak(bv); pos(char(s)) = {pn, pxyz, "bvct"};
+    elseif ~isKey(pos, char(s)) && exist(bf, 'file') == 2        % S3a-D4e-4-asm-amend1
+        stage3_check_input(bf, char(params.rawRoot), params.manifest);
+        [pn, pxyz] = readBvef(bf); pos(char(s)) = {pn, pxyz, "bvef"};
     end
+    posSrc = "none"; if isKey(pos, char(s)), q = pos(char(s)); posSrc = q{3}; end
     if isKey(pos, char(s))
         q = pos(char(s)); [okp, ip] = ismember(tlabK, q{1}); assert(all(okp));
         xyz = q{2}(ip, :);
@@ -131,6 +137,7 @@ for r = 1:numel(recs)
             PP{end+1} = table(s, task, H, c, lab(c), P.oneMinusR2(c), strjoin(predLab, ';'), ...
                 string(strjoin(compose('%.4f', P.top6W(c, :)), ';')), nNb, 'VariableNames', {'subject', 'task', 'labelling', ...
                 'column', 'label', 'one_minus_r2', 'top6_predictors', 'top6_std_weights', 'n_top6_among_6_nearest'}); %#ok<AGROW>
+            PP{end}.position_source = posSrc;
         end
     end
 end
@@ -138,7 +145,7 @@ rankByRecording = vertcat(PR{:}); predByChannel = vertcat(PC{:});
 if isempty(PP), nearPerfectPredictors = table(); else, nearPerfectPredictors = vertcat(PP{:}); end
 logFile = fullfile(fileparts(fileparts(here)), 'docs', 'decision_log.md');
 entryHashes = strings(0, 1);
-for id = ["S3a-D4e-4-test", "S3a-D4e-4-test-approval", "S3a-D4e-4-asm"]
+for id = ["S3a-D4e-4-test", "S3a-D4e-4-test-approval", "S3a-D4e-4-asm", "S3a-D4e-4-asm-amend1"]
     entryHashes(end+1, 1) = sprintf('SHA-256 of the %s log entry: %s', id, stage3_log_entry(logFile, char(id))); %#ok<AGROW>
 end
 sourceBatch = struct('dir', string(srcDir), 'batchJsonSha256', string(sha256File(fullfile(srcDir, 'batch.json'))));
@@ -161,6 +168,25 @@ for k = 1:numel(el)
         xyz(k, a) = str2double(v{1});
     end
 end
+end
+
+function [names, xyz] = readBvef(f)
+% BrainVision .bvef: integer spherical Theta/Phi (degrees, BESA convention) and Radius per electrode.
+% x = r sin(theta) cos(phi), y = r sin(theta) sin(phi), z = r cos(theta); the sign variants noted in
+% S3a-D2-reopen ((theta, phi) == (-theta, phi + 180)) map to the same point. k-nearest neighbours do
+% not depend on the frame's origin, orientation or unit.
+t = fileread(f);
+el = regexp(t, '<Electrode>(.*?)</Electrode>', 'tokens');
+names = strings(numel(el), 1); xyz = nan(numel(el), 3);
+for k = 1:numel(el)
+    e = el{k}{1};
+    names(k) = string(regexp(e, '<Name>([^<]*)</Name>', 'tokens', 'once'));
+    th = str2double(regexp(e, '<Theta>([^<]*)</Theta>', 'tokens', 'once'));
+    ph = str2double(regexp(e, '<Phi>([^<]*)</Phi>', 'tokens', 'once'));
+    rr = str2double(regexp(e, '<Radius>([^<]*)</Radius>', 'tokens', 'once'));
+    xyz(k, :) = rr * [sind(th) * cosd(ph), sind(th) * sind(ph), cosd(th)];
+end
+assert(all(isfinite(xyz(:))), 'non-numeric coordinate in %s', f);
 end
 
 function h = sha256File(f)

@@ -1238,3 +1238,16 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - C1 is valid only if the null 95th percentile is clearly below 3 dB in every recording (proposed: ≤ 2 dB).
   - C2 and C3 compare against a single null realization: for perfectly cleaned data they fail with probability of about 0.5 per recording, so they are not recommended without many null realizations (cost × the number of realizations).
 - **The decision is Amirhossein's.** It is made after the null table exists and before `-Stage real` runs (the driver refuses that stage without `-Approved`). The R-b2 criterion is unchanged.
+
+## S3a-D4e-4-asm-amend1 · 2026-10-11 · D4e-4: references approved; .bvef positions for sub-12/23/24; all three subjects ambiguous; sub-28 to D6
+
+- **Decisions (Amirhossein, 2026-10-11):** reference A (unaffected labels without affected neighbours) is primary and reference B is the sensitivity analysis. For sub-12, sub-23 and sub-24, positions come from the integer-rounded `.bvef` (S3a-D2-reopen). sub-28 goes to the D6 (bad-channel) review.
+- **`.bvef` conversion** (`stage3_d4e4_assemble.m`, `readBvef`): BESA spherical convention, x = r sin θ cos φ, y = r sin θ sin φ, z = r cos θ, with the per-electrode radius. The sign variant (θ, φ) ≡ (−θ, φ + 180) maps to the same point. k-nearest neighbours do not depend on frame or unit. Each predictor-check row records its `position_source` (`bvct`/`bvef`). The assembly is to be re-run as `d4e4asm_2` and exported to `<outRoot>/stage3/d4e4_test_v2/` (the `d4e4asm_1` outputs are kept). Synthetic test: `test_stage3_d4e4_assemble.m` with a synthetic `.bvef`.
+- **Outcome of `d4e4asm_1` (test N):** ambiguous for sub-13, sub-41 and sub-42 at k = 4, 6 and 8, under both references.
+  - Under reference A, sub-42 has no reference labels: every unaffected label has an affected neighbour, so p5 is undefined.
+- **What the committed rule prescribes** (S3a-D4e-4-test): if a result is ambiguous, "the affected channels are treated as unreliable for that subject (handling decided under D6/D11), and the stop stays until that decision". The affected channels are:
+  - sub-13: FFT8h, FCC6h;
+  - sub-41: FC5, FT9;
+  - sub-42: the 35 labels at positions 93–127.
+  - None of Fz, Cz or C4 is affected. **No label is changed until Amirhossein confirms.**
+- **Test P, for the D6 review:** sub-28 (rest and MSIT+) has 10 deficient dimensions and 16 near-perfectly predicted channels. Their 6 largest predictors are not their spatial neighbours (0 of 6 for 15 channels, 1 of 6 for one), so this is not consistent with interpolation from neighbours. No recording was exported average-referenced.
