@@ -1301,3 +1301,17 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - Chain: `Invoke-Stage3D5bNullThenReal.ps1`, resumable with the same command.
     - Log: `<EegOutRoot>/stage3_runs/d5b_chain.log`. On a stop, the reason is also written to `<outRoot>/stage3/d5b/chain_stop_reason.txt`.
     - The chain re-checks the validity condition from `null_q95_db` and stops if that disagrees with `null_c1_valid`.
+
+## S3a-D6-note-sub42 · 2026-10-12 · D6 note: sub-42, exclusion rather than interpolation
+
+- **Note (Amirhossein, 2026-10-12), for the D6 review:** sub-42 has 35 affected channels, the labels at positions 93–127 (S3a-D4e-4-asm-amend1). That is about 28 % of its channels. At D6, consider excluding the subject rather than interpolating.
+- This is not a decision; D6 decides.
+
+## S3a-D4e-4-asm-v2-result · 2026-10-12 · d4e4asm_2 (with .bvef positions): sub-12/23/24 have nothing to check
+
+- **Run:** `Invoke-Stage3JobTypeChain.ps1 -Type d4e4_asm -Name d4e4asm2 -TimingJobs d4e4_asm_d4e4_1 -SourceBatch d4e4_1 -BatchId d4e4asm_2`, 2026-10-12 02:39–02:46, with `CooldownS` = 30 s (S3a-D5b-cooldown). Status DONE. It was exported to `<outRoot>/stage3/d4e4_test_v2/` (canonical `out.mat` SHA-256 `661f5827…6586`, see `run_info.txt`). The `-TimingJobs` argument is mandatory; it is the same job id as in `d4e4asm_1`.
+- **Predictor check for sub-12, sub-23 and sub-24:** `near_perfect_predictors.csv` has no rows for them. In `rank_predictability_by_recording.csv`, each of their 6 recordings has `n_deficient_lt_m60db` = 0. No channel of theirs is near-perfectly predicted, so the `.bvef` positions are never used on real data (they are exercised only by the synthetic test).
+- **v1 vs v2:**
+  - `neighbour_scores.csv`, `predictability_by_channel.csv`, `rank_predictability_by_recording.csv`, `test_n_by_recording.csv` and `test_n_decisions.csv` are byte-identical to `d4e4_test/`.
+  - `near_perfect_predictors.csv` has the same 57 rows and differs only by the new `position_source` column, which is `bvct` in every row.
+  - Test N stays ambiguous for sub-13, sub-41 and sub-42 (S3a-D4e-4-asm-amend1).
