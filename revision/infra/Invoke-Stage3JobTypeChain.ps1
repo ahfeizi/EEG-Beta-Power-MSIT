@@ -10,7 +10,7 @@
   powershell -NoProfile -ExecutionPolicy Bypass -File Invoke-Stage3JobTypeChain.ps1 -Type d5_0_asm -Name d5asm -TimingJobs d5_0_asm_d5_0_1 -BatchId d5asm_1
 #>
 param(
-    [Parameter(Mandatory = $true)][ValidateSet('d4e4', 'd5_0_asm', 'd4e4_asm', 'd5b')][string]$Type,
+    [Parameter(Mandatory = $true)][ValidateSet('d4e4', 'd5_0_asm', 'd4e4_asm', 'd5b', 'd5bu', 'd5bmerge')][string]$Type,
     [Parameter(Mandatory = $true)][string]$Name,
     [Parameter(Mandatory = $true)][string]$TimingJobs,      # comma-separated job ids of the full list
     [Parameter(Mandatory = $true)][string]$BatchId,

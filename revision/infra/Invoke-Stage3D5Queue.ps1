@@ -4,9 +4,9 @@
   <EegOutRoot>\stage3_runs\queue_d5.log. Steps, each skipped when finished:
     1. D5-0 recompute, A/B batch d5_0_2 (S3a-D5-0-amend2; the 84-job list of d5_0_1);
     2. D5-0 assembly d5asm_2 from d5_0_2 (timeouts_d5asm.json, S3a-INF-1-amend2);
-    3. export to <OutRoot>\stage3\d5_0_v2\ and the d5_0_1 vs d5_0_2 check (stage3_d5_0_compare_runs);
-    4. D5 option (b) residual test (S3a-D5b): timing runs on the first rest and first MSIT+ job of the
-       test set (12 h per-replica timeout, S3a-INF-1-amend3), job-type timeouts, A/B batch d5b_1.
+    3. export to <OutRoot>\stage3\d5_0_v2\ and the d5_0_1 vs d5_0_2 check (stage3_d5_0_compare_runs).
+  The queue then STOPS. The unchunked (b) test that was step 4 is withdrawn (S3a-D5b-amend1): the chunked
+  (b) test runs only after Amirhossein approves the revised R-b1 criterion.
   A step that does not succeed stops the queue.
 .EXAMPLE
   powershell -NoProfile -ExecutionPolicy Bypass -File Invoke-Stage3D5Queue.ps1
@@ -57,10 +57,5 @@ if (-not (Test-Path $chk)) {
     Say "d5_0_1 vs d5_0_2 check: exit $($r.ExitCode); $((Get-Content -LiteralPath $chk -ErrorAction SilentlyContinue | Select-Object -Last 1))"
     if ($r.ExitCode -ne 0) { Say 'QUEUE STOPPED: check failed to run'; exit 3 }
 }
-# 4. (b) residual test
-$ts = @(Import-Csv -LiteralPath (Join-Path $cfg.OutRoot 'stage3\d5b\test_set.csv'))
-$tj = @(($ts | Where-Object { $_.task -eq 'rest' } | Select-Object -First 1), ($ts | Where-Object { $_.task -eq 'msit' } | Select-Object -First 1)) | ForEach-Object { "$($_.subject)_$($_.task)" }
-Say "start or resume the d5b chain (timing $($tj -join ','))"
-$c = Invoke-Ps 'Invoke-Stage3JobTypeChain.ps1' @('-Type', 'd5b', '-Name', 'd5b', '-TimingJobs', ($tj -join ','), '-BatchId', 'd5b_1', '-TimingTimeoutS', '43200', '-Config', $Config)
-Say "d5b chain ended: exit $c"
-exit $c
+Say 'queue done: d5_0_2, d5asm_2, export and check finished; the chunked (b) test is not part of this queue (S3a-D5b-amend1)'
+exit 0

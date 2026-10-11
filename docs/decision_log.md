@@ -1200,3 +1200,41 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
 - **Run:** queued after the D5-0 recompute (`Invoke-Stage3D5Queue.ps1`, serial). Timing runs on sub-25 rest and sub-25 MSIT+ (3 replicas each, 12-h per-replica timeout, S3a-INF-1-amend3), then `timeouts_d5b.json` and the A/B batch `d5b_1`. Expected total: about 2.5 days (A/B and timing replicas at roughly 1.8–3.3 h per run).
 - **Synthetic test:** `revision/stage3/test_stage3_d5b_compute_one.m`.
 - **Outcome-blind:** only the f₀ ± 3 Hz grid is computed. CleanLine's internal multitaper spectra and the cleaned data are neither saved nor inspected.
+
+## S3a-D5b-amend1 · 2026-10-11 · (b) residual test split into short A/B units; amend3 withdrawn; queue stops before (b)
+
+- **Decision:** Amirhossein, 2026-10-11. This laptop crashes under sustained multi-hour load (burn-in: heap corruption after 9–52 min, S3a-INF-1-amend1). Unchunked CleanLine jobs of 1.8–3.3 h would likely exhaust the 5 attempts per replica.
+- **Units.** One test-set recording × one channel range, processed as one group by `stage3_d5b_compute_one` (`params.chans`): 6 channels per rest unit, 3 per MSIT+ unit. From the synthetic benchmark (S3a-INF-1-amend3) that is about 5 min each. The test set gives 261 units (9 recordings; 22 per rest recording, 43 per MSIT+ recording).
+  - Each unit runs A/B and is verified (job-list type `d5bu`, recording types `d5bu_rest`/`d5bu_msit`).
+  - Timing runs (S3a-INF-1-amend2) use normal replicas under the 30-min `AcceptanceTimeoutS`.
+- **Merge** (`stage3_d5b_merge.m`, job-list type `d5bmerge`, an A/B job). From the verified units it rebuilds each recording's result:
+  - the units must cover channels 1..N exactly once, with identical grid, segments, chunk positions and CleanLine parameters;
+  - the rules are computed by the same function as the unsplit job (`stage3_d5b_rules.m`).
+- **Equivalence test** (`test_stage3_d5b_chunked.m`, synthetic):
+  - merged units must equal the unsplit job with the same group width exactly (`isequaln`);
+  - the difference from the default 16-channel grouping is reported (pass ≤ 1e-6, because filters may round differently for different matrix widths);
+  - a missing unit is refused.
+- **S3a-INF-1-amend3 is withdrawn.** `-ReplicaTimeoutS` stays in the code (synthetic test T12) but is not used.
+- **Queue** (`Invoke-Stage3D5Queue.ps1`): it now stops after `d5_0_2` → `d5asm_2` → export → `d5_0_1`/`d5_0_2` check. The unchunked (b) step is removed.
+  - The running queue was stopped during a cool-down: killed 12:01:53, after `sub-03_msit` replica A ended at 12:00:32 (verified). The edited queue was restarted at 12:02.
+  - The journal of `d5_0_2` shows `resume` at 12:02:09 and `sub-03_msit` replica B starting at 12:04:11, with A kept.
+- **Driver:** `Invoke-Stage3D5bChunked.ps1 -Stage null` (S3a-D5b-null), then `-Stage real -Approved` (only after the R-b1 decision).
+- **Cost (estimate):** per stage, 261 units × 2 replicas × ~5 min ≈ 44 h of computation, plus 522 cool-downs of 120 s ≈ 17 h. That is about 2.5 days for the null and 2.5 days for the real test. `CooldownS` is unchanged (any change is Amirhossein's decision).
+
+## S3a-D5b-null · 2026-10-11 · R-b1 noise floor: null calibration by simulation; revised criterion proposed (decision pending)
+
+- **Reason.** In the synthetic test of S3a-D5b, a noise-only recording (4 chunks) reached a maximum excess of 6.36 dB, and the line recording after (b) reached 4.60 dB. The committed R-b1 (maximum over all kept channels × f₀ < 3 dB) can therefore fail from the measure's own noise. The (b) test has 125 kept channels × 4 f₀ per recording and 9 recordings.
+- **Null** (requested by Amirhossein; to run before any (b) output exists). Noise-only twins of the 9 test recordings (`stage3_d5b_null_make.m`):
+  - the real `.vhdr`, `.vmrk` and `channels.tsv` are copied, so channel count, labels, duration, raw boundaries and the D4e blocks (the same block-table rows) are identical;
+  - the `.eeg` is replaced by seeded white Gaussian noise of identical size (seed base 5000; the real `.eeg` bytes are not read);
+  - the twins are cleaned and measured by the same chunked job (`d5bnullu_1`) and merged (`d5bnullm_1`);
+  - `stage3_d5b_criterion.m` tabulates, per recording, the after-excess distribution over the 500 cells (maximum; 50th/90th/95th/99th percentiles; cells ≥ 3 dB).
+- **Candidate criteria** (evaluated per recording; (b) passes only if every recording passes):
+  - **C0** (committed): maximum < 3 dB.
+  - **C1:** 95th percentile over cells < 3 dB.
+  - **C2:** maximum ≤ the same recording's null maximum.
+  - **C3:** 99th percentile ≤ the recording's null 99th percentile.
+- **Claude's recommendation: C1, provided the null shows headroom.** It keeps the committed 3 dB convention and fails when more than 5 % of the cells keep a line residual ≥ 3 dB.
+  - C1 is valid only if the null 95th percentile is clearly below 3 dB in every recording (proposed: ≤ 2 dB).
+  - C2 and C3 compare against a single null realization: for perfectly cleaned data they fail with probability of about 0.5 per recording, so they are not recommended without many null realizations (cost × the number of realizations).
+- **The decision is Amirhossein's.** It is made after the null table exists and before `-Stage real` runs (the driver refuses that stage without `-Approved`). The R-b2 criterion is unchanged.

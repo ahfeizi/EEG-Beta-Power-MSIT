@@ -1,7 +1,10 @@
 function stage3_d5b_compute_one(params, outFile)
 %STAGE3_D5B_COMPUTE_ONE  D5 option (b) residual test for one recording (S3a-D5-opt "Residual criterion
 %   for (b)"; implementation S3a-D5b), as a runner job function.
-%   params: subject, task, role, plus rawRoot, manifest, blockTable (common).
+%   params: subject, task, role, plus rawRoot, manifest, blockTable (common). Optional (S3a-D5b-amend1):
+%     chans     [first last] channel range: UNIT mode, processes only these channels as one group and
+%               saves the per-channel pieces as 'unit' (merged later by stage3_d5b_merge);
+%     groupSize channels per group in full mode (default 16; used by the chunked-equivalence test).
 %   Per 16-channel group: pop_loadbv -> D4e block extents as events -> high-pass 0.5 Hz at 1000 Hz
 %   (D4a, pop_eegfiltnew) -> pop_resample to 500 Hz (D4c order) -> MEASURE BEFORE -> CleanLine 2.1 new
 %   implementation (cleanLineNoise) on each raw segment, parameters of S3a-D5-opt (b) -> MEASURE AFTER.
@@ -55,14 +58,23 @@ stage3_check_input(ctFile, rawRoot, params.manifest);
 ct = readtable(ctFile, 'FileType', 'text', 'Delimiter', '\t', 'TextType', 'string');
 tok = regexp(txt, 'NumberOfChannels=(\d+)', 'tokens', 'once'); nCh = str2double(tok{1});
 assert(height(ct) == nCh, 'channels.tsv and .vhdr disagree on the channel count');
+unitMode = isfield(params, 'chans') && ~isempty(params.chans);
+if unitMode
+    cr = double(params.chans(:))'; assert(numel(cr) == 2 && cr(1) >= 1 && cr(2) <= nCh && cr(2) >= cr(1), 'bad chans');
+    groups = {cr(1):cr(2)};
+else
+    gs = 16; if isfield(params, 'groupSize') && ~isempty(params.groupSize), gs = double(params.groupSize); end
+    groups = arrayfun(@(g) g:min(g + gs - 1, nCh), 1:gs:nCh, 'uni', 0);
+end
 bk = B(B.subject == s & B.task == task, :);
 assert(height(bk) >= 1 && all(bk.status ~= "STOP_START_OUTSIDE_DATA" & bk.status ~= "STOP_STIMULI_AFTER_RAW_BOUNDARY"));
 
 % ---- per channel group ----------------------------------------------------------------------
 label = strings(nCh, 1);
 avgB = nan(nCh, numel(F)); avgA = avgB; chunkExcA = []; segInfo = []; nChunk = [];
-for g = 1:16:nCh
-    chans = g:min(g + 15, nCh); nG = numel(chans);
+chunkStarts = [];
+for gi = 1:numel(groups)
+    chans = groups{gi}; nG = numel(chans);
     EEG = pop_loadbv(eegDir, hdr, [], chans);
     lab = string({EEG.chanlocs.labels});
     if ismember(string(s), provisionalLabels)
@@ -109,33 +121,31 @@ for g = 1:16:nCh
     chunkExcA(chans, :, 1:numel(starts)) = excChunkA; %#ok<AGROW>
     if isempty(segInfo), segInfo = [segStart(:), segEnd(:), double(proc(:))]; else, assert(isequal(segInfo, [segStart(:), segEnd(:), double(proc(:))])); end
     nChunk(end+1) = numel(starts); %#ok<AGROW>
+    if isempty(chunkStarts), chunkStarts = starts; else, assert(isequal(chunkStarts, starts)); end
     clear EEG X
 end
 assert(all(nChunk == nChunk(1)) && nChunk(1) >= 1, 'chunk count differs between groups or is zero');
 
-% ---- rule inputs ----------------------------------------------------------------------------
-excB = stage3_d5_0_linepeaks(avgB, F, d, f0s, flank, pkwin);
-excA = stage3_d5_0_linepeaks(avgA, F, d, f0s, flank, pkwin);
-flankDbB = nan(nCh, 4); flankDbA = flankDbB;
-for j = 1:4
-    idx = (j - 1) * 61 + find(flank);
-    flankDbB(:, j) = 10 * log10(mean(avgB(:, idx), 2));
-    flankDbA(:, j) = 10 * log10(mean(avgA(:, idx), 2));
+if unitMode
+    ch = groups{1};
+    unit = struct('subject', string(s), 'task', string(task), 'role', string(params.role), 'nChannelsTotal', nCh, ...
+        'chans', ch, 'label', label(ch), 'F', F, 'avgPBefore', avgB(ch, :), 'avgPAfter', avgA(ch, :), ...
+        'chunkExcessAfterDb', chunkExcA(ch, :, :), 'nChunk', nChunk(1), 'chunkStarts', chunkStarts, ...
+        'segments', segInfo, 'lineNoise', ln);
+    save(outFile, 'unit');
+    fprintf('%s %s channels %d-%d: %d chunks; %d segments (%d processed)\n', s, task, ch(1), ch(end), nChunk(1), size(segInfo, 1), sum(segInfo(:, 3)));
+    return
 end
-flankChangeDb = flankDbA - flankDbB;
-kept = ~ismember(label, ["TP9 LEFT EAR", "TP10 RIGHT EAR"]);
-chunkResMedian = median(chunkExcA, 3); chunkResMax = max(chunkExcA, [], 3);
-rb1 = all(excA(kept, :) < 3, 'all');
-rb2 = all(abs(flankChangeDb(kept, :)) <= 0.5, 'all');
-res = struct('subject', string(s), 'task', string(task), 'role', string(params.role), 'label', label, 'kept', kept, ...
-    'F', F, 'f0s', f0s, 'avgPBefore', avgB, 'avgPAfter', avgA, 'excessBeforeDb', excB, 'excessAfterDb', excA, ...
-    'flankDbBefore', flankDbB, 'flankDbAfter', flankDbA, 'flankChangeDb', flankChangeDb, ...
-    'chunkResidualMedianDb', chunkResMedian, 'chunkResidualMaxDb', chunkResMax, 'nChunk', nChunk(1), ...
-    'segments', segInfo, 'lineNoise', ln, 'rb1Pass', rb1, 'rb2Pass', rb2, ...
-    'maxExcessAfterKeptDb', max(excA(kept, :), [], 'all'), 'maxAbsFlankChangeKeptDb', max(abs(flankChangeDb(kept, :)), [], 'all'));
+
+% ---- rule inputs (shared with stage3_d5b_merge) -----------------------------------------------
+Rr = stage3_d5b_rules(avgB, avgA, chunkExcA, label);
+res = Rr;
+res.subject = string(s); res.task = string(task); res.role = string(params.role);
+res.F = F; res.f0s = f0s; res.avgPBefore = avgB; res.avgPAfter = avgA; res.nChunk = nChunk(1);
+res.chunkStarts = chunkStarts; res.segments = segInfo; res.lineNoise = ln;
 save(outFile, 'res');
 fprintf('%s %s: %d chunks; %d segments (%d processed); R-b1 %d (max excess after %.2f dB); R-b2 %d (max |flank change| %.3f dB)\n', ...
-    s, task, nChunk(1), size(segInfo, 1), sum(segInfo(:, 3)), rb1, res.maxExcessAfterKeptDb, rb2, res.maxAbsFlankChangeKeptDb);
+    s, task, nChunk(1), size(segInfo, 1), sum(segInfo(:, 3)), res.rb1Pass, res.maxExcessAfterKeptDb, res.rb2Pass, res.maxAbsFlankChangeKeptDb);
 
     function [avgP, excC] = measure(Xm, st)
         nC = numel(st); sumP = zeros(size(Xm, 1), numel(F)); excC = nan(size(Xm, 1), 4, nC);

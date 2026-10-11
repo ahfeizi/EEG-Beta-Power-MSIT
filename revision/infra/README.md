@@ -15,7 +15,8 @@ handled by resuming with the same command (verified outputs are re-hashed, every
 | `Invoke-Stage3Batch.ps1` | Runner. Modes `Batch` (optional `-JobTimeouts`), `Acceptance`, `BurnIn` (incl. `-Calibrate`), `Timeouts`, `JobTimeouts`. One command starts or resumes a batch (`-BatchId`). |
 | `Export-Stage3D50Assembly.ps1` | Writes the D5-0 CSVs and `run_info.txt` (S3a-D5-0-asm) from the verified output of a D5-0 assembly batch (`-OutSubdir`, default `d5_0`); never overwrites. |
 | `Export-Stage3Assembly.ps1` | Generic export of an assembly batch (D5-0 or D4e-4) into `<OutRoot>\stage3\<OutSubdir>\`; never overwrites. |
-| `Invoke-Stage3D5Queue.ps1` | Serial, resumable queue of 2026-10-11: D5-0 recompute `d5_0_2` (S3a-D5-0-amend2) → assembly `d5asm_2` → export `d5_0_v2` + run check → (b) residual test `d5b_1` (S3a-D5b). Log: `<EegOutRoot>\stage3_runs\queue_d5.log`. |
+| `Invoke-Stage3D5Queue.ps1` | Serial, resumable queue of 2026-10-11: D5-0 recompute `d5_0_2` (S3a-D5-0-amend2) → assembly `d5asm_2` → export `d5_0_v2` + run check, then stops (the unchunked (b) step was removed by S3a-D5b-amend1). Log: `<EegOutRoot>\stage3_runs\queue_d5.log`. |
+| `Invoke-Stage3D5bChunked.ps1` | Chunked (b) residual test (S3a-D5b-amend1): `-Stage null` (noise twins → units `d5bnullu_1` → merge `d5bnullm_1` → `null_criterion.csv`, S3a-D5b-null), `-Stage real -Approved` (units `d5bu_1` → merge `d5bm_1`). Log: `<EegOutRoot>\stage3_runs\d5b_chunked.log`. |
 | `Stage3Runner.psm1` | Runner functions: atomic (flushed) JSON, journal, entry hash, event counts, MATLAB process control. |
 | `runner_config.psd1` | All thresholds, paths and seeds. Its SHA-256 goes into every fingerprint and summary. |
 | `stage3_job.m` | Worker: one replica of one job in one process (threads, seed, fingerprint, job function, partial → final rename, DONE marker). |
@@ -36,7 +37,8 @@ Job functions (in `revision/stage3/`) and their synthetic tests:
 - D5-0 assembly (S3a-D5-0-asm): `stage3_d5_0_assemble.m`, export `stage3_d5_0_export.m`; equivalence with the script's assembly: `test_stage3_d5_0_assemble.m`.
 - D4e-4 label test (S3a-D4e-4-test-approval): `stage3_d4e4_compute_one.m`; `test_stage3_d4e4_compute_one.m`.
 - D4e-4 assembly (S3a-D4e-4-asm): `stage3_d4e4_assemble.m`, export `stage3_d4e4_export.m`; `test_stage3_d4e4_assemble.m`.
-- D5 option (b) residual test (S3a-D5b): `stage3_d5b_compute_one.m`; `test_stage3_d5b_compute_one.m`.
+- D5 option (b) residual test (S3a-D5b; chunked by S3a-D5b-amend1): `stage3_d5b_compute_one.m` (full or unit mode), `stage3_d5b_rules.m`, `stage3_d5b_merge.m`; `test_stage3_d5b_compute_one.m`, `test_stage3_d5b_chunked.m`.
+- R-b1 null calibration (S3a-D5b-null): `stage3_d5b_null_make.m`, `stage3_d5b_criterion.m`.
 - Peak refinement guard (S3a-D5-0-amend2): `stage3_d5_0_linepeaks.m`; `test_stage3_d5_0_linepeaks.m`.
 
 ## Output locations
