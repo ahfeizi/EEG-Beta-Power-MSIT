@@ -1164,3 +1164,13 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - `neighbour_scores.csv`, `rank_predictability_by_recording.csv`, `predictability_by_channel.csv` (as named in S3a-D4e-4-test);
   - `test_n_by_recording.csv`, `test_n_decisions.csv`, `near_perfect_predictors.csv`, `run_info.txt`.
 - Outcome-blind: only the stored 1–10 Hz time-domain statistics are read.
+
+## S3a-D14-draw-result · 2026-10-11 · D14 draw run once; R2 replacement step; (b) residual-test set
+
+- **Draw** (`stage3_d14_draw.m` at commit `3cfdb46`, run once 2026-10-11 10:39; `<outRoot>/stage3/d14_draw/d14_draw_result.txt`):
+  - `rng(1, 'twister')`; `randperm(14)` = [3 6 5 7 13 4 8 9 1 11 10 12 2 14] → Fz subject **sub-08**;
+  - `randperm(3)` = [1 3 2] → order sub-08, sub-15, sub-09 → sub-08 is already chosen → drift subject **sub-15**.
+  - **D14 test subjects: sub-25, sub-08, sub-15.**
+- **R2 replacement step** (ranking of `d5asm_1`): rank 2 (sub-08 rest) belongs to a D14 subject and is skipped. **Worst set: sub-14 rest (rank 1), sub-22 rest (3), sub-06 rest (4).**
+- **(b) residual-test set** (`<outRoot>/stage3/d5b/test_set.csv`, 9 recordings): sub-25, sub-08 and sub-15 (rest and MSIT+), plus sub-14 rest, sub-22 rest and sub-06 rest.
+
