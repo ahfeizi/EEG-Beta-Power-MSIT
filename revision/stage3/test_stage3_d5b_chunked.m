@@ -50,9 +50,11 @@ nd = fullfile(workDir, 'null');
 stage3_d5b_null_make(fullfile(workDir, 'raw'), ts, nd, 100);
 a = fullfile(workDir, 'raw', 'sub-90', 'eeg'); b = fullfile(nd, 'raw', 'sub-90', 'eeg');
 same = @(n) isequal(fileread(fullfile(a, n)), fileread(fullfile(b, n)));
-ia = dir(fullfile(a, 'sub-90_task-rest_eeg.eeg')); ib = dir(fullfile(b, 'sub-90_task-rest_eeg.eeg'));
+df = regexp(fileread(fullfile(a, 'sub-90_task-rest_eeg.vhdr')), '^DataFile=([^\r\n]+)', 'tokens', 'once', 'lineanchors');
+df = strtrim(df{1});                                   % the synthetic writer names the binary .dat, not .eeg
+ia = dir(fullfile(a, df)); ib = dir(fullfile(b, df));
 c5 = same('sub-90_task-rest_eeg.vhdr') && same('sub-90_task-rest_eeg.vmrk') && same('sub-90_task-rest_channels.tsv') ...
-    && ia.bytes == ib.bytes && ~strcmp(sha256File(fullfile(a, ia.name)), sha256File(fullfile(b, ib.name))) ...
+    && isscalar(ia) && isscalar(ib) && ia.bytes == ib.bytes && ~strcmp(sha256File(fullfile(a, ia.name)), sha256File(fullfile(b, ib.name))) ...
     && exist(fullfile(nd, 'manifest.tsv'), 'file') == 2;
 pn = base; pn.rawRoot = fullfile(nd, 'raw'); pn.manifest = fullfile(nd, 'manifest.tsv'); pn.chans = [1 6];
 stage3_d5b_compute_one(pn, fullfile(workDir, 'null_unit.mat'));

@@ -26,6 +26,7 @@ end
 fprintf(fid, '</Electrodes>\n'); fclose(fid);
 fid = fopen(fullfile(workDir, 'manifest.tsv'), 'a'); fi = dir(bf);
 fprintf(fid, '%s\t%d\t%s\n', 'sourcedata/sub-01/coords/sub-01_captrak.bvef', fi.bytes, sha256File(bf)); fclose(fid);
+clear stage3_check_input   % its persistent manifest cache (filled by the compute test above) predates this row
 src = fullfile(workDir, 'srcbatch'); mkdir(fullfile(src, 'state'));
 fid = fopen(fullfile(src, 'batch.json'), 'w'); fwrite(fid, jsonencode(struct('mode', 'Batch', 'status', 'DONE'))); fclose(fid);
 pairs = {'sub-01', 'sub-01_rest.mat'; 'sub-13', 'sub-13_rest_a.mat'};
