@@ -14,7 +14,8 @@ param(
     [Parameter(Mandatory = $true)][string]$Name,
     [Parameter(Mandatory = $true)][string]$TimingJobs,      # comma-separated job ids of the full list
     [Parameter(Mandatory = $true)][string]$BatchId,
-    [string]$SourceBatch,                                  # assembly types: the batch to assemble (default of New-Stage3JobList)
+    [string]$SourceBatch,
+    [int]$TimingTimeoutS = 0,                              # S3a-INF-1-amend3: per-replica timeout of the timing runs (0 = AcceptanceTimeoutS)                                  # assembly types: the batch to assemble (default of New-Stage3JobList)
     [string]$Config,
     [switch]$SkipPrechecksForTest                          # synthetic tests only (the runner refuses it without TestMode)
 )
@@ -62,7 +63,9 @@ foreach ($id in @($TimingJobs -split ',' | ForEach-Object { $_.Trim() } | Where-
     $af = Join-Path $runs "$b\acceptance.json"
     if (-not (Test-Path $af)) {
         Say "start or resume timing run $b"
-        $c = Invoke-Runner @('-Mode', 'Acceptance', '-BatchId', $b, '-JobList', $f, '-Replicas', '3', '-TimingOnly')
+        $ta = @('-Mode', 'Acceptance', '-BatchId', $b, '-JobList', $f, '-Replicas', '3', '-TimingOnly')
+        if ($TimingTimeoutS -gt 0) { $ta += @('-ReplicaTimeoutS', "$TimingTimeoutS") }
+        $c = Invoke-Runner $ta
         Say "$b ended: exit $c"
     }
     $v = if (Test-Path $af) { (Read-Json $af).verdict } else { '' }

@@ -1174,3 +1174,10 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
 - **R2 replacement step** (ranking of `d5asm_1`): rank 2 (sub-08 rest) belongs to a D14 subject and is skipped. **Worst set: sub-14 rest (rank 1), sub-22 rest (3), sub-06 rest (4).**
 - **(b) residual-test set** (`<outRoot>/stage3/d5b/test_set.csv`, 9 recordings): sub-25, sub-08 and sub-15 (rest and MSIT+), plus sub-14 rest, sub-22 rest and sub-06 rest.
 
+## S3a-INF-1-amend3 · 2026-10-11 · Per-replica timeout for timing runs of long job types
+
+- **Status:** implementation choice under Amirhossein's session waiver of 2026-10-11 (stop only for decisions that are his). Flagged for his review.
+- **Problem.** S3a-INF-1-amend2 times new job types with 3-replica timing runs under the fixed `AcceptanceTimeoutS` (30 min, hang detection). A synthetic benchmark of `cleanLineNoise` (S3a-D5-opt parameters, 2 threads) took 20.6 s per channel per 300 s of data. The (b) test recordings last 661–1365 s, so one recording takes about 1.8 h (rest) to 3.3 h (MSIT+) with 127 channels. Under the 30-min timeout, every timing replica would fail.
+- **Change.** `Acceptance -TimingOnly` accepts `-ReplicaTimeoutS` (hang detection only; refused without `-TimingOnly`), stored in `batch.json`. `Invoke-Stage3JobTypeChain.ps1 -TimingTimeoutS` passes it on. For the (b) test: **43200 s (12 h)**, about 3.6 × the MSIT+ estimate.
+- The batch timeouts still follow amend2 (3 × the timing median). `runner_config.psd1` is unchanged.
+

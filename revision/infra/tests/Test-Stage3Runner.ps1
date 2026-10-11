@@ -225,6 +225,16 @@ if (Run-Test 'T11') {
     Check 'T11 JobTimeouts guard' ($code -eq 3 -and -not (Test-Path (Join-Path $runs 'timeouts_c11x.json'))) "exit $code (3 = refused); $((Get-Content (Join-Path $WorkDir 'runner_t11x.out') -Raw) -replace '\s+', ' ')"
     $code = Invoke-Runner @('-Mode', 'JobTimeouts', '-BatchId', 'c11', '-TimingBatches', 'c11_t_j1') 't11y'
     Check 'T11 JobTimeouts no overwrite' ($code -eq 3) "exit $code; $((Get-Content (Join-Path $WorkDir 'runner_t11y.out') -Raw) -replace '\s+', ' ')"
+}
+# ---------------------------------------------------------------- T12 per-replica timeout of timing runs (amend3)
+if (Run-Test 'T12') {
+    $jl = Write-Jobs 't12' @((Job 'slow' ([ordered]@{ mode = 'ok'; sleepS = 60 })))
+    [void](Invoke-Runner @('-Mode', 'Acceptance', '-BatchId', 't12', '-JobList', $jl, '-Replicas', '1', '-TimingOnly', '-ReplicaTimeoutS', '20') 't12')
+    $acc = Read-Json (Join-Path $eeg 'stage3_runs\t12\acceptance.json')
+    $starts = @(Get-Jn 't12' | Where-Object { $_.event -eq 'job_start' } | ForEach-Object { $_.detail } | Sort-Object -Unique)
+    Check 'T12 timing replica timeout' ($acc.timeouts -eq 5 -and $acc.replicasOk -eq 0 -and ($starts -join ',') -eq 'timeout 20 s') "timeouts $($acc.timeouts); replicas ok $($acc.replicasOk); job_start: $($starts -join ' | ')"
+    $code = Invoke-Runner @('-Mode', 'Acceptance', '-BatchId', 't12b', '-JobList', $jl, '-Replicas', '1', '-ReplicaTimeoutS', '20') 't12b'
+    Check 'T12 refused without -TimingOnly' ($code -ne 0 -and ((Get-Content (Join-Path $WorkDir 'runner_t12b.err') -Raw) -match 'only with -TimingOnly')) "exit $code"
 }} finally {
     [System.IO.File]::WriteAllLines($report, $results)
     Write-Host "report -> $report"

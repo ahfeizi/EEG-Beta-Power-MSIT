@@ -32,6 +32,7 @@ param(
     [string]$JobList,
     [int]$Replicas = 11,
     [switch]$TimingOnly,
+    [int]$ReplicaTimeoutS = 0,                             # Acceptance -TimingOnly only: per-replica timeout instead of AcceptanceTimeoutS (S3a-INF-1-amend3)
     [int]$Iterations = 0,
     [switch]$Calibrate,
     [string]$CalibrationBatch,
@@ -185,6 +186,7 @@ if ($resume) {
         batchId = $BatchId; mode = $Mode; status = 'RUNNING'; stopReason = ''
         startTime = (Get-Date).ToString('s'); endTime = ''
         timingOnly = [bool]$TimingOnly; calibrate = [bool]$Calibrate; replicasRequested = $Replicas; iterations = $Iterations
+        replicaTimeoutS = $ReplicaTimeoutS
         calibrationBatch = $CalibrationBatch; carryOverFrom = $CarryOverFrom
         jobs = $jobs
         configPath = $cfg._Path; configSha256 = $cfg._Sha256
@@ -572,6 +574,10 @@ $st = Get-JobState $job
 if ($Mode -eq 'Acceptance') {
     $names = @(1..$batch.replicasRequested | ForEach-Object { 'R{0:D2}' -f $_ })
     $timeout = $cfg.AcceptanceTimeoutS
+    if ($batch.PSObject.Properties.Name -contains 'replicaTimeoutS' -and [int]$batch.replicaTimeoutS -gt 0) {
+        if (-not $batch.timingOnly) { throw '-ReplicaTimeoutS is allowed only with -TimingOnly (S3a-INF-1-amend3)' }
+        $timeout = [int]$batch.replicaTimeoutS                                       # amend3: hang detection for long job types
+    }
     $maxA = [int]$cfg.MaxAttemptsPerReplica                                         # amend1 (was: no retries)
 } else {
     $names = if ($batch.calibrate) { @('A') } else { @('A', 'B') }
