@@ -1,6 +1,6 @@
 # revision/infra: crash-tolerant A/B runner (S3a-INF-1)
 
-Implements decision-log entries **S3a-INF-1** (`df80384`), **S3a-INF-1-clar1**, **S3a-INF-1-amend1** and **S3a-INF-1-amend2** (timeouts for job types other than D5-0). Every heavy
+Implements decision-log entries **S3a-INF-1** (`df80384`), **S3a-INF-1-clar1**, **S3a-INF-1-amend1**, **S3a-INF-1-amend2** (timeouts for job types other than D5-0) and **S3a-INF-1-amend3** (per-replica timeout of timing runs, `-ReplicaTimeoutS`). Every heavy
 Stage 3 MATLAB job runs as a fresh `MATLAB.exe -batch` process, twice (A, B), and is accepted only if
 the two outputs are content-identical; otherwise a third replica (C) decides. Since S3a-INF-1-amend1, MATLAB
 crashes are expected (up to 5 attempts per replica), there is no thermal monitoring, and a kernel crash is
@@ -13,7 +13,9 @@ handled by resuming with the same command (verified outputs are re-hashed, every
 | `Invoke-Stage3Chain.ps1` | The amend1 chain: acceptance sub-06 MSIT+ × 11 → rest × 3 (timing) → `Timeouts` → D5-0 job list → D5-0 batch. Rerun the same command to resume. Log: `<EegOutRoot>\stage3_runs\chain.log`. |
 | `Invoke-Stage3JobTypeChain.ps1` | The amend2 chain for another job type: timing run(s) (`Acceptance -TimingOnly`, 3 replicas) → `JobTimeouts` → Batch with `-JobTimeouts`. Rerun the same command to resume. Log: `<EegOutRoot>\stage3_runs\chain_<Name>.log`. |
 | `Invoke-Stage3Batch.ps1` | Runner. Modes `Batch` (optional `-JobTimeouts`), `Acceptance`, `BurnIn` (incl. `-Calibrate`), `Timeouts`, `JobTimeouts`. One command starts or resumes a batch (`-BatchId`). |
-| `Export-Stage3D50Assembly.ps1` | Writes the D5-0 CSVs and `run_info.txt` (S3a-D5-0-asm) from the verified output of a D5-0 assembly batch; never overwrites. |
+| `Export-Stage3D50Assembly.ps1` | Writes the D5-0 CSVs and `run_info.txt` (S3a-D5-0-asm) from the verified output of a D5-0 assembly batch (`-OutSubdir`, default `d5_0`); never overwrites. |
+| `Export-Stage3Assembly.ps1` | Generic export of an assembly batch (D5-0 or D4e-4) into `<OutRoot>\stage3\<OutSubdir>\`; never overwrites. |
+| `Invoke-Stage3D5Queue.ps1` | Serial, resumable queue of 2026-10-11: D5-0 recompute `d5_0_2` (S3a-D5-0-amend2) → assembly `d5asm_2` → export `d5_0_v2` + run check → (b) residual test `d5b_1` (S3a-D5b). Log: `<EegOutRoot>\stage3_runs\queue_d5.log`. |
 | `Stage3Runner.psm1` | Runner functions: atomic (flushed) JSON, journal, entry hash, event counts, MATLAB process control. |
 | `runner_config.psd1` | All thresholds, paths and seeds. Its SHA-256 goes into every fingerprint and summary. |
 | `stage3_job.m` | Worker: one replica of one job in one process (threads, seed, fingerprint, job function, partial → final rename, DONE marker). |
@@ -25,7 +27,7 @@ handled by resuming with the same command (verified outputs are re-hashed, every
 | `Copy-Stage3VerifiedState.ps1` | Q9 carry-over of verified recordings into a new batch (optional since amend1: a kernel crash no longer stops a batch). |
 | `Write-Stage3Summary.ps1` | `summary.csv` / `summary.txt` (§9), copied to `<OutRoot>\stage3\runs\`. |
 | `Get-Stage3SystemEvents.ps1` | §7 event counts (WHEA, BugCheck 1001, Kernel-Power 41, Application Error 1000 for MATLAB.exe). |
-| `New-Stage3JobList.ps1` | Writes a job list: `d5_0` and `d4e4` (one job per recording of the D4e block table), `d5_0_asm` (the single D5-0 assembly job). |
+| `New-Stage3JobList.ps1` | Writes a job list: `d5_0` and `d4e4` (one job per recording of the D4e block table), `d5_0_asm` and `d4e4_asm` (single assembly jobs over `-SourceBatch`), `d5b` (one job per row of `<OutRoot>\stage3\d5b\test_set.csv`). |
 | `stage3_noop.m`, `stage3_loadcheck.m` | Helpers (pre-check fingerprint; Q9 load check). |
 | `tests/` | Synthetic tests only: `Test-Stage3Runner.ps1`, `stage3_testjob.m`. |
 
@@ -33,6 +35,9 @@ Job functions (in `revision/stage3/`) and their synthetic tests:
 - D5-0: `stage3_d5_0_compute_one.m`; equivalence with the original script: `test_stage3_d5_0_compute_one.m`.
 - D5-0 assembly (S3a-D5-0-asm): `stage3_d5_0_assemble.m`, export `stage3_d5_0_export.m`; equivalence with the script's assembly: `test_stage3_d5_0_assemble.m`.
 - D4e-4 label test (S3a-D4e-4-test-approval): `stage3_d4e4_compute_one.m`; `test_stage3_d4e4_compute_one.m`.
+- D4e-4 assembly (S3a-D4e-4-asm): `stage3_d4e4_assemble.m`, export `stage3_d4e4_export.m`; `test_stage3_d4e4_assemble.m`.
+- D5 option (b) residual test (S3a-D5b): `stage3_d5b_compute_one.m`; `test_stage3_d5b_compute_one.m`.
+- Peak refinement guard (S3a-D5-0-amend2): `stage3_d5_0_linepeaks.m`; `test_stage3_d5_0_linepeaks.m`.
 
 ## Output locations
 

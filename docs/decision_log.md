@@ -1181,3 +1181,22 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
 - **Change.** `Acceptance -TimingOnly` accepts `-ReplicaTimeoutS` (hang detection only; refused without `-TimingOnly`), stored in `batch.json`. `Invoke-Stage3JobTypeChain.ps1 -TimingTimeoutS` passes it on. For the (b) test: **43200 s (12 h)**, about 3.6 × the MSIT+ estimate.
 - The batch timeouts still follow amend2 (3 × the timing median). `runner_config.psd1` is unchanged.
 
+## S3a-D5b · 2026-10-11 · D5 option (b) residual test: implementation as an A/B job type
+
+- **Requested by Amirhossein** (2026-10-11): implement the S3a-D5-opt residual test of (b) on the final test set (S3a-D14-draw-result), with R-b1 = 3 dB and R-b2 = 0.5 dB, as an A/B job type with a synthetic test first, and start it detached. This includes reading the `.eeg` files of the 9 test-set recordings from the verified D: copy.
+- **Job function** `revision/stage3/stage3_d5b_compute_one.m`, one job per test-set recording (job-list type `d5b`, recording types `d5b_rest`/`d5b_msit`), compare kind `all`. Per 16-channel group:
+  1. `pop_loadbv`, then the D4e block extents as events;
+  2. high-pass 0.5 Hz at 1000 Hz (D4a), then `pop_resample` to 500 Hz (D4c order). The high-pass is included so that (b) sees the data as in the pipeline; its gain at ≥ 47 Hz is unity;
+  3. **measure before**;
+  4. `cleanLineNoise` (CleanLine 2.1) on each raw segment, with the S3a-D5-opt parameters (`lineFrequencies` [50 100 150 200], `p` 0.01, `fScanBandWidth` 2, `taperBandWidth` 2, `taperWindowSize` 4, `taperWindowStep` 1, `tau` 100, `pad` 2, `fPassBand` [0 250], `maximumIterations` 10);
+  5. **measure after**.
+- **Segment rule** (as committed): a segment shorter than one 4 s window is not processed and must not overlap a block (asserted; known case: the 0.192 s segment of sub-25 rest).
+- **Measure:** exactly the D5-0 measure (10 s chunks inside the clipped blocks, detrend, Hann, DFT at f₀ ± 3 Hz, linear floor on the flanks, excess = maximum over ± 0.5 Hz; `stage3_d5_0_linepeaks` with the S3a-D5-0-amend2 guard, which does not affect excess).
+- **Per recording, over kept channels (TP9/TP10 excluded) and every f₀:**
+  - R-b1: chunk-averaged excess after (b) < 3 dB;
+  - R-b2: |change in the dB of the mean chunk-averaged PSD over the flank bins| ≤ 0.5 dB;
+  - also stored: per-chunk residual excess (median, maximum), excess before, and the flank levels.
+- **(b) passes** only if every tested recording passes both R-b1 and R-b2 (S3a-D5-opt). The overall verdict is read from the 9 verified outputs after batch `d5b_1` ends, and the D5 decision is logged then.
+- **Run:** queued after the D5-0 recompute (`Invoke-Stage3D5Queue.ps1`, serial). Timing runs on sub-25 rest and sub-25 MSIT+ (3 replicas each, 12-h per-replica timeout, S3a-INF-1-amend3), then `timeouts_d5b.json` and the A/B batch `d5b_1`. Expected total: about 2.5 days (A/B and timing replicas at roughly 1.8–3.3 h per run).
+- **Synthetic test:** `revision/stage3/test_stage3_d5b_compute_one.m`.
+- **Outcome-blind:** only the f₀ ± 3 Hz grid is computed. CleanLine's internal multitaper spectra and the cleaned data are neither saved nor inspected.
