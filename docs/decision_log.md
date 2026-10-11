@@ -1259,3 +1259,45 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
 - **Reason (Amirhossein):** the cool-down was introduced for thermal reasons (S3a-INF-1 §6). Temperature is ruled out as the cause of the crashes.
 - **Monitoring kept:** the crash rate per job-hour stays reported in every batch summary (`Write-Stage3Summary.ps1`, S3a-INF-1-amend1).
 - The cost estimate in S3a-D5b-amend1 assumed 120 s. It is not recomputed here.
+
+## S3a-D5b-null-amend1 · 2026-10-12 · R-b1 null restricted to two twins (fewest chunks per task)
+
+- **Decision:** Amirhossein, 2026-10-12. This amends S3a-D5b-null: the null uses two noise-only twins instead of nine.
+- **Rule:** per task (rest, MSIT+), take the test-set recording with the fewest chunks: fewest chunks means the largest null fluctuation, i.e. the worst case. A tie is broken by the shorter duration; a remaining tie stops the run.
+- **Wording clarified (Amirhossein, 2026-10-12, in chat).** The instruction said "the shortest rest and the shortest MSIT+ recording … (fewest chunks = largest null fluctuation = worst case)". For MSIT+, duration and chunk count disagree:
+  - shortest MSIT+: sub-25 (1321.7 s, 96 chunks);
+  - fewest chunks: sub-15 (1364.6 s, 93 chunks).
+  - For rest they agree: sub-25 (660.7 s, 58 chunks).
+  - Amirhossein chose the chunk count, hence sub-15 MSIT+. This was Claude's recommendation: it matches the stated rationale and is the more conservative choice for the validity condition of S3a-D5b-rb1.
+- **Where these numbers come from:** they were read before this entry. Chunk counts are `n_chunks` in `<outRoot>/stage3/d5_0_v2/line_noise_by_channel.csv`. Durations come from the `.vhdr` and the `.eeg` file size of the verified D: copy; no `.eeg` bytes were read. The run recomputes them with `stage3_d5b_null_set.m` and writes `<outRoot>/stage3/d5b/null_set.csv`.
+- **Expected twins:** sub-25 rest and sub-15 MSIT+, i.e. 22 + 43 = 65 units (S3a-D5b-amend1 unit sizes).
+- **Implementation:**
+  - `stage3_d5b_null_set.m` (new).
+  - `Invoke-Stage3D5bChunked.ps1 -Stage null` builds the null set first. It then runs:
+    1. the twins: `stage3_d5b_null_make` on the null set, with seeds 5001 and 5002 in null-set row order;
+    2. the unit batch `d5bnullu_1` (job list built with `-TestSet null_set.csv`);
+    3. the merge `d5bnullm_1`.
+  - Synthetic test: `test_stage3_d5b_criterion.m`.
+- **Not changed:** how the twins are built (S3a-D5b-null), the job function and the measure.
+
+## S3a-D5b-rb1 · 2026-10-12 · R-b1 = C1, approved conditionally on the null
+
+- **Decision:** Amirhossein, 2026-10-12. Made before any (b) output exists: neither `d5bnullu_1` nor `d5bu_1` has run.
+- **R-b1 (replaces C0 of S3a-D5b).** Per recording, the 95th percentile of the post-cleaning excess over the 500 kept-channel × f₀ cells (125 × 4) must be < 3 dB.
+  - The percentile is the one computed by `stage3_d5b_rules.m` (MATLAB `quantile(cells, 0.95)`).
+  - The number of cells per recording is reported (`n_cells`).
+- **Validity condition:** C1 is valid only if the null 95th percentile is ≤ 2 dB in **both** null twins (S3a-D5b-null-amend1).
+  - If it holds, `-Stage real -Approved` starts automatically.
+  - If it does not, the chain stops and writes the reason. R-b1 is then open again and returns to Amirhossein.
+- **(b) passes** only if:
+  - the null condition holds, **and**
+  - every one of the 9 test recordings passes both C1 and R-b2. R-b2 is unchanged: |flank change| ≤ 0.5 dB in every kept channel and f₀.
+- **Descriptives only (no decision):** per recording, the maximum excess and the number of cells > 3 dB.
+- **Not used:** C0, C2 and C3. C2 and C3 would also need a null twin per recording, which S3a-D5b-null-amend1 no longer provides.
+- **Implementation:**
+  - `stage3_d5b_criterion.m` is rewritten; it had not run. It writes:
+    - `null_criterion.csv`, with `null_q95_le_2db` and `null_c1_valid`;
+    - `criterion_real_vs_null.csv`, with `C1_q95_lt3`, `rb2_pass`, `recording_pass`, `b_passes` and the descriptives.
+  - Chain: `Invoke-Stage3D5bNullThenReal.ps1`, resumable with the same command.
+    - Log: `<EegOutRoot>/stage3_runs/d5b_chain.log`. On a stop, the reason is also written to `<outRoot>/stage3/d5b/chain_stop_reason.txt`.
+    - The chain re-checks the validity condition from `null_q95_db` and stops if that disagrees with `null_c1_valid`.

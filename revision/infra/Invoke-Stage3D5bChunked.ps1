@@ -2,11 +2,15 @@
 .SYNOPSIS
   Chunked D5 option (b) residual test (S3a-D5b-amend1) and its R-b1 null calibration (S3a-D5b-null).
   Serial and resumable with the same command; log <EegOutRoot>\stage3_runs\d5b_chunked.log.
-    -Stage null : noise-only twins of the 9 test recordings (<EegOutRoot>\d5b_null, stage3_d5b_null_make,
-                  seed base 5000) -> unit batch d5bnullu_1 (timing runs first, S3a-INF-1-amend2) -> merge
-                  batch d5bnullm_1 -> <OutRoot>\stage3\d5b\null_criterion.csv
-    -Stage real : unit batch d5bu_1 -> merge batch d5bm_1 -> <OutRoot>\stage3\d5b\criterion_real_vs_null.csv
-                  (runs only after Amirhossein has decided the R-b1 criterion; refuses without -Approved)
+    -Stage null : the two null recordings (S3a-D5b-null-amend1: per task, the test-set recording with the
+                  fewest chunks; stage3_d5b_null_set -> <OutRoot>\stage3\d5b\null_set.csv) -> their
+                  noise-only twins (<EegOutRoot>\d5b_null, stage3_d5b_null_make, seed base 5000) -> unit
+                  batch d5bnullu_1 (timing runs first, S3a-INF-1-amend2) -> merge batch d5bnullm_1 ->
+                  <OutRoot>\stage3\d5b\null_criterion.csv (with the C1 validity column, S3a-D5b-rb1)
+    -Stage real : unit batch d5bu_1 (all 9 test recordings) -> merge batch d5bm_1 ->
+                  <OutRoot>\stage3\d5b\criterion_real_vs_null.csv
+                  (refuses without -Approved; Invoke-Stage3D5bNullThenReal.ps1 passes it only if the
+                  null validity condition of S3a-D5b-rb1 holds)
   Units: one test-set recording x a channel range (6 channels rest, 3 MSIT+; ~5 min each).
 .EXAMPLE
   powershell -NoProfile -ExecutionPolicy Bypass -File Invoke-Stage3D5bChunked.ps1 -Stage null
@@ -61,18 +65,25 @@ function Invoke-Criterion([string]$Out, [string]$NullMat, [string]$RealMat) {
 
 Say "d5b chunked, stage $Stage (pid $PID)"
 if ($Stage -eq 'null') {
+    $nullSet = Join-Path $outD5b 'null_set.csv'
+    if (-not (Test-Path $nullSet)) {
+        $chanCsv = Join-Path $cfg.OutRoot 'stage3\d5_0_v2\line_noise_by_channel.csv'
+        $r = Invoke-MatlabSimple $cfg "addpath('$stage3'); stage3_d5b_null_set('$testSet', '$chanCsv', '$($cfg.RawRoot)', '$nullSet')" (Join-Path $runs 'd5b_null_set.log') $runs 900
+        if ($r.ExitCode -ne 0) { Say "STOPPED: null set exit $($r.ExitCode)"; exit 3 }
+        Say "null set written: $nullSet ($((@(Import-Csv -LiteralPath $nullSet) | ForEach-Object { "$($_.subject) $($_.task), $($_.n_chunks) chunks" }) -join '; '))"
+    }
     $nd = Join-Path $cfg.EegOutRoot 'd5b_null'
     if (-not (Test-Path (Join-Path $nd 'manifest.tsv'))) {
         if (Test-Path (Join-Path $nd 'raw')) { Say "STOPPED: $nd\raw exists without manifest (interrupted generation; inspect and remove by hand)"; exit 3 }
-        $r = Invoke-MatlabSimple $cfg "addpath('$stage3'); stage3_d5b_null_make('$($cfg.RawRoot)', '$testSet', '$nd', 5000)" (Join-Path $runs 'd5b_null_make.log') $runs 7200
+        $r = Invoke-MatlabSimple $cfg "addpath('$stage3'); stage3_d5b_null_make('$($cfg.RawRoot)', '$nullSet', '$nd', 5000)" (Join-Path $runs 'd5b_null_make.log') $runs 7200
         if ($r.ExitCode -ne 0) { Say "STOPPED: null generation exit $($r.ExitCode)"; exit 3 }
         Say "noise twins written to $nd"
     }
-    Invoke-Units 'd5bnullu' 'd5bnullu_1' @('-RawRootOverride', (Join-Path $nd 'raw'), '-ManifestOverride', (Join-Path $nd 'manifest.tsv'))
+    Invoke-Units 'd5bnullu' 'd5bnullu_1' @('-TestSet', $nullSet, '-RawRootOverride', (Join-Path $nd 'raw'), '-ManifestOverride', (Join-Path $nd 'manifest.tsv'))
     Invoke-Merge 'd5bnullm' 'd5bnullm_1' 'd5bnullu_1'
     Invoke-Criterion (Join-Path $outD5b 'null_criterion.csv') (Get-Canonical 'd5bnullm_1') ''
 } else {
-    if (-not $Approved) { Say 'STOPPED: the real (b) test needs -Approved (R-b1 criterion decided by Amirhossein, S3a-D5b-null)'; exit 3 }
+    if (-not $Approved) { Say 'STOPPED: the real (b) test needs -Approved (R-b1 criterion decided by Amirhossein, S3a-D5b-rb1)'; exit 3 }
     Invoke-Units 'd5bu' 'd5bu_1' @()
     Invoke-Merge 'd5bm' 'd5bm_1' 'd5bu_1'
     Invoke-Criterion (Join-Path $outD5b 'criterion_real_vs_null.csv') (Get-Canonical 'd5bnullm_1') (Get-Canonical 'd5bm_1')
