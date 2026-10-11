@@ -1142,3 +1142,6 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
 - **(b) residual-test set (S3a-D5-opt):** the 3 D14 subjects × (rest, MSIT+), plus those 3 worst recordings. The script `revision/stage3/stage3_d5b_test_set.m` writes `<outRoot>/stage3/d5b/test_set.csv`.
 - No EEG data are read.
 
+## S3a-INF-1-amend2-appr · 2026-10-11 · S3a-INF-1-amend2 approved
+
+- Amirhossein approved S3a-INF-1-amend2 (timeouts for job types other than D5-0) on 2026-10-11. The entry is unchanged (its hash is recorded in batches `d5asm_1` and `d4e4_1`).
