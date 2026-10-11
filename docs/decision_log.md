@@ -1126,3 +1126,19 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
 - **Not changed:** `stage3_d5_0_line_noise.m` (historical record of the 2026-10-04 run) and the burn-in outputs.
 - **Tests (synthetic):** `test_stage3_d5_0_linepeaks.m` (the old function as reference); `test_stage3_d5_0_compute_one.m` and `test_stage3_d5_0_assemble.m` now exclude the peak frequency from the comparison with the unchanged script and check that it is bounded.
 
+## S3a-D14-draw · 2026-10-11 · D14 test subjects: stratified seeded draw (rule fixed before the draw)
+
+- **Decision:** Amirhossein, 2026-10-11, on Claude's proposal. D14 is defined in `revision_plan.md` (Stage 3a decision list) as difficult cases: "sub-25, an Fz-interpolated subject, a 'drift' subject 08/09/15; up to 3". The choice is made by a seeded draw within these categories, because the D5-0 R2 ranking had already been seen when the rule was set.
+- **Source lists (fixed here, before the draw):**
+  - **Fixed:** sub-25.
+  - **Fz-interpolated in v1 (rest):** the subjects whose `interpolatedKeyChans` contains the token `Fz` in `<outRoot>/stage0/rest_markers_in_clean_sets.csv` (output of S0-2; SHA-256 `723035ec24cbca8a7383420f4629c6a2ea0f16a921326d4e31b6f527c650469f`), sub-25 excluded. These are 14 subjects (as in S0-2): sub-04, sub-05, sub-08, sub-10, sub-12, sub-13, sub-15, sub-19, sub-28, sub-29, sub-31, sub-32, sub-33, sub-41.
+  - **Drift:** sub-08, sub-09, sub-15.
+- **Procedure** (`revision/stage3/stage3_d14_draw.m`, committed with this entry before it runs; run once):
+  1. `rng(1, 'twister')` (seed 1, set by Amirhossein);
+  2. `pF = randperm(14)` over the Fz list in the order above; Fz subject = `list(pF(1))`;
+  3. `pD = randperm(3)` over the drift list in the order above; drift subject = the first of `drift(pD)` that is not the Fz subject (sub-08 and sub-15 are in both lists).
+  - The script checks the file hash and both lists, refuses to run if a result exists, and writes `<outRoot>/stage3/d14_draw/d14_draw_result.txt`.
+- **Then the R2 replacement step (S3a-D5-0 R2):** the worst set is the 3 highest-ranked recordings by severity S (from `d5asm_1`; R2 uses `excess_db`, which S3a-D5-0-amend2 does not affect) whose subject is not a D14 subject.
+- **(b) residual-test set (S3a-D5-opt):** the 3 D14 subjects × (rest, MSIT+), plus those 3 worst recordings. The script `revision/stage3/stage3_d5b_test_set.m` writes `<outRoot>/stage3/d5b/test_set.csv`.
+- No EEG data are read.
+
