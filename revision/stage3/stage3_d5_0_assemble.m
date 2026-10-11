@@ -100,7 +100,7 @@ ids = ["S3a-D5-0", "S3a-D5-opt", "S3a-INF-1"];            % S3a-D5-0-amend1: the
 for id = ids
     runInfo(end+1, 1) = add('SHA-256 of the %s log entry as read by this script: %s', id, stage3_log_entry(logFile, char(id)));
 end
-for id = ["S3a-D5-0-amend1", "S3a-D5-0-exc", "S3a-D5-0-asm"]   % additionally recorded (not required by amend1)
+for id = ["S3a-D5-0-amend1", "S3a-D5-0-exc", "S3a-D5-0-asm", "S3a-D5-0-amend2"]   % additionally recorded (not required by amend1)
     runInfo(end+1, 1) = add('SHA-256 of the %s log entry (additional): %s', id, stage3_log_entry(logFile, char(id)));
 end
 runInfo(end+1, 1) = add('Recordings: %d; chunk %d s; grid f0 +/- 3 Hz in 0.1 Hz steps', numel(recs), chunkLen);
@@ -157,7 +157,7 @@ rulesByRecording.rec_order = [];
 
 rules = struct('r1_max_excess_db', r1max, 'r1_absent', r1max < 3, 'r1_report_only', true, ...
     'r2_ranking', sev, 'r2_d14_step_pending', true, 'r3_max_abs_offset_hz', r3max, 'r3_reexamine', r3max > 0.5);
-entryHashes = runInfo(1:6);
+entryHashes = runInfo(1:7);
 sourceBatch = struct('dir', string(srcDir), 'batchJsonSha256', string(sha256File(fullfile(srcDir, 'batch.json'))));
 save(outFile, 'TC', 'TR', 'rulesByRecording', 'rules', 'runInfo', 'entryHashes', 'aaGainDb', 'sources', 'sourceBatch');
 fprintf('%s\n', runInfo{:});

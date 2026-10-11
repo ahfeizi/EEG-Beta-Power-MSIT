@@ -4,7 +4,7 @@ function stage3_d5_0_compute_one(params, outFile)
 %   params: subject, task (e.g. 'sub-06', 'msit'), rawRoot (the verified raw copy), manifest
 %   (verified_manifest.tsv), blockTable (<outRoot>/stage3/d4e_block_clipping.csv).
 %   The arithmetic is copied unchanged from stage3_d5_0_line_noise.m: lines 26-40 (grid, window,
-%   DFT matrix) and 52-105 (one recording); linePeaks is stage3_d5_0_linepeaks.m (verbatim copy of
+%   DFT matrix) and 52-105 (one recording); linePeaks is stage3_d5_0_linepeaks.m (since S3a-D5-0-amend2 with a guarded refinement; before that a verbatim copy of
 %   the script's local function), numChannels is the script's local function. Changes: no loop
 %   and no cache check, raw files checked against the manifest before reading, output to outFile.
 %   Equivalence with the script on synthetic data: revision/stage3/test_stage3_d5_0_compute_one.m.

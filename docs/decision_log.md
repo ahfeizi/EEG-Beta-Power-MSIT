@@ -1112,3 +1112,17 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - test P's predictor-neighbour check and test N's 5th-percentile rule are evaluated in the assembly; positions for the subjects without a `.bvct` (sub-12, sub-23, sub-24) are decided there.
 - **Synthetic test:** `revision/stage3/test_stage3_d4e4_compute_one.m` (spatially mixed synthetic sources; a swapped-label recording; an exactly interpolated channel).
 - **Outputs:** per recording, the canonical `out.mat` in the batch folder. The CSVs named in S3a-D4e-4-test are written by the assembly.
+
+## S3a-D5-0-amend2 · 2026-10-11 · linePeaks: guarded parabolic refinement (bug fix); D5-0 recomputed as d5_0_2
+
+- **Decision:** Amirhossein, 2026-10-11.
+- **How the bug was found.** In the D5-0 assembly `d5asm_1` (S3a-D5-0-asm), R3 reported impossible peak offsets: the maximum |peak − f₀| was 1426.7 Hz, although the grid spans only f₀ ± 3 Hz. 13878 of the 42000 kept-channel × f₀ rows had an offset > 0.55 Hz. A valid parabolic refinement can move the peak by at most half a grid step (0.05 Hz) from a bin within ± 0.5 Hz, so it cannot exceed 0.55 Hz.
+- **Cause.** In `stage3_d5_0_linepeaks.m` (and in the local `linePeaks` of `stage3_d5_0_line_noise.m`), the peak bin is the maximum of the *excess* within ± 0.5 Hz. The refinement `delta = 0.5 (ym − yp) / den` uses the dB values of that bin and its neighbours. It was guarded only against `den == 0`. When the bin is not a local maximum of the dB values (e.g. at the edge of the ± 0.5 Hz window on a rising slope), `den` is ≥ 0 or near 0 and `delta` is unbounded.
+- **Fix (standard guard).** The refinement is applied only if the parabola is concave (`den < 0`) and its vertex lies within half a grid step (`|delta| ≤ 0.5`); otherwise the grid peak is reported.
+- **Affected:** the peak frequencies only, i.e. per-chunk `fpk` and the chunk-averaged `peak_freq_hz`, hence R3 and the drift descriptives (`freq_sd_det_hz`, `freq_range_det_hz`, `max_abs_offset_det_hz`).
+- **Unaffected:** `excess_db` and the amplitude (they use the grid peak bin), hence R1, R2 and `amp_cv`.
+- **Recompute.** The stored D5-0 outputs hold per-chunk excess, frequency and amplitude, and only the *chunk-averaged* spectrum (`avgP`). The per-chunk spectra needed to recompute per-chunk peaks are not stored, so D5-0 is recomputed as A/B batch `d5_0_2` (the same 84-job list and job function). It is followed by the assembly `d5asm_2` from `d5_0_2`, exported to `<outRoot>/stage3/d5_0_v2/`. The `d5asm_1` outputs in `<outRoot>/stage3/d5_0/` are kept unchanged.
+- **Check when `d5_0_2` is done:** `res.exc`, `res.amp`, `res.avgP` and `nChunk` must equal those of `d5_0_1` for every recording, and R1/R2 must equal `d5asm_1`.
+- **Not changed:** `stage3_d5_0_line_noise.m` (historical record of the 2026-10-04 run) and the burn-in outputs.
+- **Tests (synthetic):** `test_stage3_d5_0_linepeaks.m` (the old function as reference); `test_stage3_d5_0_compute_one.m` and `test_stage3_d5_0_assemble.m` now exclude the peak frequency from the comparison with the unchanged script and check that it is bounded.
+

@@ -10,6 +10,9 @@ function ok = test_stage3_d5_0_compute_one(workDir, step, labelsTsv)
 %                    points at workDir;
 %     step 'fn'      run stage3_d5_0_compute_one on the same files;
 %     step 'compare' isequaln on every variable (res, F, d, f0s, nChunk) and stage3_compare 'd5_0';
+%                    since S3a-D5-0-amend2 res.fpk is excluded (the guarded refinement differs from the
+%                    unchanged script by design): values that differ must be grid points within
+%                    f0 +/- 0.55 Hz, every other field must be identical;
 %     step 'all'     data + script + fn + compare in this process.
 %   Two synthetic recordings: sub-01_rest (labels in channels.tsv order) and sub-13_rest (two labels
 %   swapped in the .vhdr, as in the real sub-13; exercises the S3a-D5-0-exc branch). The pre-exc
@@ -140,13 +143,19 @@ pairs(end+1, :) = {fullfile(workDir, 'out_preexc', 'stage3', 'd5_0', 'per_record
                    fullfile(workDir, 'fn', [recs{1} '.mat']), ['pre-exc reconstruction vs fn, ' recs{1}]};
 for k = 1:size(pairs, 1)
     A = load(pairs{k, 1}); B = load(pairs{k, 2});
+    fA = A.res.fpk; fB = B.res.fpk; A.res.fpk = []; B.res.fpk = [];   % S3a-D5-0-amend2
     eqAll = isequaln(A, B) && isequal(sort(fieldnames(A)), sort(fieldnames(B)));
     j = fullfile(workDir, sprintf('compare_%d.json', k));
     stage3_compare(pairs{k, 1}, pairs{k, 2}, 'd5_0', j);
     c = jsondecode(fileread(j));
-    fprintf('%-45s isequaln(all variables) = %d; stage3_compare d5_0 equal = %d; nChunk = %s\n', ...
-        pairs{k, 3}, eqAll, c.equal, mat2str(A.nChunk));
-    ok = ok && eqAll && c.equal;
+    cmpOthers = all([c.fields(~strcmp({c.fields.field}, 'res.fpk')).equal]);
+    f0 = reshape([50 100 150 200], 1, 4);
+    dif = fA ~= fB & ~(isnan(fA) & isnan(fB));
+    off = fB - f0;                                         % fn output, chunks x f0 broadcast
+    okF = all(abs(off(:)) <= 0.55 + 1e-9 | isnan(off(:))) && all(abs(off(dif) * 10 - round(off(dif) * 10)) < 1e-6);
+    fprintf('%-45s isequaln(all but res.fpk) = %d; stage3_compare d5_0 fields but res.fpk equal = %d; fpk: %d of %d differ, all on the grid and within +/-0.55 Hz: %d; nChunk = %s\n', ...
+        pairs{k, 3}, eqAll, cmpOthers, sum(dif(:)), numel(dif), okF, mat2str(A.nChunk));
+    ok = ok && eqAll && cmpOthers && okF;
 end
 if ok, fprintf('EQUIVALENCE PASS\n'); else, fprintf('EQUIVALENCE FAIL\n'); end
 end

@@ -7,7 +7,10 @@ function ok = test_stage3_d5_0_assemble(workDir, labelsTsv)
 %      outputs in its per_recording cache, so it only assembles.
 %   3. A synthetic source batch (batch.json DONE, state files verified, with canonical paths and
 %      SHA-256) points at the same files; stage3_d5_0_assemble and stage3_d5_0_export run on it.
-%   Pass: both CSVs byte-identical; R1 values, the R2 ranking, R3, the anti-aliasing line and the
+%   Since S3a-D5-0-amend2 the column peak_freq_hz of line_noise_by_channel.csv (chunk-averaged peak,
+%   refined by stage3_d5_0_linepeaks in the job but by the old local linePeaks in the script) is
+%   excluded from the byte comparison; the per-chunk inputs are the same files for both.
+%   Pass: both CSVs byte-identical (apart from that column); R1 values, the R2 ranking, R3, the anti-aliasing line and the
 %   S3a-D5-0 entry hash equal; a tampered canonical file is refused.
 
 here = fileparts(mfilename('fullpath'));
@@ -57,8 +60,8 @@ stage3_d5_0_export(asm, sha256File(asm), exp, 'synthetic');
 ok = true;
 sd = fullfile(outRoot, 'stage3', 'd5_0');
 for f = {'line_noise_by_channel.csv', 'line_noise_by_recording.csv'}
-    e = isequal(readBytes(fullfile(sd, f{1})), readBytes(fullfile(exp, f{1})));
-    fprintf('%-30s byte-identical: %d\n', f{1}, e); ok = ok && e;
+    e = isequal(dropCol(fullfile(sd, f{1}), 'peak_freq_hz'), dropCol(fullfile(exp, f{1}), 'peak_freq_hz'));
+    fprintf('%-30s byte-identical (without peak_freq_hz): %d\n', f{1}, e); ok = ok && e;
 end
 a = splitlines(string(fileread(fullfile(sd, 'run_info.txt'))));
 b = splitlines(string(fileread(fullfile(exp, 'run_info.txt'))));
@@ -88,8 +91,17 @@ function runScript(f)
 run(f);
 end
 
-function b = readBytes(f)
-fid = fopen(f, 'r'); b = fread(fid, Inf, '*uint8'); fclose(fid);
+function L = dropCol(f, name)
+% CSV text lines with one column removed (no quoted commas occur in these files)
+L = splitlines(string(fileread(f)));
+h = split(L(1), ',');
+k = find(h == name);
+for i = 1:numel(L)
+    if strlength(L(i)) == 0, continue; end
+    c = split(L(i), ',');
+    if ~isempty(k), c(k) = []; end
+    L(i) = strjoin(c, ',');
+end
 end
 
 function writeJson(file, s)

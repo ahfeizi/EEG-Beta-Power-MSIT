@@ -1,6 +1,10 @@
 function [exc, fpk, amp] = stage3_d5_0_linepeaks(Pw, F, d, f0s, flank, pkwin)
-%STAGE3_D5_0_LINEPEAKS  Verbatim copy of the local function linePeaks of stage3_d5_0_line_noise.m
-%   (lines 180-202), shared by stage3_d5_0_compute_one.m and the burn-in (stage3_burnin.m).
+%STAGE3_D5_0_LINEPEAKS  The local function linePeaks of stage3_d5_0_line_noise.m (lines 180-202),
+%   shared by stage3_d5_0_compute_one.m and the burn-in (stage3_burnin.m), with one change
+%   (S3a-D5-0-amend2, 2026-10-11): the parabolic refinement of the peak frequency is applied only
+%   if the parabola through the peak bin and its two neighbours is concave (den < 0) and its vertex
+%   lies within half a grid step (|delta| <= 0.5); otherwise the grid peak is reported. Excess and
+%   amplitude are unchanged (they use the grid peak bin).
 % Pw: channels x 244 PSD. Per f0: straight-line floor (dB vs Hz) on the flank bins, peak excess
 % within +/-0.5 Hz, parabolic peak frequency, and line amplitude sqrt(max(P - floor, 0)).
 nCh = size(Pw, 1); exc = nan(nCh, 4); fpk = nan(nCh, 4); amp = nan(nCh, 4);
@@ -16,7 +20,8 @@ for j = 1:4
     lin = sub2ind(size(Ld), (1:nCh)', i0);
     ym = Ld(lin - nCh); y0 = Ld(lin); yp = Ld(lin + nCh);      % neighbours (columns i0-1, i0+1)
     den = ym - 2 * y0 + yp;
-    delta = 0.5 * (ym - yp) ./ den; delta(den == 0) = 0;
+    delta = 0.5 * (ym - yp) ./ den;
+    delta(~(den < 0 & abs(delta) <= 0.5)) = 0;                 % amend2: guarded refinement, else grid peak
     exc(:, j) = mx;
     fpk(:, j) = F(idx(i0))' + delta * 0.1;
     flPk = fl(sub2ind(size(fl), i0, (1:nCh)'));                % floor (dB) at the peak bin

@@ -1,13 +1,14 @@
 <#
 .SYNOPSIS
   S3a-D5-0-asm export: writes line_noise_by_channel.csv, line_noise_by_recording.csv,
-  line_noise_rules_by_recording.csv and run_info.txt into <OutRoot>\stage3\d5_0\ from the verified
+  line_noise_rules_by_recording.csv and run_info.txt into <OutRoot>\stage3\<OutSubdir>\ (default d5_0) from the verified
   canonical output of a finished D5-0 assembly batch (stage3_d5_0_export.m; never overwrites).
 .EXAMPLE
   powershell -NoProfile -ExecutionPolicy Bypass -File Export-Stage3D50Assembly.ps1 -BatchId d5asm_1
 #>
 param(
     [Parameter(Mandatory = $true)][string]$BatchId,
+    [string]$OutSubdir = 'd5_0',                           # S3a-D5-0-amend2: d5asm_2 exports to d5_0_v2
     [string]$Config
 )
 $ErrorActionPreference = 'Stop'
@@ -21,7 +22,7 @@ $jobs = @($b.jobs)
 if ($jobs.Count -ne 1 -or $jobs[0].func -ne 'stage3_d5_0_assemble') { throw "$BatchId is not a D5-0 assembly batch" }
 $st = Read-Json (Join-Path $bd "state\$($jobs[0].id).json")
 if ($st.status -ne 'verified') { throw "$BatchId $($jobs[0].id): status $($st.status) (export needs verified)" }
-$outDir = Join-Path $cfg.OutRoot 'stage3\d5_0'
+$outDir = Join-Path (Join-Path $cfg.OutRoot 'stage3') $OutSubdir
 $stage3 = (Resolve-Path (Join-Path $PSScriptRoot '..\stage3')).Path
 $log = Join-Path $bd 'export.log'
 $cmd = "addpath('$stage3'); stage3_d5_0_export('$($st.canonical.path)', '$($st.canonical.sha256)', '$outDir', '$BatchId')"
