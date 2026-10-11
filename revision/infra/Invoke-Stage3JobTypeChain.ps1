@@ -10,10 +10,11 @@
   powershell -NoProfile -ExecutionPolicy Bypass -File Invoke-Stage3JobTypeChain.ps1 -Type d5_0_asm -Name d5asm -TimingJobs d5_0_asm_d5_0_1 -BatchId d5asm_1
 #>
 param(
-    [Parameter(Mandatory = $true)][ValidateSet('d4e4', 'd5_0_asm')][string]$Type,
+    [Parameter(Mandatory = $true)][ValidateSet('d4e4', 'd5_0_asm', 'd4e4_asm', 'd5b')][string]$Type,
     [Parameter(Mandatory = $true)][string]$Name,
     [Parameter(Mandatory = $true)][string]$TimingJobs,      # comma-separated job ids of the full list
     [Parameter(Mandatory = $true)][string]$BatchId,
+    [string]$SourceBatch,                                  # assembly types: the batch to assemble (default of New-Stage3JobList)
     [string]$Config,
     [switch]$SkipPrechecksForTest                          # synthetic tests only (the runner refuses it without TestMode)
 )
@@ -43,7 +44,9 @@ Say "chain $Name start (pid $PID): type $Type, timing $TimingJobs, batch $BatchI
 # 1. full job list
 $jl = Join-Path $runs "jobs_$Name.json"
 if (-not (Test-Path $jl)) {
-    & (Join-Path $PSScriptRoot 'New-Stage3JobList.ps1') -Type $Type -Out $jl -Config $Config | Out-Host
+    $jla = @{ Type = $Type; Out = $jl; Config = $Config }
+    if ($SourceBatch) { $jla.SourceBatch = $SourceBatch }
+    & (Join-Path $PSScriptRoot 'New-Stage3JobList.ps1') @jla | Out-Host
     Say "job list written: $jl ($((Read-JsonArray $jl).Count) jobs)"
 }
 $all = Read-JsonArray $jl                                   # already an array (do not wrap in @())

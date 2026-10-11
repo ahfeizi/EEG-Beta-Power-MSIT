@@ -1145,3 +1145,22 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
 ## S3a-INF-1-amend2-appr · 2026-10-11 · S3a-INF-1-amend2 approved
 
 - Amirhossein approved S3a-INF-1-amend2 (timeouts for job types other than D5-0) on 2026-10-11. The entry is unchanged (its hash is recorded in batches `d5asm_1` and `d4e4_1`).
+
+## S3a-D4e-4-asm · 2026-10-11 · D4e-4 test: decision rules applied from the verified d4e4_1 outputs (A/B job)
+
+- **Status:** implementation of the S3a-D4e-4-test rules. Requested by Amirhossein on 2026-10-11, with the instruction that no label is changed until he confirms. **The D4e-4 stop stays in force until then.**
+- **Inputs:** the canonical `out.mat` of the 84 recordings of batch `d4e4_1` (84/84 verified), each hash-checked against its state file. For the predictor check, the subjects' `.bvct`, checked against the manifest.
+- **Job function** `revision/stage3/stage3_d4e4_assemble.m`, export `stage3_d4e4_export.m`. Run as an A/B batch `d4e4asm_1` via `Invoke-Stage3JobTypeChain.ps1` (timing run, then batch; S3a-INF-1-amend2). Synthetic test: `test_stage3_d4e4_assemble.m`.
+- **Gap in S3a-D4e-4-test, and how it is filled (flagged for Amirhossein).** The entry defines the reference as "s(U) for every unaffected label U (identical under both hypotheses)". The parenthesis holds only for unaffected labels none of whose k neighbours is affected: the score uses the neighbours' columns, which differ between the hypotheses. Two variants are therefore computed and reported:
+  - **A (primary):** unaffected labels with no affected label among their k neighbours. For these, s_vhdr = s_tsv (asserted), as the entry states.
+  - **B (sensitivity):** all unaffected labels, scored under each hypothesis separately, giving a percentile per hypothesis.
+- **Further details** (the entry is silent on them):
+  - 5th percentile = MATLAB `prctile(x, 5)` (default method).
+  - H "meets the rule" in a recording if (i) and (ii) of the entry hold.
+  - Per subject, H is supported if exactly H meets the rule in both rest and MSIT+, with the same pattern in both; otherwise ambiguous.
+  - k = 6 is primary; k = 4 and 8 are sensitivity.
+- **Test P predictor check:** for each near-perfectly predicted channel, the number of its 6 largest standardised weights whose labels are among the channel's 6 nearest labels (subject's `.bvct`, digitised list). For sub-12, sub-23 and sub-24 (no `.bvct`) the count is NaN: the position source for them is Amirhossein's decision, still pending. sub-13/41/42 are evaluated under both labellings.
+- **Outputs** (`<outRoot>/stage3/d4e4_test/`; never overwritten):
+  - `neighbour_scores.csv`, `rank_predictability_by_recording.csv`, `predictability_by_channel.csv` (as named in S3a-D4e-4-test);
+  - `test_n_by_recording.csv`, `test_n_decisions.csv`, `near_perfect_predictors.csv`, `run_info.txt`.
+- Outcome-blind: only the stored 1–10 Hz time-domain statistics are read.
