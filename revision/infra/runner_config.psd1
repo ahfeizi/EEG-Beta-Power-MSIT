@@ -20,7 +20,7 @@
     StepSeeds     = @{}
 
     # ---- gates between jobs (S3a-INF-1 sec. 6; thermal monitoring removed by S3a-INF-1-amend1)
-    CooldownS               = 120                       # fixed cool-down before every job
+    CooldownS               = 30                        # fixed cool-down before every job (S3a-D5b-cooldown; was 120)
     PollS                   = 2
     ProcessorStateMaxPct    = 85                        # AC and DC, pre-check 2 (S3a-INF-1 sec. 6, ladder rule)
     HardwareChangeNotBefore = '2026-10-06T19:40:46'     # S3a-HW-1: paste replaced before the ladder's first row

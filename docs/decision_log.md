@@ -1251,3 +1251,11 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - sub-42: the 35 labels at positions 93–127.
   - None of Fz, Cz or C4 is affected. **No label is changed until Amirhossein confirms.**
 - **Test P, for the D6 review:** sub-28 (rest and MSIT+) has 10 deficient dimensions and 16 near-perfectly predicted channels. Their 6 largest predictors are not their spatial neighbours (0 of 6 for 15 channels, 1 of 6 for one), so this is not consistent with interpolation from neighbours. No recording was exported average-referenced.
+
+## S3a-D5b-cooldown · 2026-10-12 · CooldownS = 30 s for all subsequent batches
+
+- **Decision:** Amirhossein, 2026-10-12.
+- **Change:** `CooldownS` in `revision/infra/runner_config.psd1` goes from 120 s to 30 s for every batch started after this entry; the first is `d4e4asm_2`. Earlier batches keep the configuration recorded in their fingerprints and summaries (runner config SHA-256).
+- **Reason (Amirhossein):** the cool-down was introduced for thermal reasons (S3a-INF-1 §6). Temperature is ruled out as the cause of the crashes.
+- **Monitoring kept:** the crash rate per job-hour stays reported in every batch summary (`Write-Stage3Summary.ps1`, S3a-INF-1-amend1).
+- The cost estimate in S3a-D5b-amend1 assumed 120 s. It is not recomputed here.
