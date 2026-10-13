@@ -5,9 +5,11 @@ function ok = test_stage3_d5a_compute_one(workDir, labelsTsv)
 %   at 50/100/150/200 Hz; sub-91: the same noise without lines; raw boundaries at 30 and 57.5 s).
 %   Pass: notchA is required; with a = 3 the lines are removed (q95 after < 3 dB); four kernels of order
 %   826, cascade gain <= -40 dB at every f0, transition band [a - df, a] = [1.002, 3] Hz, flank band
-%   flagged as inside it; two runs content-identical (stage3_compare 'all'). Criterion: twin matched by
-%   task, rel_q95 = q95 - null q95, pass iff rel_q95 < 3 dB, decision text with hashes; a null with
-%   another notch width is refused; no overwrite. The PASS/FAIL outcome itself is printed, not asserted.
+%   flagged as inside it; two runs content-identical (stage3_compare 'all'). Residual (S3a-D5a-crit2):
+%   with identical before/after flanks it equals the stage3_d5_0_linepeaks excess (the (b) measure); the
+%   line recording after (a) passes C1 (residual q95 < 3 dB) and so does the noise twin; criterion table
+%   matches an independent computation, null reported by task, decision PASS with hashes; a null with
+%   another notch width is refused; no overwrite.
 
 here = fileparts(mfilename('fullpath'));
 addpath(here, fullfile(fileparts(fileparts(here)), 'revision', 'infra'));
@@ -48,19 +50,23 @@ mkdir(fullfile(workDir, 'crit'));
 out = fullfile(workDir, 'crit', 'criterion_a.csv');
 T = stage3_d5a_criterion(realB, nul, bm, out);
 dec = fileread(fullfile(workDir, 'crit', 'criterion_a_decision.txt'));
-q90 = R.afterCellQuantilesDb(3); q91 = R0.afterCellQuantilesDb(3);
+dd = (-30:30) / 10; fk = abs(dd) >= 1.5 - 1e-9 & abs(dd) <= 3 + 1e-9; pw = find(abs(dd) <= 0.5 + 1e-9);
+FF = reshape([50 100 150 200] + dd', 1, []);
+Px = R.avgPBefore; eq = stage3_d5a_residual(Px, Px, dd, fk, pw);
+c5 = max(abs(eq - stage3_d5_0_linepeaks(Px, FF, dd, [50 100 150 200], fk, pw)), [], 'all') < 1e-10;
+e90 = stage3_d5a_residual(R.avgPBefore, R.avgPAfter, dd, fk, pw); e90 = e90(k, :);
+e91 = stage3_d5a_residual(R0.avgPBefore, R0.avgPAfter, dd, fk, pw); e91 = e91(R0.kept, :);
 i90 = T.subject == "sub-90"; i91 = T.subject == "sub-91";
-c4 = height(T) == 2 && all(T.null_twin == "sub-91 rest") && abs(T.rel_q95_db(i90) - (q90 - q91)) < 1e-12 ...
-    && T.rel_q95_db(i91) == 0 && isequal(T.recording_pass, T.rel_q95_db < 3) && all(T.a_passes == all(T.recording_pass)) ...
-    && abs(T.a_minus_b_q95_db(i90) - (q90 - 3.5)) < 1e-12 && contains(dec, 'R-b2 not evaluated') ...
-    && contains(dec, 'SHA-256') && contains(dec, 'DECISION: ') && contains(dec, 'a = 3');
-% Observed, not asserted (S3a-D5a-width-issue): with a = 3 the +/-0.5 Hz peak window lies in the flat stop
-% band, so line and noise are attenuated alike and sub-90's rel_q95 stays near its excess before (a).
-fprintf('sub-90 rel_q95 = %.2f dB (excess before: median %.1f dB)\n', T.rel_q95_db(i90), median(R.excessBeforeDb(k, :), 'all'));
+c4 = height(T) == 2 && all(T.null_twin == "sub-91 rest") && abs(T.residual_q95_db(i90) - quantile(e90(:), 0.95)) < 1e-12 ...
+    && abs(T.null_residual_q95_db(i90) - quantile(e91(:), 0.95)) < 1e-12 && T.residual_cells_gt3db(i90) == sum(e90(:) > 3) ...
+    && all(T.recording_pass) && all(T.a_passes) && abs(T.a_minus_b_q95_db(i90) - (T.residual_q95_db(i90) - 3.5)) < 1e-12 ...
+    && contains(dec, 'R-b2 not evaluated') && contains(dec, 'SHA-256') && contains(dec, 'DECISION: PASS') && contains(dec, 'a = 3');
+fprintf('residual == (b) excess when flanks unchanged %d; sub-90 residual q95 %.2f dB (max %.2f); null residual q95 %.2f dB\n', ...
+    c5, T.residual_q95_db(i90), T.residual_max_db(i90), T.null_residual_q95_db(i90));
 mix = false; try, stage3_d5a_criterion(realB, nul2, bm, fullfile(workDir, 'crit', 'mix.csv')); catch ME, mix = contains(ME.message, 'notch width'); end
 noOver = false; try, stage3_d5a_criterion(realB, nul, bm, out); catch, noOver = true; end
-fprintf('criterion: twin by task, rel_q95, decision text %d; mixed widths refused %d; no overwrite %d\n', c4, mix, noOver);
-ok = ok0 && c1 && c2 && c3 && c4 && mix && noOver;
+fprintf('criterion: residual table, null by task, decision PASS %d; mixed widths refused %d; no overwrite %d\n', c4, mix, noOver);
+ok = ok0 && c1 && c2 && c3 && c4 && c5 && mix && noOver;
 if ok, fprintf('D5A SYNTHETIC PASS\n'); else, fprintf('D5A SYNTHETIC FAIL\n'); end
 end
 

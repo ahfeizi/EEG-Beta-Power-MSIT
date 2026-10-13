@@ -1587,3 +1587,23 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   1. **Residual relative to the floor before filtering** (recommended). Per cell: 10·log10(max over ±0.5 Hz of the after-PSD / the before-spectrum's flank floor at those bins). C1 is then q95 < 3 dB, i.e. the residual line is at most 3 dB above the unfiltered noise floor. This is the quantity that matters downstream, and under (b) (flanks unchanged, R-b2) it equals the current measure. It is computable from the stored `avgPBefore`/`avgPAfter`, so the job is unchanged. The null twins can be reported alongside (expected strongly negative).
   2. Keep the relative criterion with a = 2. It works for a = 2, but it contradicts the margin argument for a = 3.
   3. Run as pre-registered. The outcome is FAIL by construction.
+
+## S3a-D5a-crit2 · 2026-10-13 · (a) criterion: residual against the pre-filter floor, C1 q95 < 3 dB (replaces the relative criterion before any (a) run)
+
+- **Decision:** Amirhossein, 2026-10-13, option 1 of S3a-D5a-width-issue. No (a) output exists yet: neither `d5a3null_1` nor `d5a3_1` has run.
+- **Why (Amirhossein):** the relative criterion (S3a-D5a-test-amend1) was a flawed proposal. A wide notch attenuates the line and the in-window noise equally, so their ratio cannot improve.
+- **Residual**, per kept channel × f₀ (`stage3_d5a_residual.m`): 10·log10(the post-filter PSD at each bin within f₀ ± 0.5 Hz ÷ the pre-filter flank floor at that bin), and its maximum over the window.
+  - The pre-filter floor is the straight line (dB vs Hz) fitted on the flank bins of the chunk-averaged PSD **before** (a), exactly as in `stage3_d5_0_linepeaks`.
+  - When the flanks are unchanged this equals the (b) measure, so (a) and (b) are judged by the same yardstick. The synthetic test checks this: maximum difference < 1e-10 dB.
+- **C1:** per recording, the q95 of the residual over the kept-channel × f₀ cells < 3 dB (MATLAB `quantile`, as in `stage3_d5b_rules`).
+- **Null:** reported alongside, descriptively. It is the residual q95 and maximum of the twin with the same task, from (a) at the same width run on the noise twins (`d5a3null_1`).
+- **R-b2 stays unevaluated for (a).** Its spectral footprint is known from the kernel: control-band gain 0.015 dB at a = 3 (S3a-D5a-diag-result).
+- **Pre-registered rule** (unchanged from S3a-D5a-width):
+  - pass on all 9 → final D5 decision "(a), a = 3, all recordings", then stop;
+  - otherwise → stop and report to Amirhossein.
+  - `criterion_a_decision.txt` holds the verdict, the per-recording table and every input/output hash. The dated entry is added by hand after that file has been verified.
+- **Implementation:**
+  - `stage3_d5a_criterion.m` rewritten: residual q95/max/cells > 3 dB/q99, the null by task, and as descriptives the old post-floor excess, the flank change, (b) q95 and (a) − (b).
+  - `stage3_d5a_residual.m` (new).
+  - `test_stage3_d5a_compute_one.m` updated (PASS). With a = 3, the synthetic line recording sub-90 has residual q95 = −32.81 dB (C1 passes), and the noise twin −55.37 dB.
+- **Run:** `Invoke-Stage3D5aTest.ps1 -NotchA 3`, started detached after this commit. Batches: null `d5a3null_1`, then real `d5a3_1`. Output: `<outRoot>/stage3/d5a_a3/`.
