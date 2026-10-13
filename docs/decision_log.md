@@ -1441,3 +1441,31 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - `d4e_lost_stimuli.csv` `f972e44754044d11cb2c67ee100111ccd48aa23ba0c0822e61d39c497a677034`
   - `d4e_trials_by_condition.csv` `eb4b126f6cd165fef2975335632b5238cfbb5cba6761e478903e8deece31bdf8`
   - `raw_boundaries.csv` `203f8391d87d5d2a34ba7330b79f087fd2f811e42fa5ea02f8c1d48591051e1b`
+
+## S3a-D5a-test · 2026-10-13 · Residual test of fallback (a): definition and rule (implemented, NOT started: S3a-D5a-R3 stop)
+
+- **Requested by Amirhossein (2026-10-13).** The residual test of (a) on the 9 test-set recordings (S3a-D14-draw-result), with the C1 definition of S3a-D5b-rb1 and the R-b2 definition of S3a-D5-opt, as an A/B job type in short units.
+- **Status: not started.** S3a-D5a-R3 ended in STOP (p99 > 0.2 Hz at 100 and 200 Hz). This test applies the ±2 Hz notch, which R3 did not confirm. It starts only on Amirhossein's word: `Invoke-Stage3D5aTest.ps1`, batch `d5a_1`.
+- **Job** (`stage3_d5a_compute_one.m`, job-list type `d5a`, recording types `d5a_rest`/`d5a_msit`, compare kind `all`):
+  - The same pipeline steps and measure as the (b) job: `pop_loadbv`, D4e blocks, high-pass 0.5 Hz, `pop_resample` to 500 Hz, measure before, **(a)**, measure after.
+  - (a) is the four `pop_eegfiltnew` band-stop filters f₀ ± 2 Hz, `revfilt` 1, in cascade at 500 Hz (S3a-D5-opt). firfilt filters each raw segment separately.
+  - Rules come from `stage3_d5b_rules.m`, identical to (b).
+- **Unit size.** One job per whole recording (16-channel groups inside the job), so 9 jobs. Reasons:
+  - FIR filtering is fast. A D5-0 job (load, high-pass, resample and measure of a whole recording) took about 107 s on average in `d5_0_2`, cool-downs excluded. (a) adds four FIR passes at 500 Hz.
+  - The timing runs measure the real duration: sub-15 MSIT+ and sub-14 rest, the longest test recording per task, 3 replicas each, under the 30-min `AcceptanceTimeoutS`. If a unit is too long, the chain stops at the timing step and nothing is half-done.
+  - No merge step is needed.
+- **Blocks (a choice made here, flagged).** The blocks come from `<outRoot>/stage3/d5a_d4e/d4e_block_clipping.csv`, i.e. H = 6.637 s with the notches (S3a-D5a-H), not from the current H = 3.333 s table.
+  - Reason: with H = 3.333 s, chunks near a segment edge could contain notch edge effects (3.304 s) that the pipeline would clip under (a).
+  - The (b) test used the H = 3.333 s blocks, so chunk positions differ slightly between (a) and (b) in clipped blocks.
+- **R-b2 vs the notch transition band.** The flank band (1.5 ≤ |f − f₀| ≤ 3 Hz) overlaps the transition band of every (a) kernel (0 ≤ |f − f₀| ≤ 1.998 Hz; order 826, Hamming).
+  - The job computes this from the kernels actually applied (`res.notch.flankInTransition`).
+  - In the synthetic test the cascade gain over the flank bins is −1.151 to +0.018 dB.
+  - **As instructed, R-b2 is then not evaluated; the test uses C1 only.** R-b2 values are still reported descriptively.
+- **Per recording:** C1 = 95th percentile of the after-excess over the kept-channel × f₀ cells < 3 dB. `recording_pass` = C1, plus R-b2 only where the flank band is not in a transition band.
+- **Decision rule:**
+  - (a) passes on all 9 recordings → adopt (a) for all recordings.
+  - Otherwise → stop and report to Amirhossein. No further automatic step.
+- **Descriptive:** maximum excess, cells > 3 dB, q99, maximum |flank change|, flank gain range, and per recording the (b) q95 (from `d5bm_1`) and (a) − (b).
+- **Caveat for interpretation (flagged, no rule changed).** The notch also attenuates the noise inside ±0.5 Hz, while the flank floor (1.5–3 Hz) is nearly untouched. So after (a) the excess of noise alone is strongly negative: in the synthetic noise-only recording, q95 after (a) = −13.64 dB (under (b) the noise baseline stays near 0 dB, S3a-D5b-null). C1 < 3 dB under (a) therefore tolerates a residual about 16 dB above the local noise. It is less strict than the same 3 dB under (b), and the (a) vs (b) q95 comparison is not like-for-like.
+- **Outputs:** `<outRoot>/stage3/d5a/criterion_a.csv` and `criterion_a_decision.txt` (`stage3_d5a_criterion.m`, never overwritten). Driver log: `<EegOutRoot>/stage3_runs/d5a_test.log`.
+- **Synthetic test:** `test_stage3_d5a_compute_one.m` (PASS). It checks lines removed (q95 < 3 dB), 4 kernels of order 826, gain ≤ −40 dB at every f₀, flank in transition, two runs identical, the criterion (C1 only, (a) − (b), decision text) and no overwrite.
