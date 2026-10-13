@@ -1469,3 +1469,23 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
 - **Caveat for interpretation (flagged, no rule changed).** The notch also attenuates the noise inside ±0.5 Hz, while the flank floor (1.5–3 Hz) is nearly untouched. So after (a) the excess of noise alone is strongly negative: in the synthetic noise-only recording, q95 after (a) = −13.64 dB (under (b) the noise baseline stays near 0 dB, S3a-D5b-null). C1 < 3 dB under (a) therefore tolerates a residual about 16 dB above the local noise. It is less strict than the same 3 dB under (b), and the (a) vs (b) q95 comparison is not like-for-like.
 - **Outputs:** `<outRoot>/stage3/d5a/criterion_a.csv` and `criterion_a_decision.txt` (`stage3_d5a_criterion.m`, never overwritten). Driver log: `<EegOutRoot>/stage3_runs/d5a_test.log`.
 - **Synthetic test:** `test_stage3_d5a_compute_one.m` (PASS). It checks lines removed (q95 < 3 dB), 4 kernels of order 826, gain ≤ −40 dB at every f₀, flank in transition, two runs identical, the criterion (C1 only, (a) − (b), decision text) and no overwrite.
+
+## S3a-D5a-diag · 2026-10-13 · Diagnostics before choosing the notch width (descriptive, no decision)
+
+- **Requested by Amirhossein (2026-10-13), after accepting the S3a-D5a-R3 stop.** His observation: 50 and 150 Hz behave like mains drift; 100 and 200 Hz do not, and their p99 sits at the ±0.5 Hz window edge. Even harmonics cannot drift independently of the fundamental, so the R3 measure may be mis-specified there. **No decision is taken from these diagnostics.** All frequencies involved lie outside 13–30 and 55–95 Hz.
+- **(a) Line spectra** (`stage3_d5a_diag.m`, from the verified `d5_0_2` outputs, hash-checked; finest resolution available: chunk-averaged PSD `res.avgP` on the 0.1 Hz grid, f₀ ± 3 Hz, 10 s Hann windows, so the true resolution is the Hann mainlobe, not 0.1 Hz):
+  - Per kept channel and f₀, the spectrum in dB relative to that channel's mean flank level (mean PSD over 1.5 ≤ |f − f₀| ≤ 3 Hz).
+  - Per recording: the median over kept channels.
+  - Across the 84 recordings, per bin: the mean (grand average) and the 10/25/50/75/90th percentiles (`prctile`). One figure per f₀.
+  - Table per f₀, from the grand-average and median spectra:
+    - main peak: grid bin and parabolic vertex;
+    - −3 dB width: contiguous bins ≥ peak − 3 dB, linear interpolation at the crossings;
+    - second peaks: any other local maximum ≥ 3 dB above the flank level and ≥ 3 dB prominent.
+  - Per recording: the main-peak offset, the number of recordings with |peak offset| > 0.5 Hz, and those with a second peak.
+- **(b) The (b) failure by f₀:** from the verified `d5bm_1` merge, per recording × f₀, the number of kept-channel cells with after-excess ≥ 3 dB (of 125).
+- **(c) Notch width of (a), from the actual kernels:** `pop_eegfiltnew(locutoff f₀ − a, hicutoff f₀ + a, revfilt 1)` at 500 Hz, with a = 2, 3, 4, 5, 6 Hz.
+  - Under the default design the transition width stays 2 Hz for 2 ≤ a ≤ 8 (`pop_eegfiltnew.m`: df = min(max(a/4, 2), a)). Its value is reported from each kernel's order.
+  - So a = 2, 3, 4 are the nominal "±a Hz" settings (the current one is a = 2), and a = 4, 5, 6 give a stop band of half-width a − 2 = 2, 3, 4 Hz. Amirhossein's "stop-band half-width 2, 3, 4 Hz" is covered under either reading.
+  - Per a and f₀: order, transition width, the cascade gain at f₀ + {0, 0.2, 0.5, 1, 1.5, 2, 3, 4} Hz, the half-widths with ≥ 33 dB and ≥ 20 dB attenuation and the −6 dB half-width (0.001 Hz grid), and the largest |gain| in 13–30 and 55–95 Hz (filter response only, no data).
+  - H = high-pass + anti-aliasing + 4 notch half-lengths (`stage3_filter_halflengths(S, 'a', a)`). The stimulus loss comes from the unchanged D4e survey, run once per a into `<outRoot>/stage3/d5a_diag/notch_a<a>/`.
+- **Outputs:** `<outRoot>/stage3/d5a_diag/` (never overwritten).
