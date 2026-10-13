@@ -1315,3 +1315,43 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - `neighbour_scores.csv`, `predictability_by_channel.csv`, `rank_predictability_by_recording.csv`, `test_n_by_recording.csv` and `test_n_decisions.csv` are byte-identical to `d4e4_test/`.
   - `near_perfect_predictors.csv` has the same 57 rows and differs only by the new `position_source` column, which is `bvct` in every row.
   - Test N stays ambiguous for sub-13, sub-41 and sub-42 (S3a-D4e-4-asm-amend1).
+
+## S3a-D5b-result · 2026-10-13 · Option (b) REJECTED under the pre-registered rule; fallback (a) applies
+
+- **Decision:** Amirhossein, 2026-10-13, applying S3a-D5b-rb1 as committed. No threshold is changed.
+- **Chain:** `Invoke-Stage3D5bNullThenReal.ps1`, started 2026-10-12 02:55:08 and finished 2026-10-13 18:40:34 (`<EegOutRoot>/stage3_runs/d5b_chain.log`).
+- **Null (validity condition met).** At 10:21:11 the chain logged that C1 is valid and started `-Stage real -Approved`.
+
+  | twin | chunks | cells | q95 (dB) | max (dB) | cells > 3 dB |
+  |---|---|---|---|---|---|
+  | sub-15 MSIT+ | 93 | 500 | 0.520 | 0.927 | 0 |
+  | sub-25 rest | 58 | 500 | 0.834 | 1.114 | 0 |
+
+- **Real test:** 3 of 9 recordings pass C1 and 6 fail. sub-14 rest also fails R-b2. Hence `b_passes` = 0.
+
+  | recording | role | chunks | q95 (dB) | C1 (< 3) | max \|flank change\| (dB) | R-b2 (≤ 0.5) | pass | max (dB) | cells > 3 dB |
+  |---|---|---|---|---|---|---|---|---|---|
+  | sub-06 rest | R2 worst | 60 | 3.427 | 0 | 0.165 | 1 | 0 | 6.900 | 40 |
+  | sub-08 MSIT+ | D14 | 99 | 2.232 | 1 | 0.251 | 1 | 1 | 4.711 | 3 |
+  | sub-08 rest | D14 | 60 | 3.239 | 0 | 0.224 | 1 | 0 | 4.182 | 41 |
+  | sub-14 rest | R2 worst | 60 | 3.831 | 0 | 2.165 | 0 | 0 | 6.941 | 63 |
+  | sub-15 MSIT+ | D14 | 93 | 3.918 | 0 | 0.042 | 1 | 0 | 7.849 | 43 |
+  | sub-15 rest | D14 | 60 | 2.464 | 1 | 0.043 | 1 | 1 | 6.124 | 9 |
+  | sub-22 rest | R2 worst | 59 | 3.337 | 0 | 0.342 | 1 | 0 | 4.232 | 44 |
+  | sub-25 MSIT+ | D14 | 96 | 2.655 | 1 | 0.189 | 1 | 1 | 4.338 | 10 |
+  | sub-25 rest | D14 | 58 | 3.922 | 0 | 0.187 | 1 | 0 | 6.637 | 67 |
+
+  - Values are rounded to 3 decimals for display; the exact values are in the CSV.
+  - Max and cells > 3 dB are descriptives only (S3a-D5b-rb1).
+- **Consequence (S3a-D5-opt):** option (b) is rejected and fallback (a) applies. Before (a) is applied to all recordings, two checks run: S3a-D5a-R3 and S3a-D5a-test.
+- **Files (SHA-256):**
+  - `<outRoot>/stage3/d5b/test_set.csv` `cb07216a04d7620ce8174ad8f6c2eb088fbc14e59b0c28b2aaa44549cab9bcd2`
+  - `<outRoot>/stage3/d5b/null_set.csv` `7c8f94c0dfe4792d5fc78b51413dfdfc4a73b9833b00f0c89af69d66b79236dd`
+  - `<outRoot>/stage3/d5b/null_criterion.csv` `b8c044d54bff4bcf63aeceda84110a6bb98cfe041439323fa401954bcd0d1717`
+  - `<outRoot>/stage3/d5b/criterion_real_vs_null.csv` `865bfd3a2a5d18600a6602e8e5e92b169050e5c2c0e72a19baac6efe59375f12`
+  - merge `d5bnullm_1`, canonical `out.mat` `40520c7097b10349ae231392547adc57dae61112c1ff30effb3b8e41292dc270`
+  - merge `d5bm_1`, canonical `out.mat` `9a01d098a963f03828c10ac8d185fedb81fb1bd0a501a1641dc840d96326ea3e`
+- **Batches** (all DONE, every job verified):
+  - `d5bnullu_1`: 65 units, 130 attempts, 0 crashes, 5.552 job-hours;
+  - `d5bu_1`: 261 units, 535 attempts, 13 crashed, 26.057 job-hours, **0.499 crashes per job-hour**;
+  - merges `d5bnullm_1` and `d5bm_1`: 2 attempts each, 0 crashes.
