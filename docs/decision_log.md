@@ -1406,3 +1406,14 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - `r3_by_recording.csv` `87bd2410594978ae708c7527e1236cc5b7007365cde060f94d0bda49a422d033`
   - `r3_harmonic.csv` `205403527ed645774d9eb2ddd3eafd06ed4f6aee19db0baf6ea00e1a023161cc`
   - `r3_decision.txt` `704721abaff1bfe95a1ce5004d6c3e4121a968cb7b9ba7f795ca32dfba46d0f9`
+
+## S3a-D5a-H · 2026-10-13 · Data cost of (a) under D4e from the pipeline code (definition, before computing)
+
+- **Requested by Amirhossein (2026-10-13):** verify, from the actual pipeline code, how many stimuli H = 6.637 s loses. The figure of 2026-10-04 (35 stimuli; 32 blocks clipped; 16 block-first; 17 subjects) came from a hand-edited `filter_halflengths.csv` and is unverified (S3a-D5-opt).
+- **Procedure:**
+  1. `stage3_filter_halflengths(S, lineNoise)`: new optional argument. `'none'` is the default, and the output is unchanged for existing callers. `'a'` adds the four band-stop kernels of option (a), designed by `pop_eegfiltnew` at `S.fsOut` exactly as in S3a-D5-opt, one row each.
+  2. `stage3_compute_H_d5a.m` writes `<outRoot>/stage3/d5a_d4e/filter_halflengths.csv` (refuses to overwrite).
+  3. The committed survey `stage3_raw_boundaries_d4e.py` runs unchanged with `out_dir = <outRoot>/stage3/d5a_d4e`. It reads only `.vhdr`, `.vmrk` and `*_events.tsv` text files from the verified D: copy.
+- **Expected H** = 3.333 + 4 × 0.826 = 6.637 s if the installed design matches S3a-D5-opt. Whatever the code returns is used and reported.
+- **Reported:** H; blocks and blocks clipped; stimuli outside their clipped block (total, block-first, number of subjects); checks; and the minimum number of kept pre-stimulus trials per condition. The D4e outputs in `<outRoot>/stage3/` (H = 3.333 s) are not touched.
+- **This is a verification, not a decision.** The S3a-D5a-R3 stop stands: (a) is not adopted, and the notch width is open.

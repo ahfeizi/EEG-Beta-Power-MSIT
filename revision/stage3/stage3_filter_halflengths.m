@@ -1,5 +1,7 @@
-function [H, T] = stage3_filter_halflengths(S)
+function [H, T] = stage3_filter_halflengths(S, lineNoise)
 %STAGE3_FILTER_HALFLENGTHS  Filter-edge half-length H for decision S3a-D4e.
+%   [H, T] = stage3_filter_halflengths(S, lineNoise): lineNoise = 'none' (default; D5 not adopted) or
+%   'a' (S3a-D5a-H: the four band-stop filters of D5 option (a), S3a-D5-opt, designed at S.fsOut).
 %   [H, T] = stage3_filter_halflengths(S) designs every filter that the pipeline applies to the
 %   continuous data before cropping, with the installed EEGLAB code and the parameters in S
 %   (from stage3_params), and returns:
@@ -43,7 +45,24 @@ name(end+1, 1) = "anti-aliasing (pop_resample, Kaiser)";
 fsDesign(end+1, 1) = p * S.fsRaw;                % the kernel runs at the upsampled rate p*fsRaw
 order(end+1, 1) = m; half(end+1, 1) = m / 2;
 
-% 3) Line-noise removal (S3a-D5): to be added once D5 is decided.
+% 3) Line-noise removal (S3a-D5). Option (a) on request (S3a-D5a-H); otherwise not added, since D5
+%    is not yet adopted.
+if nargin < 2 || isempty(lineNoise), lineNoise = 'none'; end
+switch lineNoise
+    case 'none'
+    case 'a'
+        Z = eeg_emptyset;                          % zero-valued dataset at the notch rate (500 Hz)
+        Z.srate = S.fsOut; Z.nbchan = 1; Z.trials = 1; Z.pnts = 120 * S.fsOut;
+        Z.data = zeros(1, Z.pnts); Z.xmin = 0; Z.xmax = (Z.pnts - 1) / Z.srate;
+        Z = eeg_checkset(Z);
+        for f0 = [50 100 150 200]
+            [~, ~, b] = pop_eegfiltnew(Z, 'locutoff', f0 - 2, 'hicutoff', f0 + 2, 'revfilt', 1);
+            name(end+1, 1) = sprintf("band-stop %d +/- 2 Hz (D5 option (a), pop_eegfiltnew)", f0); %#ok<AGROW>
+            fsDesign(end+1, 1) = S.fsOut; order(end+1, 1) = numel(b) - 1; half(end+1, 1) = (numel(b) - 1) / 2; %#ok<AGROW>
+        end
+    otherwise
+        error('stage3:lineNoise', 'unknown lineNoise option %s', lineNoise);
+end
 
 T = table(name, fsDesign, order, half, half ./ fsDesign, ...
     'VariableNames', {'filter', 'design_rate_hz', 'order', 'half_samples', 'half_s'});
