@@ -1370,3 +1370,39 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - Percentiles use MATLAB `prctile` (default method).
 - **Decision rule.** If the p99 of |offset| over the qualifying cells is ≤ 0.2 Hz at **every** f₀, the ±2 Hz notch of (a) is kept: within ±0.2 Hz, (a) attenuates by ≥ 33 dB (S3a-D5-opt, table A: −33.146 dB at 50 − 0.2 Hz, −33.041 dB at 100 − 0.2 Hz). Otherwise the work stops and is reported to Amirhossein.
 - **Script:** `revision/stage3/stage3_d5a_r3_recheck.m`, writing to `<outRoot>/stage3/d5a_r3/` (`r3_pooled.csv`, `r3_by_recording.csv`, `r3_harmonic.csv`, `r3_decision.txt`; never overwritten). Synthetic test: `test_stage3_d5a_r3_recheck.m` (PASS). No EEG data is read.
+
+## S3a-D5a-R3-result · 2026-10-13 · R3 re-examination: p99 > 0.2 Hz at 100 and 200 Hz → STOP, reported to Amirhossein
+
+- **Run:** `stage3_d5a_r3_recheck.m` at commit `a9f2414`, on `d5_0_2` (84 recordings; batch.json SHA-256 `4f5a0a32…1831f`). Output: `<outRoot>/stage3/d5a_r3/`.
+- **Pooled, per f₀** (cells = chunk × kept channel × f₀ with chunk excess ≥ 10 dB; |offset| in Hz):
+
+  | f₀ | cells | recordings | median | p95 | p99 | max | p99 ≤ 0.2 |
+  |---|---|---|---|---|---|---|---|
+  | 50 | 744011 | 84 | 0.0136 | 0.0381 | 0.0593 | 0.5500 | 1 |
+  | 100 | 347292 | 84 | 0.0283 | 0.2672 | 0.5000 | 0.5500 | 0 |
+  | 150 | 704846 | 84 | 0.0359 | 0.1000 | 0.1585 | 0.5500 | 1 |
+  | 200 | 221893 | 84 | 0.0601 | 0.4138 | 0.5164 | 0.5500 | 0 |
+
+- **DECISION (rule of S3a-D5a-R3): STOP and report to Amirhossein.** The ±2 Hz notch is **not** confirmed. No further step that assumes it runs automatically.
+- **Per recording** (`r3_by_recording.csv`):
+  - Every recording has qualifying cells at every f₀ (minimum 4915 / 451 / 3634 / 456 cells at 50 / 100 / 150 / 200 Hz).
+  - Recordings with p99 > 0.2 Hz: 7 at 50 Hz, 69 at 100 Hz, 27 at 150 Hz and 84 at 200 Hz.
+  - Median per-recording p99: 0.050, 0.499, 0.122 and 0.519 Hz.
+  - So the failure at 100 and 200 Hz is not driven by a few recordings.
+- **Harmonic scaling** (descriptive, `r3_harmonic.csv`; per recording × chunk, median signed offset over channels qualifying at both f₀):
+
+  | k | recording-chunks | slope through origin | Pearson r | median ratio (n) |
+  |---|---|---|---|---|
+  | 2 (100 Hz) | 6528 | 0.681 | 0.100 | 1.725 (36) |
+  | 3 (150 Hz) | 6592 | 2.741 | 0.959 | 2.974 (15) |
+  | 4 (200 Hz) | 6509 | 1.825 | 0.204 | 2.604 (37) |
+
+  - At 150 Hz the offsets track 3 × the 50 Hz offset, as true mains drift predicts.
+  - At 100 and 200 Hz they do not (r = 0.10 and 0.20).
+  - The pooled p99 at 100 Hz is exactly 0.5000 Hz, i.e. a grid point at the edge of the ±0.5 Hz peak window (where the S3a-D5-0-amend2 guard reports the grid peak).
+  - **Not interpreted here** (flagged): whether the even-harmonic offsets reflect real line-frequency excursions, a broad or split line, or peak picking at the window edge is open. It is Amirhossein's question.
+- **Files (SHA-256):**
+  - `r3_pooled.csv` `ccb58c1ca6087732fd49bfebe057a06a3db208b3f1a0204d323fe4db1d1f9943`
+  - `r3_by_recording.csv` `87bd2410594978ae708c7527e1236cc5b7007365cde060f94d0bda49a422d033`
+  - `r3_harmonic.csv` `205403527ed645774d9eb2ddd3eafd06ed4f6aee19db0baf6ea00e1a023161cc`
+  - `r3_decision.txt` `704721abaff1bfe95a1ce5004d6c3e4121a968cb7b9ba7f795ca32dfba46d0f9`
