@@ -1546,3 +1546,44 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - **Do not start the (a) test until Amirhossein has chosen the notch width** after S3a-D5a-diag.
 - **Operationalization (Claude; flagged for Amirhossein).** Each real recording is compared with the null twin of the **same task**: rest recordings with sub-25 rest, MSIT+ recordings with sub-15 MSIT+. There is one twin per task (S3a-D5b-null-amend1).
 - **Implementation pending:** the width parameter of `stage3_d5a_compute_one`, the null batch on the twins, and the relative criterion in `stage3_d5a_criterion`. These will be committed together with the width decision, before any (a) run. `Invoke-Stage3D5aTest.ps1` must not be run until then.
+
+## S3a-D5a-width · 2026-10-13 · R3 resolved; notch width a = 3 Hz; twins matched by task; pre-registered rule of the (a) test
+
+- **Decisions (Amirhossein, 2026-10-13).**
+- **R3 re-examination resolved.** The diagnostics (S3a-D5a-diag-result) show the lines sit at f₀: peak offset ≤ 0.004 Hz, no second peak. The large 100/200 Hz "offsets" of S3a-D5a-R3-result came from weak lines (grand average 5.7 / 2.5 dB), where the maximum falls on noise. Real drift appears only at 50 and 150 Hz; the largest p99 there is 0.159 Hz, at 150 Hz.
+- **Notch width: a = 3**, i.e. edges f₀ ± 3 Hz at 50, 100, 150 and 200 Hz (from `notch_profiles.csv`, `notch_loss.csv`):
+
+  | a (Hz) | ≥ 33 dB half-width | ≥ 20 dB | −6 dB | max \|gain\| 55–95 Hz | H (s) | stimuli lost |
+  |---|---|---|---|---|---|---|
+  | 2 | 0.20 | 0.45 | 1.00 | 0.015 dB | 6.637 | 35 |
+  | **3** | **1.19** | **1.45** | **2.00** | **0.015 dB** | **6.637** | **35** |
+  | 4 | 2.19 | 2.45 | 3.00 | 0.007 dB | 6.637 | 35 |
+
+  - **Rationale (Amirhossein):** a = 3 is the smallest a with a clear margin (about 1 Hz) over the observed drift. H, the stimulus loss and the control-band gain are the same as for a = 2. a ≥ 4 would remove more of the 100–200 Hz content kept for the EMG index (D4b), without need.
+- **Twin matching by task approved:** rest ↔ sub-25 rest, MSIT+ ↔ sub-15 MSIT+ (S3a-D5a-test-amend1).
+- **Pre-registered rule of the (a) test** (criterion of S3a-D5a-test-amend1: rel_q95 = real q95 − null q95 < 3 dB; R-b2 not evaluated):
+  - pass on all 9 recordings → final D5 decision "(a), a = 3, all recordings", then stop;
+  - otherwise → stop and report to Amirhossein.
+  - The driver writes the verdict, the per-recording table and the input/output hashes to `criterion_a_decision.txt`. The dated entry is added by hand after that file has been verified against the outputs.
+- **Implementation:**
+  - `stage3_d5a_compute_one` takes a required `notchA`. It also corrects the transition-band overlap check: the band is [a − df, a], not [0, df]. That only coincided for a = 2, and the conclusion is unchanged (overlap = yes).
+  - `New-Stage3JobList -Type d5a -NotchA`, with `-TestSet` and the twin overrides.
+  - `stage3_d5a_criterion(real, null, bMerge, out)`, using the relative criterion.
+  - `Invoke-Stage3D5aTest.ps1 -NotchA 3`: null batch `d5a3null_1`, real batch `d5a3_1`, then the criterion, written to `<outRoot>/stage3/d5a_a3/`.
+  - Synthetic test: `test_stage3_d5a_compute_one.m` (PASS).
+
+## S3a-D5a-width-issue · 2026-10-13 · With a = 3 the relative criterion cannot pass where a line was present; (a) test NOT started
+
+- **Found in the synthetic test, before any real (a) run.** sub-90 has stationary lines (median excess before 24.8 dB); sub-91 is the same noise without lines. After (a) with a = 3:
+  - sub-90 q95 = −27.64 dB and the sub-91 null q95 = −50.18 dB, so **rel_q95 = 22.54 dB → FAIL**;
+  - yet the cascade attenuates the lines by 57.8–60.8 dB at f₀.
+- **Mechanism.** The excess is the maximum over |f − f₀| ≤ 0.5 Hz relative to the straight-line floor on the flanks (1.5–3 Hz).
+  - With a = 3, the whole ±0.5 Hz window lies in the flat stop band (≥ 33 dB over ±1.19 Hz). There, line and noise are attenuated alike, so their ratio, which the excess measures relative to the null, hardly changes.
+  - The flanks lie in the transition band (gain −18.1 to −0.015 dB).
+  - So rel_q95 approximately reproduces the excess **before** filtering, and every recording with a line ≥ about 3 dB fails, whatever the filter removes.
+  - With a = 2 the window extended past the deep part of the notch, and the same synthetic case gave rel_q95 = 0 (S3a-D5a-test).
+- **Consequence.** Run as pre-registered, the (a) test would fail by construction on the 9 test recordings, which all have lines (S3a-D5-0 R1). **The test was not started.** The decision returns to Amirhossein. No rule has been changed.
+- **Options (Claude; not decided):**
+  1. **Residual relative to the floor before filtering** (recommended). Per cell: 10·log10(max over ±0.5 Hz of the after-PSD / the before-spectrum's flank floor at those bins). C1 is then q95 < 3 dB, i.e. the residual line is at most 3 dB above the unfiltered noise floor. This is the quantity that matters downstream, and under (b) (flanks unchanged, R-b2) it equals the current measure. It is computable from the stored `avgPBefore`/`avgPAfter`, so the job is unchanged. The null twins can be reported alongside (expected strongly negative).
+  2. Keep the relative criterion with a = 2. It works for a = 2, but it contradicts the margin argument for a = 3.
+  3. Run as pre-registered. The outcome is FAIL by construction.

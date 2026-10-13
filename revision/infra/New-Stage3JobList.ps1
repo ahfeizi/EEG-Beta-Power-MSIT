@@ -15,7 +15,8 @@
     d5bmerge  the single merge job (stage3_d5b_merge) over -SourceBatch; recording type d5bmerge
     d5a       residual test of fallback (a) (S3a-D5a-test): one job per row of <outRoot>\stage3\d5b\test_set.csv
               (whole recording, 16-channel groups), blocks from <outRoot>\stage3\d5a_d4e\d4e_block_clipping.csv
-              (H with the notches, S3a-D5a-H); recording types d5a_rest / d5a_msit
+              (H with the notches, S3a-D5a-H); -NotchA required; -TestSet and the overrides as for d5bu (noise twins,
+              S3a-D5a-test-amend1); recording types d5a_rest / d5a_msit
   -Only restricts the list (e.g. -Only sub-06_msit for acceptance or timing).
   A job = id, func (MATLAB job function), params (job-specific), recType (selects the timeout),
   compareKind (stage3_compare kind). See README.md, "Adding a job type".
@@ -30,6 +31,7 @@ param(
     [string]$ManifestOverride,
     [int]$UnitRest = 6,
     [int]$UnitMsit = 3,
+    [double]$NotchA = 0,                 # d5a: band edges f0 +/- NotchA Hz (required, S3a-D5a-width)
     [string]$Config
 )
 $ErrorActionPreference = 'Stop'
@@ -66,12 +68,17 @@ if ($Type -eq 'd5_0_asm') {
         }
     }
 } elseif ($Type -eq 'd5a') {
+    if ($NotchA -le 0) { throw 'd5a needs -NotchA (S3a-D5a-width)' }
     $bt = Join-Path $cfg.OutRoot 'stage3\d5a_d4e\d4e_block_clipping.csv'
     if (-not (Test-Path -LiteralPath $bt)) { throw "missing $bt (S3a-D5a-H)" }
-    foreach ($r in @(Import-Csv -LiteralPath (Join-Path $cfg.OutRoot 'stage3\d5b\test_set.csv'))) {
+    if (-not $TestSet) { $TestSet = Join-Path $cfg.OutRoot 'stage3\d5b\test_set.csv' }
+    foreach ($r in @(Import-Csv -LiteralPath $TestSet)) {
         $id = "$($r.subject)_$($r.task)"
         if ($Only -and $Only -notcontains $id) { continue }
-        $jobs += [ordered]@{ id = $id; func = 'stage3_d5a_compute_one'; params = [ordered]@{ subject = $r.subject; task = $r.task; role = $r.role; blockTable = $bt }; recType = "d5a_$($r.task)"; compareKind = 'all' }
+        $pr = [ordered]@{ subject = $r.subject; task = $r.task; role = $r.role; notchA = $NotchA; blockTable = $bt }
+        if ($RawRootOverride) { $pr.rawRoot = $RawRootOverride }
+        if ($ManifestOverride) { $pr.manifest = $ManifestOverride }
+        $jobs += [ordered]@{ id = $id; func = 'stage3_d5a_compute_one'; params = $pr; recType = "d5a_$($r.task)"; compareKind = 'all' }
     }
 } elseif ($Type -eq 'd5b') {
     foreach ($r in @(Import-Csv -LiteralPath (Join-Path $cfg.OutRoot 'stage3\d5b\test_set.csv'))) {

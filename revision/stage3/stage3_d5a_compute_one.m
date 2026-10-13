@@ -2,9 +2,10 @@ function stage3_d5a_compute_one(params, outFile)
 %STAGE3_D5A_COMPUTE_ONE  Residual test of D5 fallback (a) for one recording (S3a-D5a-test), as a runner
 %   job function. The same pipeline steps and MEASURE as stage3_d5b_compute_one (S3a-D5b), with the
 %   CleanLine step replaced by option (a) of S3a-D5-opt: four FIR band-stop filters in cascade,
-%   pop_eegfiltnew(EEG, 'locutoff', f0-2, 'hicutoff', f0+2, 'revfilt', 1) for f0 = 50, 100, 150, 200 Hz,
+%   pop_eegfiltnew(EEG, 'locutoff', f0-a, 'hicutoff', f0+a, 'revfilt', 1) for f0 = 50, 100, 150, 200 Hz,
 %   applied at 500 Hz after resampling (firfilt filters each raw segment separately).
-%   params: subject, task, role, plus rawRoot, manifest, blockTable (common); optional groupSize (default 16).
+%   params: subject, task, role, notchA (band edges f0 +/- notchA Hz; REQUIRED, S3a-D5a-width: 3), plus rawRoot,
+%   manifest, blockTable (common); optional groupSize (default 16).
 %   Per channel group: pop_loadbv -> D4e block extents as events -> high-pass 0.5 Hz at 1000 Hz (D4a) ->
 %   pop_resample to 500 Hz (D4c) -> MEASURE BEFORE -> (a) -> MEASURE AFTER.
 %   Rule inputs: stage3_d5b_rules (identical to (b)): per kept channel and f0, chunk-averaged excess
@@ -45,6 +46,8 @@ stage3_check_input(ctFile, rawRoot, params.manifest);
 ct = readtable(ctFile, 'FileType', 'text', 'Delimiter', '\t', 'TextType', 'string');
 tok = regexp(txt, 'NumberOfChannels=(\d+)', 'tokens', 'once'); nCh = str2double(tok{1});
 assert(height(ct) == nCh, 'channels.tsv and .vhdr disagree on the channel count');
+assert(isfield(params, 'notchA') && isscalar(params.notchA) && params.notchA > 0, 'params.notchA is required');
+notchA = double(params.notchA);
 gs = 16; if isfield(params, 'groupSize') && ~isempty(params.groupSize), gs = double(params.groupSize); end
 groups = arrayfun(@(g) g:min(g + gs - 1, nCh), 1:gs:nCh, 'uni', 0);
 bk = B(B.subject == s & B.task == task, :);
@@ -80,7 +83,7 @@ for gi = 1:numel(groups)
     [pB, ~] = measure(double(EEG.data), starts);
     kg = cell(1, 4);
     for j = 1:4                                            % option (a): four band-stop filters in cascade
-        [EEG, ~, kg{j}] = pop_eegfiltnew(EEG, 'locutoff', f0s(j) - 2, 'hicutoff', f0s(j) + 2, 'revfilt', 1);
+        [EEG, ~, kg{j}] = pop_eegfiltnew(EEG, 'locutoff', f0s(j) - notchA, 'hicutoff', f0s(j) + notchA, 'revfilt', 1);
     end
     if isempty(kern), kern = kg; else, assert(isequal(kern, kg), 'notch kernels differ between groups'); end
     [pA, excChunkA] = measure(double(EEG.data), starts);
@@ -98,8 +101,9 @@ order = cellfun(@numel, kern) - 1;
 df = 3.3 ./ order * S.fsOut;                               % Hamming transition width (pop_eegfiltnew.m)
 casc = 1; for j = 1:4, casc = conv(casc, kern{j}); end
 gainDb = 20 * log10(abs(freqz(casc, 1, F, S.fsOut)));      % f0 +/- 3 Hz grid only
-flankInTransition = any(1.5 < df - 1e-9);                  % transition band: 0 <= |f - f0| <= df
-notch = struct('order', order, 'transitionWidthHz', df, 'cascadeGainDbOnGrid', gainDb, ...
+trans = [max(notchA - df, 0); notchA * ones(1, 4)];       % transition band: notchA - df <= |f - f0| <= notchA
+flankInTransition = any(trans(1, :) < 3 - 1e-9 & trans(2, :) > 1.5 + 1e-9);   % overlaps the flank band 1.5-3 Hz
+notch = struct('a', notchA, 'transitionBandHz', trans, 'order', order, 'transitionWidthHz', df, 'cascadeGainDbOnGrid', gainDb, ...
     'flankBandHz', [1.5 3], 'flankInTransition', flankInTransition, ...
     'flankGainDbRange', [min(gainDb(repmat(flank, 1, 4))) max(gainDb(repmat(flank, 1, 4)))]);
 
