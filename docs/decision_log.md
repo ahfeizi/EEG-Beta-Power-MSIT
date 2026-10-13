@@ -1417,3 +1417,27 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
 - **Expected H** = 3.333 + 4 × 0.826 = 6.637 s if the installed design matches S3a-D5-opt. Whatever the code returns is used and reported.
 - **Reported:** H; blocks and blocks clipped; stimuli outside their clipped block (total, block-first, number of subjects); checks; and the minimum number of kept pre-stimulus trials per condition. The D4e outputs in `<outRoot>/stage3/` (H = 3.333 s) are not touched.
 - **This is a verification, not a decision.** The S3a-D5a-R3 stop stands: (a) is not adopted, and the notch width is open.
+
+## S3a-D5a-H-result · 2026-10-13 · H = 6.637 s from the code; 35 stimuli lost (verified)
+
+- **Run:** commit `24f9843`. `stage3_compute_H_d5a.m` (MATLAB R2022b, installed EEGLAB/firfilt), then `python -I stage3_raw_boundaries_d4e.py D:\Revision_Raw\ds004621 <outRoot>/stage3/d5a_d4e`.
+- **H from the code:** high-pass 3.300 s + anti-aliasing 0.033 s + 4 band-stop filters × 0.826 s (order 826 each, designed at 500 Hz) = **6.637 s** (6637 raw samples). This matches S3a-D5-opt.
+- **Data cost** (`d4e_lost_stimuli.csv`, `d4e_block_clipping.csv` in `d5a_d4e/`), against the current D4e outputs without D5 (H = 3.333 s):
+
+  | | H = 3.333 s (current) | H = 6.637 s (with (a)) |
+  |---|---|---|
+  | blocks (of 588) clipped | 13 | 32 |
+  | stimuli outside their clipped block | 4 | **35** |
+  | of which block-first | 1 | 16 |
+  | of which first-in-mini-block | 1 | 18 |
+  | subjects affected | 3 | 17 |
+
+  - **The 2026-10-04 figure (35 stimuli; 16 block-first; 17 subjects; 32 blocks) is now verified from the code.**
+  - No block has a STOP status (`unchanged` 556, `CLIPPED` 32). The survey reports the same 3 D3e-3 discards (sub-07, sub-24, sub-37 MSIT+) as checks.
+  - Minimum kept pre-stimulus trials per condition (not block-first; over 42 subjects): F0 66, FS 79, 00 79, S0 68. First-in-mini-block: F0 17, FS 20, 00 22, S0 17.
+- **Files (SHA-256):**
+  - `filter_halflengths.csv` `1a925122f4161e44df894c6b60e71b8d1cea3c8f5f1d9febe18e76202ed6a541`
+  - `d4e_block_clipping.csv` `6524101f72c8c4058abcacfbbdee337b2e70ec8b8f39b336e817e446d795eec4`
+  - `d4e_lost_stimuli.csv` `f972e44754044d11cb2c67ee100111ccd48aa23ba0c0822e61d39c497a677034`
+  - `d4e_trials_by_condition.csv` `eb4b126f6cd165fef2975335632b5238cfbb5cba6761e478903e8deece31bdf8`
+  - `raw_boundaries.csv` `203f8391d87d5d2a34ba7330b79f087fd2f811e42fa5ea02f8c1d48591051e1b`
