@@ -1489,3 +1489,60 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - Per a and f₀: order, transition width, the cascade gain at f₀ + {0, 0.2, 0.5, 1, 1.5, 2, 3, 4} Hz, the half-widths with ≥ 33 dB and ≥ 20 dB attenuation and the −6 dB half-width (0.001 Hz grid), and the largest |gain| in 13–30 and 55–95 Hz (filter response only, no data).
   - H = high-pass + anti-aliasing + 4 notch half-lengths (`stage3_filter_halflengths(S, 'a', a)`). The stimulus loss comes from the unchanged D4e survey, run once per a into `<outRoot>/stage3/d5a_diag/notch_a<a>/`.
 - **Outputs:** `<outRoot>/stage3/d5a_diag/` (never overwritten).
+
+## S3a-D5a-diag-result · 2026-10-13 · Diagnostics: lines centred on f₀; 100/200 Hz weak; wider notch costs no H
+
+- **Run:** commit `2aaa79e` (`stage3_d5a_diag.m` on `d5_0_2` and `d5bm_1`; then the D4e survey per a; then `stage3_d5a_diag_loss.m`). Output: `<outRoot>/stage3/d5a_diag/`. Descriptive; no decision.
+- **(a) Line spectra** (`line_peaks.csv`; figures `spectrum_f0_<f0>.png`; dB re the mean flank level). Grand-average spectrum:
+
+  | f₀ | peak offset (vertex, Hz) | peak (dB) | −3 dB width (Hz) | second peaks |
+  |---|---|---|---|---|
+  | 50 | −0.0004 | 19.41 | 0.109 | none |
+  | 100 | −0.0004 | 5.70 | 0.246 | none |
+  | 150 | −0.0012 | 16.04 | 0.153 | none |
+  | 200 | −0.0040 | 2.53 | undefined (peak − 3 dB lies below the flank level) | none |
+
+  - The median spectrum agrees: offsets ≤ 0.004 Hz and no second peaks.
+  - **Per recording** (`line_peaks_by_recording_summary.csv`):
+    - |peak offset| > 0.5 Hz in 0 / 24 / 0 / 30 recordings at 50 / 100 / 150 / 200 Hz;
+    - −3 dB width undefined in 0 / 37 / 0 / 48 recordings;
+    - a second peak in 0 / 1 / 1 / 0 recordings (sub-08 rest, −1.5 Hz at 100 Hz; sub-41 MSIT+, +1.5 Hz at 150 Hz).
+  - The lines at 100 and 200 Hz are weak. Where a recording's line is near the flank level, its spectral maximum within ±3 Hz falls anywhere. (Fact stated; the link to R3 is Amirhossein's call.)
+- **(b) Where (b) failed** (`d5b_fail_cells.csv`; kept cells with after-excess ≥ 3 dB, of 1125 per f₀ over 9 recordings): 30 at 50 Hz, 109 at 100 Hz, 84 at 150 Hz, 97 at 200 Hz (320 in all). Per recording:
+  - sub-06 rest 4/15/11/10; sub-08 MSIT+ 3/0/0/0; sub-08 rest 1/16/2/22;
+  - sub-14 rest 7/10/31/15; sub-15 MSIT+ 1/6/28/8; sub-15 rest 2/2/0/5;
+  - sub-22 rest 5/32/1/6; sub-25 MSIT+ 2/5/0/3; sub-25 rest 5/23/11/28.
+  - So the failure is spread over 100, 150 and 200 Hz, not only the even harmonics.
+- **(c) Notch width** (`notch_profiles.csv`, `notch_profile_f0_100.png`, `notch_loss.csv`). Band edges f₀ ± a Hz, default design:
+  - Every kernel has order 826 and transition width 1.998 Hz, so **H = 6.637 s for every a**. Every a also gives the same D4e cost: 32 blocks clipped, 35 stimuli lost (16 block-first, 18 first-in-mini-block), 17 subjects, no STOP.
+  - Half-width with ≥ 33 dB attenuation (all f₀ within 0.006 Hz):
+
+    | a (Hz) | ≥ 33 dB | ≥ 20 dB | −6 dB |
+    |---|---|---|---|
+    | 2 | 0.20 | 0.45 | 1.00 |
+    | 3 | 1.19 | 1.45 | 2.00 |
+    | 4 | 2.19 | 2.45 | 3.00 |
+    | 5 | 3.19 | 3.45 | 4.00 |
+    | 6 | 4.19 | 4.45 | 5.00 |
+
+  - Largest |gain| of the cascade in 55–95 Hz: 0.015 / 0.015 / 0.007 / 0.027 / **6.04 dB** for a = 2…6. In 13–30 Hz it is ≤ 0.006 dB for every a.
+  - **a = 6 is excluded by outcome-blindness / control-band integrity:** the 50 Hz notch's passband edge reaches 56 Hz.
+- **Files (SHA-256):**
+  - `line_peaks.csv` `f8b0d5780a1fd82fe19649a2259f3d19eb5e4eae5f1be93f30fb76d1ef8e3f19`
+  - `line_peaks_by_recording.csv` `8aa657faca71aaf8cf821761bf4296430b6d3b2cdd30eb044ae3a52b8ed5b5d8`
+  - `line_peaks_by_recording_summary.csv` `fd548cc91505cd2470e75667c99f98ff6f88ca5cdfdbe81aacd03c3e429e9fd8`
+  - `d5b_fail_cells.csv` `e6fc9df49357050e25d57dd79b163d86b06f77d0c7cce96db22bee2ac170ec22`
+  - `notch_profiles.csv` `0ad8d6aa3c6a960bf3710515002dac084002062cb66c146405c19bc3288b126f`
+  - `notch_loss.csv` `7099037d659e97963dd21379d54aacd2f5957a8e44b7599f0b190cf3840de945`
+
+## S3a-D5a-test-amend1 · 2026-10-13 · (a) test: H-specific blocks approved; criterion relative to an (a) null; start after the width choice
+
+- **Decisions (Amirhossein, 2026-10-13), recorded before any (a) run:**
+  - **Blocks** come from the H-specific D4e table, as proposed in S3a-D5a-test. For a = 2…5, H = 6.637 s (S3a-D5a-diag-result), so `<outRoot>/stage3/d5a_d4e/d4e_block_clipping.csv` applies to every admissible width.
+  - **Criterion (replaces the absolute C1 for (a), which has not run).** A recording passes if real q95 − null q95 < 3 dB.
+    - The null is computed by running (a), with the chosen width, on the two noise twins of S3a-D5b-null-amend1 (`<EegOutRoot>/d5b_null`: sub-25 rest, sub-15 MSIT+). This is cheap.
+    - The reason: under (a) the absolute C1 is lenient, since the null excess is about −13.6 dB.
+  - **R-b2 is not evaluated for (a):** the flank band lies inside the notch transition band.
+  - **Do not start the (a) test until Amirhossein has chosen the notch width** after S3a-D5a-diag.
+- **Operationalization (Claude; flagged for Amirhossein).** Each real recording is compared with the null twin of the **same task**: rest recordings with sub-25 rest, MSIT+ recordings with sub-15 MSIT+. There is one twin per task (S3a-D5b-null-amend1).
+- **Implementation pending:** the width parameter of `stage3_d5a_compute_one`, the null batch on the twins, and the relative criterion in `stage3_d5a_criterion`. These will be committed together with the width decision, before any (a) run. `Invoke-Stage3D5aTest.ps1` must not be run until then.
