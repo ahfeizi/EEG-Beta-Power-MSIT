@@ -1355,3 +1355,18 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - `d5bnullu_1`: 65 units, 130 attempts, 0 crashes, 5.552 job-hours;
   - `d5bu_1`: 261 units, 535 attempts, 13 crashed, 26.057 job-hours, **0.499 crashes per job-hour**;
   - merges `d5bnullm_1` and `d5bm_1`: 2 attempts each, 0 crashes.
+
+## S3a-D5a-R3 · 2026-10-13 · R3 re-examination for fallback (a): definition and decision rule (before computing)
+
+- **Requested by Amirhossein (2026-10-13).** D5-0 R3 flagged "RE-EXAMINE notch width" (max |peak − f₀| = 0.550 Hz in `d5_0_v2`). That maximum includes chunks with excess ≥ 6 dB, where the peak estimate is dominated by noise.
+- **Cell (definition by Amirhossein, 2026-10-13, in chat):** one 10 s chunk × kept channel × f₀ whose **own** chunk excess (`res.exc`) is ≥ 10 dB.
+  - The cell's offset is |`res.fpk` − f₀|, the guarded per-chunk peak of S3a-D5-0-amend2.
+  - Source: the canonical outputs of batch `d5_0_2` (84 recordings), each hash-checked against its state file. Kept channels exclude TP9/TP10, as in `stage3_d5_0_assemble`.
+  - Rationale (Amirhossein): the notch must cover the instantaneous line frequency. Chunk-averaging hides drift; max-over-chunks includes weak (≥ 6 dB) chunks whose peak is noise-dominated.
+- **Reported:**
+  - per f₀, pooled: number of cells and of recordings, and the median, p95, p99 and maximum |offset|;
+  - per recording × f₀: number of cells, median, p99 and maximum, so that a few recordings cannot dominate unnoticed;
+  - **harmonic scaling (descriptive):** per recording × chunk, the median signed offset over the kept channels that qualify at both 50 Hz and k·50 Hz. For k = 2, 3, 4 the script gives the slope through the origin of offset(k·50) on offset(50), Pearson r, and the median ratio (where |offset(50)| ≥ 0.05 Hz). True mains drift predicts a slope of about k.
+  - Percentiles use MATLAB `prctile` (default method).
+- **Decision rule.** If the p99 of |offset| over the qualifying cells is ≤ 0.2 Hz at **every** f₀, the ±2 Hz notch of (a) is kept: within ±0.2 Hz, (a) attenuates by ≥ 33 dB (S3a-D5-opt, table A: −33.146 dB at 50 − 0.2 Hz, −33.041 dB at 100 − 0.2 Hz). Otherwise the work stops and is reported to Amirhossein.
+- **Script:** `revision/stage3/stage3_d5a_r3_recheck.m`, writing to `<outRoot>/stage3/d5a_r3/` (`r3_pooled.csv`, `r3_by_recording.csv`, `r3_harmonic.csv`, `r3_decision.txt`; never overwritten). Synthetic test: `test_stage3_d5a_r3_recheck.m` (PASS). No EEG data is read.
