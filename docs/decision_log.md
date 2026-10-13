@@ -1526,7 +1526,7 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
     | 6 | 4.19 | 4.45 | 5.00 |
 
   - Largest |gain| of the cascade in 55–95 Hz: 0.015 / 0.015 / 0.007 / 0.027 / **6.04 dB** for a = 2…6. In 13–30 Hz it is ≤ 0.006 dB for every a.
-  - **a = 6 is excluded by outcome-blindness / control-band integrity:** the 50 Hz notch's passband edge reaches 56 Hz.
+  - **Fact for the width choice (not a decision):** with a = 6 the 50 Hz notch's passband edge lies at 56 Hz, inside the 55–95 Hz control band, which changes by up to 6.04 dB.
 - **Files (SHA-256):**
   - `line_peaks.csv` `f8b0d5780a1fd82fe19649a2259f3d19eb5e4eae5f1be93f30fb76d1ef8e3f19`
   - `line_peaks_by_recording.csv` `8aa657faca71aaf8cf821761bf4296430b6d3b2cdd30eb044ae3a52b8ed5b5d8`
