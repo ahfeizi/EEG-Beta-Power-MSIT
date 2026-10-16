@@ -1734,3 +1734,71 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - Upper bound of the output: all 84 recordings, uncropped, 500 Hz, 125 channels, float32 = 44,627,213,768 × (500/1000) × (125/127) ≈ 21.96 GB. That leaves ≥ 38 GB on D:, above the 15 GB gate.
   - The runner also checks D: (≥ 15 GB + 3 × the largest replica) and C: (≥ 5 GB) before every job.
 - **Approval scope:** the `.eeg` files of the verified D: copy are read by this approved Stage 3 job (Amirhossein, 2026-10-16). A synthetic test runs first (`test_stage3_p1_compute_one.m`). The timing runs on sub-06 are the first real-data runs, and the chain stops if they fail.
+
+## S3a-D6-options · 2026-10-16 · D6 bad channels: options and trade-offs (DRAFT; nothing decided)
+
+- **Status:** drafted by Claude at Amirhossein's request (2026-10-16), while `s3p1_1` runs. **No option is chosen; Amirhossein decides.**
+- **Fixed constraint (S3a-D4 "D6 default"):** detection runs on a temporary copy low-passed at 100 Hz, and the resulting channel list is applied to the full-band data.
+- **Dependency:** S3a-D2-reopen (template vs CapTrak positions) affects every position-based method (RANSAC, spherical interpolation). It should be decided with or before D6.
+
+### Facts (sources)
+- **v1** (`legacy_v1/preprocessing/preprocess_rest_eeglab_staged_Pilot.m:266–280`): `pop_clean_rawdata` with
+  - FlatlineCriterion 5 s, ChannelCriterion 0.80 (RANSAC correlation), LineNoiseCriterion 4 SD;
+  - ASR burst 20; window rejection off; Euclidean distance;
+  - then spherical interpolation and average reference.
+  - v1 rest bad-channel counts (`Rest_Output/full_qc_summary.csv`, SHA-256 `dcfd5690…4c36a`, 42 rows): min 0, median 9, max 47; one subject with 0.
+- **Near-perfectly predicted channels** (`<outRoot>/stage3/d4e4_test_v2/near_perfect_predictors.csv`; 1 − R² from the 1–10 Hz covariance; outcome-blind):
+  - **sub-28:** the same 16 channels in rest and MSIT+, all half-position ("h", 10-5 intermediate) sites:
+    - AFF1h FFC1h FFC5h FCC3h CCP5h TPP7h PPO9h PPO5h POO1 POO2 PPO6h POO10h CPP6h CPP2h CCP4h FCC6h;
+    - 1 − R² ≤ 5.7 × 10⁻⁹, so each is an exact linear combination of the other channels;
+    - in 15 of them none of the 6 largest predictors is among the 6 nearest sites (1 of 6 for one), so they are not neighbour interpolations;
+    - 10 deficient dimensions; none is Fz, Cz or C4.
+  - Other recordings with near-perfect channels: sub-01 (rest 1, MSIT+ 2), sub-07 (2/3), sub-14 (MSIT+ 4), sub-25 (MSIT+ 5), sub-38 (MSIT+ 2), sub-40 (2/4).
+- **Ambiguous labels** (S3a-D4e-4-asm-amend1; test N ambiguous at k = 4, 6, 8 under both references):
+  - sub-13: FFT8h ↔ FCC6h; sub-41: FC5 ↔ FT9;
+  - sub-42: the 35 labels at `channels.tsv` positions 93–127 (FFC2h … AFp2), which span frontal to occipital half-position sites.
+  - None of Fz, Cz, C4, TP9, TP10 is affected. These three subjects are not in `s3p1_1`: the D4e-4 stop stays until D6/D11 decides.
+
+### 1. Detection method and thresholds
+| Option | What | For | Against |
+|---|---|---|---|
+| **1a** v1 settings | `clean_channels` via `pop_clean_rawdata`: flatline 5 s, RANSAC correlation 0.80, LineNoiseCriterion 4 SD; ASR off here (D7) | continuity with v1; deterministic (`rng('default')`, S3a-INF-1 §2); standard | the 0.80 threshold is a convention; RANSAC depends on positions (D2 open); **LineNoiseCriterion scores > 50 Hz content, so on the 100 Hz copy it uses 50–100 Hz, which contains the 55–95 Hz control band** — a channel's EMG level would influence its rejection |
+| **1b** as 1a, LineNoiseCriterion off | lines are already removed by D5 | keeps EMG content out of the channel decision (the D4 rationale) | misses channels with broadband high-frequency noise; differs from v1 |
+| **1c** clean_rawdata default 0.85 | stricter correlation | the published default | more interpolation; differs from v1 |
+| **1d** PREP-style robust set | deviation, correlation, HF noise and RANSAC, iterated with re-referencing | more criteria; widely cited | heavier; its HF-noise criterion has the same control-band issue; more parameters to pre-register |
+
+- **Sub-choice 1e — per recording vs per subject.**
+  - Detecting in rest and MSIT+ separately gives each recording its own montage.
+  - Using the union over both recordings gives the same montage in both conditions, so rest-vs-task contrasts are not confounded by different interpolations. The cost is more channels interpolated in each.
+- **Sub-choice 1f — exclusion threshold:** a subject is excluded if more than X % of channels are bad (e.g. 20 %), fixed before the run.
+
+### 2. sub-42 (35 of 125 channels with an unresolved label assignment, ~28 %)
+| Option | For | Against |
+|---|---|---|
+| **2a** exclude the subject (n = 41) | clean; no 28 % interpolation; matches Amirhossein's D6 note (S3a-D6-note-sub42) | loses one subject; report the deviation from n = 42 |
+| **2b** mark the 35 as bad and interpolate | keeps n = 42 | 28 % interpolated over a wide region is unreliable; rank 90 for ICA; topographies are largely synthetic |
+| **2c** drop the 35 without interpolating; keep the subject only for channel-specific analyses (Fz/Cz/C4 unaffected) | keeps the subject for ROI results | inconsistent montage across subjects; whole-scalp and cluster analyses need a rule for missing channels |
+| **2d** pick one labelling (.vhdr or tsv) | full data | not justified: the test was ambiguous |
+
+### 3. sub-28 (16 exact-linear-combination channels)
+| Option | For | Against |
+|---|---|---|
+| **3a** treat the 16 as bad and re-interpolate them with our method | the montage stays uniform; the dataset's unknown derivation is replaced by a documented one | 16 of 125 (12.8 %) interpolated, on top of any detected bad channels |
+| **3b** treat the 16 as missing (dropped, not interpolated) | no fabricated signal | the montage differs from the others (as in 2c) |
+| **3c** exclude the subject | simplest | the 109 other channels look like ordinary data |
+| **3d** keep them as they are | none beyond convenience | they carry no independent information; ICA and RANSAC rank issues; correlation-based detection may pass them **because** they are perfectly correlated |
+
+- **Related choice 3e:** apply the same rule (3a or 3b) to every near-perfect channel in the other six subjects. Otherwise RANSAC can declare a derived channel "good" precisely because it is a combination of others.
+
+### 4. sub-13 (FFT8h, FCC6h) and sub-41 (FC5, FT9): label pairs that may be swapped
+| Option | For | Against |
+|---|---|---|
+| **4a** mark both channels of the pair as bad and interpolate (2 channels each) | cheap; removes the ambiguity without choosing a labelling; lifts the D4e-4 stop for these subjects | 2 more interpolated channels each |
+| **4b** drop the pair without interpolating | no fabricated signal | non-uniform montage |
+| **4c** pick a labelling | full data | arbitrary (ambiguous test) |
+| **4d** exclude the subjects | — | disproportionate for 2 channels |
+
+### Follow-on consequences, whatever is chosen
+- sub-13, sub-41 and sub-42 (if kept) need part 1 run after the D4e-4 stop is lifted for them (a later batch).
+- The removed-channel list goes to `EEG.etc.stage3.removedChannels` (S3a-INF-1-setspec).
+- The ICA rank (D9) is reduced by every interpolated and every linearly dependent channel.
