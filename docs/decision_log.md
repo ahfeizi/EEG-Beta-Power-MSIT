@@ -1607,3 +1607,43 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - `stage3_d5a_residual.m` (new).
   - `test_stage3_d5a_compute_one.m` updated (PASS). With a = 3, the synthetic line recording sub-90 has residual q95 = −32.81 dB (C1 passes), and the noise twin −55.37 dB.
 - **Run:** `Invoke-Stage3D5aTest.ps1 -NotchA 3`, started detached after this commit. Batches: null `d5a3null_1`, then real `d5a3_1`. Output: `<outRoot>/stage3/d5a_a3/`.
+
+## S3a-D5-final · 2026-10-16 · FINAL D5 DECISION: (a), a = 3, all recordings (pre-registered rule of S3a-D5a-width / -crit2)
+
+- **Decision (pre-registered; rule set by Amirhossein in S3a-D5a-width and S3a-D5a-crit2):** the (a) residual test passed on all 9 test recordings. D5 is therefore **option (a): four FIR band-stop filters, edges f₀ ± 3 Hz, at 50, 100, 150 and 200 Hz, for all recordings.** Per the rule, nothing further runs automatically.
+- **Run:** `Invoke-Stage3D5aTest.ps1 -NotchA 3` at commit `29ed0c6`.
+  - Null batch `d5a3null_1` (timing `d5a3null_t_sub-25_rest`, `d5a3null_t_sub-15_msit`); real batch `d5a3_1` (timing `d5a3_t_sub-15_msit`, `d5a3_t_sub-14_rest`). All six are DONE, every job verified, and all 11 A/B comparisons equal.
+  - Timeouts: `d5a_rest` 779 s, `d5a_msit` 1563 s.
+  - Decision table written 2026-10-16 15:12:44.
+- **Interruptions, both outside the test, and both resumed with the same command:**
+  1. 2026-10-13 20:00:07: the computer was powered off from the Windows UI (System event 1074, RuntimeBroker). This happened during attempt 1 of replica R01 of `d5a3null_t_sub-25_rest`. The attempt was reset on resume (2026-10-16 10:19) and counted as a failed attempt. That batch's summary also reports 1 kernel-crash recovery: unclean reboots on 2026-10-15/16 (Kernel-Power 41) before the resume.
+  2. 2026-10-16 11:31:14: Windows closed the detached driver (pid 5412) as hung (Application events 1002 and 1001 AppHangB1, type Quiesce; the cause is unknown). This happened during replica B of sub-15 MSIT+ in `d5a3null_1`, which was redone after the resume at 12:23.
+  - In addition, a second instance started by hand at 10:22:09 was refused by the batch lock before writing anything. The "STOPPED" lines at 10:22:11 in `d5a_test.log` and `chain_d5a3null.log` come from that instance, not from the run.
+  - Batch summaries: 0 crashed attempts; 0.000 crashes per job-hour in all six batches.
+- **Result** (`<outRoot>/stage3/d5a_a3/criterion_a.csv`). Residual = max over f₀ ± 0.5 Hz of the post-filter PSD relative to the pre-filter flank floor; C1: per-recording q95 < 3 dB.
+
+  | recording | chunks | residual q95 (dB) | C1 | residual max (dB) | cells > 3 dB | null twin q95 (dB) | (b) q95 (dB) |
+  |---|---|---|---|---|---|---|---|
+  | sub-06 rest | 60 | −25.405 | 1 | −20.746 | 0 | −57.871 | 3.427 |
+  | sub-08 MSIT+ | 99 | −28.082 | 1 | −17.824 | 0 | −57.756 | 2.232 |
+  | sub-08 rest | 59 | −25.644 | 1 | −21.336 | 0 | −57.871 | 3.239 |
+  | sub-14 rest | 60 | −20.874 | 1 | −8.015 | 0 | −57.871 | 3.831 |
+  | sub-15 MSIT+ | 93 | −35.733 | 1 | −27.528 | 0 | −57.756 | 3.918 |
+  | sub-15 rest | 60 | −36.091 | 1 | −28.499 | 0 | −57.871 | 2.464 |
+  | sub-22 rest | 59 | −25.555 | 1 | −16.317 | 0 | −57.871 | 3.337 |
+  | sub-25 MSIT+ | 96 | −26.029 | 1 | −20.328 | 0 | −57.756 | 2.655 |
+  | sub-25 rest | 57 | −25.466 | 1 | −16.923 | 0 | −57.871 | 3.922 |
+
+  - Null twins (descriptive): sub-25 rest q95 −57.871 dB (max −56.813); sub-15 MSIT+ q95 −57.756 dB (max −57.108).
+  - Values are rounded for display; the exact values are in the CSV.
+  - **Note on chunk counts:** sub-08 rest has 59 and sub-25 rest 57 chunks, against 60 and 58 in the (b) test. These blocks are clipped at H = 6.637 s (S3a-D5a-test).
+- **R-b2 was not evaluated** (flank band inside the transition band in 9/9 recordings). The maximum |flank change| is 3.47–5.46 dB per recording, which is the expected transition-band attenuation of the kernel at 1.5–2 Hz from f₀. The kernel's spectral footprint outside the notches is 0.015 dB at most in 55–95 Hz and ≤ 0.006 dB in 13–30 Hz (S3a-D5a-diag-result).
+- **Verification before this entry (Claude, 2026-10-16):**
+  - `criterion_a_decision.txt` (SHA-256 `a8b97c80231a07b69fb95f3991c57f888e1c054d82f2fad7f8d86e2a6985b771`) lists the CSV hash `f6b7b59e3f67d56007eaf37f45189abf3ba7d4d8dcf8267f0e4fe6717920cfe2`, which matches the file.
+  - Both `batch.json` hashes match: real `b480cf7c…3fb10`, null `6f5b4904…ce84f`.
+  - All 11 canonical outputs match their state files and are listed.
+  - The (b) merge hash equals the one in S3a-D5b-result.
+- **What adopting (a) implies (from S3a-D5-opt; not done here):**
+  - The notches enter `stage3_filter_halflengths.m` for the pipeline, with a = 3, and H = 6.637 s. The D4e cost is verified as 35 stimuli lost, 16 of them block-first (S3a-D5a-H-result; identical for a = 3, S3a-D5a-diag-result).
+  - The pipeline's D4e block table becomes the H = 6.637 s table.
+  - These steps are left for Amirhossein's instruction.
