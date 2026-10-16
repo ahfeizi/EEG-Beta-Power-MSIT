@@ -1647,3 +1647,22 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - The notches enter `stage3_filter_halflengths.m` for the pipeline, with a = 3, and H = 6.637 s. The D4e cost is verified as 35 stimuli lost, 16 of them block-first (S3a-D5a-H-result; identical for a = 3, S3a-D5a-diag-result).
   - The pipeline's D4e block table becomes the H = 6.637 s table.
   - These steps are left for Amirhossein's instruction.
+
+## S3a-D5-integ · 2026-10-16 · D5 integrated into the pipeline: notches in H (6.637 s) and the D4e block table switched
+
+- **Requested by Amirhossein (2026-10-16), after S3a-D5-final.** The cost was approved: 35 stimuli, 32 blocks.
+- **`stage3_params.m`:** new fields `lineFreqs` = [50 100 150 200] Hz and `notchA` = 3 Hz (D5 = option (a), one `pop_eegfiltnew` band-stop f₀ ± 3 Hz per f₀, `revfilt` 1, default design, at 500 Hz, in cascade).
+- **`stage3_filter_halflengths.m`:**
+  - `lineNoise` now defaults to `'a'`, and `notchA` to `S.notchA`, so H = 3.300 + 0.033 + 4 × 0.826 = **6.637 s**.
+  - `'none'` gives the pre-D5 H of S3a-D4e (3.333 s). The scripts that predate D5 now pass their setting explicitly, so their meaning is unchanged:
+    - `stage3_verify_boundary_handling.m`: `'none'`, since it tests the high-pass and resampling only;
+    - `stage3_d5_opt_synthetic.m`: `'none'`, its pre-D5 H0;
+    - `stage3_compute_H_d5a.m`: `'a', 2`, the S3a-D5a-H setting.
+- **`stage3_compute_H.m`** now writes `<outRoot>/stage3/d4e_d5a3/filter_halflengths.csv` and refuses to overwrite. The pre-D5 `<outRoot>/stage3/filter_halflengths.csv` and the D4e outputs next to it are kept unchanged.
+- **New D4e tables:** `stage3_raw_boundaries_d4e.py`, unchanged, run with `out_dir = <outRoot>/stage3/d4e_d5a3`.
+  - `d4e_block_clipping.csv`, `d4e_lost_stimuli.csv`, `d4e_trials_by_condition.csv` and `raw_boundaries.csv` are byte-identical to those of S3a-D5a-H-result (`d5a_d4e/`) and of S3a-D5a-diag (`notch_a3/`).
+  - Block table SHA-256 `6524101f72c8c4058abcacfbbdee337b2e70ec8b8f39b336e817e446d795eec4`: 32 of 588 blocks clipped, 35 stimuli lost (16 block-first).
+- **`runner_config.psd1`:** `BlockTable` → `<outRoot>/stage3/d4e_d5a3/d4e_block_clipping.csv`. Jobs that take the common `blockTable` use the H = 6.637 s blocks from now on. Batches that already ran keep the table recorded in their outputs.
+- **Synthetic tests:**
+  - `test_stage3_filter_halflengths.m` (new): default H = 6.637 s with 6 filters at ±3 Hz, `'none'` = 3.333 s, `'a', 2` gives the same H, an unknown option is refused. PASS.
+  - `stage3_verify_boundary_handling.m`: checks 1–4 PASS.

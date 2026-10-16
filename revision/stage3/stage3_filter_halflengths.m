@@ -1,8 +1,9 @@
 function [H, T] = stage3_filter_halflengths(S, lineNoise, notchA)
 %STAGE3_FILTER_HALFLENGTHS  Filter-edge half-length H for decision S3a-D4e.
-%   [H, T] = stage3_filter_halflengths(S, lineNoise): lineNoise = 'none' (default; D5 not adopted) or
-%   'a' (S3a-D5a-H: the four band-stop filters of D5 option (a), S3a-D5-opt, designed at S.fsOut).
-%   notchA (option 'a' only): band edges f0 +/- notchA Hz (default 2, as in S3a-D5-opt; S3a-D5a-diag).
+%   [H, T] = stage3_filter_halflengths(S, lineNoise, notchA): lineNoise = 'a' (default since S3a-D5-final:
+%   the band-stop filters of D5 option (a) at S.lineFreqs, designed at S.fsOut) or 'none' (no D5 step; the
+%   historical H of S3a-D4e, used by scripts that predate D5). notchA (option 'a' only): band edges
+%   f0 +/- notchA Hz (default S.notchA = 3, S3a-D5a-width; S3a-D5a-H used 2, S3a-D5a-diag 2..6).
 %   [H, T] = stage3_filter_halflengths(S) designs every filter that the pipeline applies to the
 %   continuous data before cropping, with the installed EEGLAB code and the parameters in S
 %   (from stage3_params), and returns:
@@ -46,9 +47,8 @@ name(end+1, 1) = "anti-aliasing (pop_resample, Kaiser)";
 fsDesign(end+1, 1) = p * S.fsRaw;                % the kernel runs at the upsampled rate p*fsRaw
 order(end+1, 1) = m; half(end+1, 1) = m / 2;
 
-% 3) Line-noise removal (S3a-D5). Option (a) on request (S3a-D5a-H); otherwise not added, since D5
-%    is not yet adopted.
-if nargin < 2 || isempty(lineNoise), lineNoise = 'none'; end
+% 3) Line-noise removal (S3a-D5): option (a), adopted in S3a-D5-final (S3a-D5-integ).
+if nargin < 2 || isempty(lineNoise), lineNoise = 'a'; end
 switch lineNoise
     case 'none'
     case 'a'
@@ -56,8 +56,8 @@ switch lineNoise
         Z.srate = S.fsOut; Z.nbchan = 1; Z.trials = 1; Z.pnts = 120 * S.fsOut;
         Z.data = zeros(1, Z.pnts); Z.xmin = 0; Z.xmax = (Z.pnts - 1) / Z.srate;
         Z = eeg_checkset(Z);
-        if nargin < 3 || isempty(notchA), notchA = 2; end
-        for f0 = [50 100 150 200]
+        if nargin < 3 || isempty(notchA), notchA = S.notchA; end
+        for f0 = S.lineFreqs
             [~, ~, b] = pop_eegfiltnew(Z, 'locutoff', f0 - notchA, 'hicutoff', f0 + notchA, 'revfilt', 1);
             name(end+1, 1) = sprintf("band-stop %d +/- %g Hz (D5 option (a), pop_eegfiltnew)", f0, notchA); %#ok<AGROW>
             fsDesign(end+1, 1) = S.fsOut; order(end+1, 1) = numel(b) - 1; half(end+1, 1) = (numel(b) - 1) / 2; %#ok<AGROW>

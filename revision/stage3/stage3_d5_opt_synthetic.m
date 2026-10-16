@@ -47,7 +47,7 @@ R.A = table(opt, f0c, offc, f0c + offc, gdb, 'VariableNames', ...
 R.notchOrder = cellfun(@numel, b) - 1;
 
 % ---- i4: default low-pass designs and their H cost --------------------------------------------
-[H0, T0] = stage3_filter_halflengths(S);                   % current H (high-pass + anti-aliasing)
+[H0, T0] = stage3_filter_halflengths(S, 'none');           % pre-D5 H                   % current H (high-pass + anti-aliasing)
 lpE = 100;
 for E = 147:-1:101                                          % largest integer edge with stop-band < 148 Hz
     [~, ~, bl] = pop_eegfiltnew(Z, 'hicutoff', E);

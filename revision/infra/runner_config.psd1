@@ -7,7 +7,7 @@
     OutRoot          = 'C:\Users\Amirhossein\Desktop\Prof. Nasrabadi\Revision_Output'   # summary copies: <OutRoot>\stage3\runs
     RawRoot          = 'D:\Revision_Raw\ds004621'                               # verified raw copy; E: is not read by jobs
     VerifiedManifest = 'C:\Users\Amirhossein\Desktop\Prof. Nasrabadi\Revision_Output\stage3\raw_copy\verified_manifest.tsv'
-    BlockTable       = 'C:\Users\Amirhossein\Desktop\Prof. Nasrabadi\Revision_Output\stage3\d4e_block_clipping.csv'
+    BlockTable       = 'C:\Users\Amirhossein\Desktop\Prof. Nasrabadi\Revision_Output\stage3\d4e_d5a3\d4e_block_clipping.csv'   # S3a-D5-integ: H = 6.637 s (was ..\stage3\d4e_block_clipping.csv, H = 3.333 s)
     ExtraMatlabPaths = @()
 
     # ---- process configuration (S3a-INF-1 sec. 1, sec. 2)

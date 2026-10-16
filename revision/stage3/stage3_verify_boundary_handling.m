@@ -15,7 +15,7 @@
 if ~exist('pop_eegfiltnew', 'file'), eeglab('nogui'); end
 here = fileparts(mfilename('fullpath')); addpath(here);
 S = stage3_params();
-H = stage3_filter_halflengths(S);
+H = stage3_filter_halflengths(S, 'none');   % this test covers high-pass + resample only
 
 % ---- synthetic recording: three segments, odd and even lengths ------------------------------
 fs = S.fsRaw;

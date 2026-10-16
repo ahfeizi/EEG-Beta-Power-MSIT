@@ -9,7 +9,7 @@ addpath(here);
 f = fullfile(outDir, 'filter_halflengths.csv');
 assert(exist(f, 'file') ~= 2, 'refusing to overwrite %s', f);
 if ~exist(outDir, 'dir'), mkdir(outDir); end
-[H, T] = stage3_filter_halflengths(stage3_params(), 'a');
+[H, T] = stage3_filter_halflengths(stage3_params(), 'a', 2);   % a = 2: the setting of S3a-D5a-H
 writetable(T, f);
 disp(T);
 fprintf('H = sum of half-lengths = %.4f s\n', H);
