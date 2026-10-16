@@ -1666,3 +1666,12 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
 - **Synthetic tests:**
   - `test_stage3_filter_halflengths.m` (new): default H = 6.637 s with 6 filters at ±3 Hz, `'none'` = 3.333 s, `'a', 2` gives the same H, an unknown option is refused. PASS.
   - `stage3_verify_boundary_handling.m`: checks 1–4 PASS.
+
+## S7-note-EMG-notch · 2026-10-16 · Stage 7 note: the EMG index must exclude f₀ ± 3 Hz at 100, 150 and 200 Hz
+
+- **Note (Amirhossein, 2026-10-16), binding for Stage 7.** Any EMG index computed above the control band (the 100–200 Hz content kept by S3a-D4b) must **exclude f₀ ± 3 Hz at 100, 150 and 200 Hz**: the D5 notches (S3a-D5-final, a = 3) remove those bands.
+  - The 50 Hz notch (47–53 Hz) lies below the 55–95 Hz control band. Its cascade gain in 55–95 Hz is ≤ 0.015 dB (S3a-D5a-diag-result).
+- **Kernel facts behind the ±3 Hz** (S3a-D5a-diag-result, a = 3):
+  - passband edges at f₀ ± 3 Hz; the −6 dB point at f₀ ± 2.0 Hz; ≥ 33 dB attenuation over f₀ ± 1.19 Hz;
+  - so the region of non-unity gain is exactly f₀ ± 3 Hz.
+  - Stage 7 states the excluded bins explicitly, and the resulting band count, in Methods.
