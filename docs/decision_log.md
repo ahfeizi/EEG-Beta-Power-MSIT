@@ -1675,3 +1675,62 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - passband edges at f₀ ± 3 Hz; the −6 dB point at f₀ ± 2.0 Hz; ≥ 33 dB attenuation over f₀ ± 1.19 Hz;
   - so the region of non-unity gain is exactly f₀ ± 3 Hz.
   - Stage 7 states the excluded bins explicitly, and the resulting band count, in Methods.
+
+## S3a-INF-1-setspec · 2026-10-16 · Specification of the `.set` compare (S3a-INF-1 §3; required by S3a-INF-1-clar1 item 10.6)
+
+- **Requested by Amirhossein (2026-10-16), before any `.set` compare runs.** Until this entry existed, the runner refused compare kind `set`. It now refuses `set` only if the decision log has no heading `## S3a-INF-1-setspec ` (`Invoke-Stage3Batch.ps1`).
+- **Implementation:** `stage3_compare(fileX, fileY, 'set', outJson)`. Content only, after `load`. The file holds the variable `EEG`, or, in EEGLAB's one-variable-per-field format, the EEG fields themselves.
+- **Fields compared**, exactly the S3a-INF-1 §3 list:
+  - `data`, `srate`, `nbchan`, `pnts`, `xmin`;
+  - `chanlocs`: `labels`, `X`, `Y`, `Z`;
+  - `event`: `type`, `latency`, `duration`. These are compared as per-field vectors over all events, in order. An empty value counts as NaN in a numeric field.
+  - `etc.restBlocks` / `etc.taskBlocks`: every leaf, with struct arrays element by element;
+  - the removed-channel list `etc.stage3.removedChannels`;
+  - `icaweights`, `icasphere`, `icawinv`, `icachansind`;
+  - the ICLabel classifications `etc.ic_classification.ICLabel.classifications`, and the rejected-component list `etc.stage3.rejectedComponents`.
+- **Location of the two lists (fixed here):** the removed-channel list will be `EEG.etc.stage3.removedChannels` (D6), and the rejected-component list `EEG.etc.stage3.rejectedComponents` (D10).
+- **Presence rule:**
+  - a field absent from **both** files is equal (reported as `<absent>`); in part 1, for example, there are no ICA fields and no lists;
+  - a field present in one file only is different;
+  - the two files must yield the same field list, otherwise the compare errors.
+- **Not compared** (S3a-INF-1 §3): `history`, `filename`, `filepath`, `datfile`, `setname`, `comments`, `saved`, `icaact`, every other `etc` field (time stamps and provenance included), and `chanlocs` fields other than labels and X/Y/Z.
+- **Per field:** `isequaln`; if false, the number of differing elements and the maximum absolute difference (S3a-INF-1 §3). Nothing in 13–30 or 55–95 Hz is computed.
+- **Synthetic test:** in `test_stage3_p1_compute_one.m`, a changed data sample is found (n_diff = 1) and a field present in one file only is reported as different.
+
+## S3a-P1 · 2026-10-16 · Stage 3 part 1 (D1–D5) as an A/B job type; batch s3p1_1 (definition before any run)
+
+- **Requested by Amirhossein (2026-10-16).** Part 1 of the Stage 3 pipeline, D1–D5 in the committed order, as an A/B job type. It saves one `.set` per recording on D:.
+- **Job** `revision/stage3/stage3_p1_compute_one.m` (job-list type `s3p1`, recording types `s3p1_rest`/`s3p1_msit`, compare kind `set`, S3a-INF-1-setspec). Per recording:
+  1. **Inputs:** every raw file read (`.vhdr`, `.eeg`, `.vmrk`, `channels.tsv`, `events.tsv`) is checked against `verified_manifest.tsv` (S3a-D1-amend). Their SHA-256 values are stored in `EEG.etc.stage3.inputs`.
+  2. **D4e-4 loading:** `pop_loadbv`. Labels must equal `channels.tsv`; channel types come from `channels.tsv`.
+     - **Sample-exact event check:** the non-boundary events, whose code must be `Stimulus`, must equal the `events.tsv` rows as multisets. That is, latency = onset × 1000 and the same `event_type` after whitespace normalisation, as in the D4e survey.
+     - **Filled here:** the empty-type `Time 0` marker is the only other non-boundary event allowed. It is removed, and its count is stored.
+     - Any mismatch stops the recording.
+  3. **D3a check (rest, all but sub-25):** S10 = S12₁ + 300 s within 0.01 s.
+  4. **D2a:** TP9 LEFT EAR and TP10 RIGHT EAR are dropped, leaving 125 channels. Positions come from the `standard-10-5-cap385` template (`dipfit/standard_BESA`, `pop_chanedit` lookup); every channel must receive one.
+     - D2a/D2b stay in force under S3a-D2-reopen. The use of the digitised positions is still open.
+     - D2b (FCz recovery) belongs to re-referencing after D6, so it is not part of part 1.
+  5. **D4a:** high-pass 0.5 Hz at 1000 Hz. **D4c:** `pop_resample` to 500 Hz. **D5:** four band-stop filters f₀ ± 3 Hz in cascade (S3a-D5-final). The kernel orders are asserted equal to `stage3_filter_halflengths`.
+  6. **D3/D3e with D4e:** crop to the clipped blocks of the H = 6.637 s table (S3a-D5-integ).
+     - **Filled here:** a block edge's raw latency is round(new_start_s / new_end_s × 1000). After resampling the kept range is [ceil, floor], the convention of the D5 tests. The data are cropped with `pop_select('point', …)`, which inserts the `boundary` events between blocks.
+     - The script asserts that no raw boundary lies inside a kept block.
+     - **Boundary events after cropping** (EEGLAB's `pop_select` behaviour, observed in the synthetic test):
+       - exactly one boundary lies inside the data between consecutive blocks, at the junction (+0.5); its duration is the number of removed samples, raw boundaries in the gap included;
+       - EEGLAB also leaves boundaries at the data edges: at 0.5 and pnts + 0.5 for the data removed before the first and after the last block, and at 1 for the recording-start `New Segment` marker;
+       - these edge boundaries create no segment inside a block, so they are kept as EEGLAB writes them.
+  7. **Block identity** (D3d, D3e-4): events `<block>_start` / `<block>_end` on the first and last sample of each block.
+     - `EEG.etc.restBlocks` / `taskBlocks` hold, per block: the original D3/D3e extent; the D4e clipping (start/end, reasons, new extent, stimuli before/after); the status; the sub-25 flag (rest) or the stimulus count and 10 s-split flag (task); and the 500 Hz sample ranges, uncropped and cropped (D4e-3).
+  8. **Output:** variable `EEG`, data `single` (float32, as `pop_saveset` writes, S3a-D1-amend), `save -v7`. `pop_loadset` reads it under a `.set` name (synthetic test).
+     - `EEG.etc.stage3` records H, the filter table, a, the template, the block-table SHA-256, and the SHA-256 of the log entries D1, D1-amend, D2, D3, D3e, D4, D4e, D5-final, D5-integ and this one.
+  - Channels are processed in groups of 16. Every step is per channel; events and block edges are asserted identical across groups. The synthetic test checks that group sizes 16 and 50 give `set`-equal outputs.
+  - **Outcome-blind:** no spectrum or power is computed.
+- **Scope of batch `s3p1_1`: 78 recordings.**
+  - sub-13, sub-41 and sub-42 are not run: the D4e-4 stop-on-mismatch stays in force for them until the D6/D11 handling is decided (S3a-D4e-4-asm-amend1). The job refuses them, and the job list leaves them out.
+  - Order: as in the block table.
+- **Run:** `Invoke-Stage3Part1.ps1`, detached and resumable with the same command, log `<EegOutRoot>/stage3_runs/s3p1.log`.
+  1. Chain `s3p1` (S3a-INF-1-amend2): timing runs on sub-06 MSIT+ and sub-06 rest (3 replicas each, 30-min hang timeout), `timeouts_s3p1.json`, then the A/B batch **`s3p1_1`**. Replica B is deleted as soon as A = B (S3a-INF-1 §4, S3a-D1-amend).
+  2. **Export:** a hard link `<EegOutRoot>/stage3_part1/<sub>_task-<task>_s3p1.set` to each verified canonical output (no extra space), plus `manifest.tsv` (path, size, SHA-256). Nothing is overwritten.
+- **Disk gate (S3a-D1, D1-amend), checked 2026-10-16 before this entry:** D: 60.32 GB free, C: 23.66 GB free.
+  - Upper bound of the output: all 84 recordings, uncropped, 500 Hz, 125 channels, float32 = 44,627,213,768 × (500/1000) × (125/127) ≈ 21.96 GB. That leaves ≥ 38 GB on D:, above the 15 GB gate.
+  - The runner also checks D: (≥ 15 GB + 3 × the largest replica) and C: (≥ 5 GB) before every job.
+- **Approval scope:** the `.eeg` files of the verified D: copy are read by this approved Stage 3 job (Amirhossein, 2026-10-16). A synthetic test runs first (`test_stage3_p1_compute_one.m`). The timing runs on sub-06 are the first real-data runs, and the chain stops if they fail.

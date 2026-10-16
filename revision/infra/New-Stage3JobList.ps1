@@ -17,12 +17,15 @@
               (whole recording, 16-channel groups), blocks from <outRoot>\stage3\d5a_d4e\d4e_block_clipping.csv
               (H with the notches, S3a-D5a-H); -NotchA required; -TestSet and the overrides as for d5bu (noise twins,
               S3a-D5a-test-amend1); recording types d5a_rest / d5a_msit
+    s3p1      Stage 3 part 1 (S3a-P1): one job per recording of the D4e block table (runner_config BlockTable), in its
+              order, except sub-13/41/42 (D4e-4 stop, S3a-D4e-4-asm-amend1); recording types s3p1_rest / s3p1_msit;
+              compare kind 'set' (S3a-INF-1-setspec)
   -Only restricts the list (e.g. -Only sub-06_msit for acceptance or timing).
   A job = id, func (MATLAB job function), params (job-specific), recType (selects the timeout),
   compareKind (stage3_compare kind). See README.md, "Adding a job type".
 #>
 param(
-    [Parameter(Mandatory = $true)][ValidateSet('d5_0', 'd4e4', 'd5_0_asm', 'd4e4_asm', 'd5b', 'd5bu', 'd5bmerge', 'd5a')][string]$Type,
+    [Parameter(Mandatory = $true)][ValidateSet('d5_0', 'd4e4', 'd5_0_asm', 'd4e4_asm', 'd5b', 'd5bu', 'd5bmerge', 'd5a', 's3p1')][string]$Type,
     [Parameter(Mandatory = $true)][string]$Out,
     [string[]]$Only,
     [string]$SourceBatch = 'd5_0_1',
@@ -79,6 +82,16 @@ if ($Type -eq 'd5_0_asm') {
         if ($RawRootOverride) { $pr.rawRoot = $RawRootOverride }
         if ($ManifestOverride) { $pr.manifest = $ManifestOverride }
         $jobs += [ordered]@{ id = $id; func = 'stage3_d5a_compute_one'; params = $pr; recType = "d5a_$($r.task)"; compareKind = 'all' }
+    }
+} elseif ($Type -eq 's3p1') {
+    $seen = @{}
+    foreach ($r in @(Import-Csv -LiteralPath $cfg.BlockTable)) {
+        $id = "$($r.subject)_$($r.task)"
+        if ($seen.ContainsKey($id)) { continue }
+        $seen[$id] = $true
+        if ($r.subject -in @('sub-13', 'sub-41', 'sub-42')) { continue }
+        if ($Only -and $Only -notcontains $id) { continue }
+        $jobs += [ordered]@{ id = $id; func = 'stage3_p1_compute_one'; params = [ordered]@{ subject = $r.subject; task = $r.task }; recType = "s3p1_$($r.task)"; compareKind = 'set' }
     }
 } elseif ($Type -eq 'd5b') {
     foreach ($r in @(Import-Csv -LiteralPath (Join-Path $cfg.OutRoot 'stage3\d5b\test_set.csv'))) {

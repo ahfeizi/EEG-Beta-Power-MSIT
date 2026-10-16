@@ -176,8 +176,10 @@ if ($resume) {
         $jobs = Read-JsonArray $JobList
         if ($Mode -eq 'Acceptance' -and $jobs.Count -ne 1) { throw 'Acceptance mode needs a job list with exactly one job' }
     }
+    # 'set' compares need their logged specification (S3a-INF-1-clar1 item 10.6; logged as S3a-INF-1-setspec)
+    $setSpec = Select-String -LiteralPath (Join-Path $PSScriptRoot '..\..\docs\decision_log.md') -Pattern '^## S3a-INF-1-setspec ' -Quiet
     foreach ($j in $jobs) {
-        if ($j.compareKind -eq 'set') { Remove-Item -LiteralPath $lockFile; throw "job $($j.id): compare kind 'set' is refused until its specification is logged (S3a-INF-1-clar1)" }
+        if ($j.compareKind -eq 'set' -and -not $setSpec) { Remove-Item -LiteralPath $lockFile; throw "job $($j.id): compare kind 'set' is refused until its specification is logged (S3a-INF-1-clar1)" }
         if ($j.PSObject.Properties.Name -contains 'randomSteps') {
             foreach ($rs in @($j.randomSteps)) { if (-not $cfg.StepSeeds.ContainsKey($rs)) { Remove-Item -LiteralPath $lockFile; throw "job $($j.id): random step '$rs' has no seed in StepSeeds (S3a-INF-1-clar1)" } }
         }
