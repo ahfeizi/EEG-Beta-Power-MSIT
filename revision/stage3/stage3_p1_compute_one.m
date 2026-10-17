@@ -8,7 +8,8 @@ function stage3_p1_compute_one(params, outFile)
 %              the non-boundary events (code 'Stimulus') equal the events.tsv rows (latency = onset x 1000,
 %              same whitespace-normalised event_type), as multisets; the empty-type 'Time 0' marker is
 %              the only other non-boundary event allowed, and it is removed (count stored);
-%              sub-13/41/42 are refused (stop-on-mismatch in force, S3a-D4e-4-asm-amend1);
+%              sub-42 is refused (excluded, S3a-D6); for sub-13/41 a label difference is allowed only at the D4e-4
+%              pair, and channels.tsv labels are used (S3a-D6 item 5; the pair is marked bad in D6);
 %     D3a      rest, all but sub-25: S10 = S12(1) + 300 s within 0.01 s (events.tsv);
 %     D2a      TP9 LEFT EAR / TP10 RIGHT EAR dropped (125 channels); positions from the
 %              standard-10-5-cap385 template (S3a-D2; D2a/D2b in force, S3a-D2-reopen). D2b (FCz) is
@@ -30,8 +31,11 @@ S = stage3_params();
 if ~exist('pop_loadbv', 'file'), eeglab('nogui'); end
 [H, HT] = stage3_filter_halflengths(S);
 s = char(params.subject); task = char(params.task);
-assert(~ismember(string(s), ["sub-13", "sub-41", "sub-42"]), 'stage3:p1', ...
-    '%s: D4e-4 stop-on-mismatch in force (S3a-D4e-4-asm-amend1)', s);
+assert(~strcmp(s, 'sub-42'), 'stage3:p1', '%s: excluded (S3a-D6 item 4)', s);
+% S3a-D6 item 5: the D4e-4 pair of sub-13 / sub-41 is marked bad in D6; here the channels.tsv labels are used,
+% and a .vhdr/channels.tsv label difference is allowed at exactly that pair (S3a-D4e-4-issue: swapped pairs).
+pairs = struct('sub_13', {{'FFT8h', 'FCC6h'}}, 'sub_41', {{'FC5', 'FT9'}});
+key = strrep(s, '-', '_'); if isfield(pairs, key), pair = string(pairs.(key)); else, pair = strings(1, 0); end
 if isfield(params, 'logFile') && ~isempty(params.logFile), logFile = char(params.logFile);
 else, logFile = fullfile(fileparts(fileparts(here)), 'docs', 'decision_log.md'); end
 drop = ["TP9 LEFT EAR", "TP10 RIGHT EAR"];
@@ -71,12 +75,16 @@ end
 % ---- per channel group: load, checks, filters, crop ------------------------------------------
 gs = 16; if isfield(params, 'groupSize') && ~isempty(params.groupSize), gs = double(params.groupSize); end
 groups = arrayfun(@(g) keep(g:min(g + gs - 1, numel(keep))), 1:gs:numel(keep), 'uni', 0);
-Xs = cell(1, numel(groups)); locs = cell(1, numel(groups)); E1 = []; kern = {}; nTime0 = NaN; edges500 = [];
+Xs = cell(1, numel(groups)); locs = cell(1, numel(groups)); nMis = zeros(1, numel(groups)); E1 = []; kern = {}; nTime0 = NaN; edges500 = [];
 for gi = 1:numel(groups)
     chans = groups{gi};
     EEG = pop_loadbv(eegDir, hdr, [], chans);
     lab = string({EEG.chanlocs.labels});
-    assert(isequal(lab(:), ct.name(chans)), 'stage3:p1', 'channel labels differ from channels.tsv');
+    mis = lab(:) ~= ct.name(chans);
+    assert(~any(mis) || (all(ismember(lab(mis), pair)) && all(ismember(ct.name(chans(mis)), pair))), 'stage3:p1', ...
+        'channel labels differ from channels.tsv');
+    for k = find(mis)', EEG.chanlocs(k).labels = char(ct.name(chans(k))); end          % channels.tsv labels
+    nMis(gi) = sum(mis);
     % sample-exact event check (D4e-4)
     typ = string({EEG.event.type}); code = string({EEG.event.code}); lat = [EEG.event.latency];
     isB = typ == "boundary";
@@ -162,7 +170,7 @@ ids = {'S3a-D1', 'S3a-D1-amend', 'S3a-D2', 'S3a-D3', 'S3a-D3e', 'S3a-D4', 'S3a-D
 lh = cellfun(@(i) stage3_log_entry(logFile, i), ids, 'uni', 0);
 inSha = arrayfun(@(f) string(sha256File(char(f))), inputs);
 EEG.etc.stage3 = struct('part', 1, 'subject', s, 'task', task, 'H_s', H, 'filters', table2struct(HT), ...
-    'notchA_hz', S.notchA, 'lineFreqs_hz', S.lineFreqs, 'droppedChannels', {cellstr(drop)}, 'removedTime0Events', nTime0, ...
+    'notchA_hz', S.notchA, 'lineFreqs_hz', S.lineFreqs, 'droppedChannels', {cellstr(drop)}, 'removedTime0Events', nTime0, 'labelsRelabelledFromTsv', sum(nMis), ...
     'template', tpl, 'blockTableSha256', sha256File(char(params.blockTable)), ...
     'inputs', struct('file', cellstr(inputs(:)), 'sha256', cellstr(inSha(:))), ...
     'logEntries', struct('id', ids, 'sha256', lh));

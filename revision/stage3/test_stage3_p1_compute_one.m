@@ -8,7 +8,8 @@ function ok = test_stage3_p1_compute_one(workDir, labelsTsv)
 %   cropped length, block events at the block edges, etc.taskBlocks/restBlocks, no raw boundary inside a
 %   block, the Time 0 marker removed; 2. group size 16 vs 50 and two runs: 'set' compare equal;
 %   3. pop_loadset reads the output under a .set name; 4. an events.tsv shifted by 1 ms is refused;
-%   a rest S10 off by 20 ms is refused; sub-13 is refused; 5. 'set' compare reports a changed data
+%   a rest S10 off by 20 ms is refused; sub-42 is refused; a .vhdr swap of exactly the sub-13 pair is accepted
+%   (channels.tsv labels used), any other swap is refused; 5. 'set' compare reports a changed data
 %   sample and a field present in one file only as different.
 
 here = fileparts(mfilename('fullpath'));
@@ -83,9 +84,27 @@ pr = p; pr.task = 'rest'; fr = fullfile(workDir, 'rest.mat'); stage3_p1_compute_
 R = load(fr); c4a = isfield(R.EEG.etc, 'restBlocks') && numel(R.EEG.etc.restBlocks) == 2 && ~R.EEG.etc.restBlocks(1).sub25_flag;
 r1 = refused(@() stage3_p1_compute_one(setf(p, 'rawRoot', fullfile(workDir, 'raw_badev'), 'manifest', fullfile(workDir, 'raw_badev_manifest.tsv')), fullfile(workDir, 'x1.mat')), 'events differ');
 r2 = refused(@() stage3_p1_compute_one(setf(pr, 'rawRoot', fullfile(workDir, 'raw_bads10'), 'manifest', fullfile(workDir, 'raw_bads10_manifest.tsv')), fullfile(workDir, 'x2.mat')), 'S10 check');
-r3 = refused(@() stage3_p1_compute_one(setf(p, 'subject', 'sub-13'), fullfile(workDir, 'x3.mat')), 'stop-on-mismatch');
-c4 = c4a && r1 && r2 && r3;
-fprintf('4 rest blocks %d; shifted events refused %d; S10 off refused %d; sub-13 refused %d\n', c4a, r1, r2, r3);
+r3 = refused(@() stage3_p1_compute_one(setf(p, 'subject', 'sub-42'), fullfile(workDir, 'x3.mat')), 'excluded');
+% sub-13: .vhdr labels FFT8h/FCC6h swapped against channels.tsv (the D4e-4 pair) -> accepted, tsv labels used;
+% sub-90 with a non-pair swap (Fp1/Fz) -> refused
+labS = lab; i1 = find(lab == "FFT8h"); i2 = find(lab == "FCC6h"); labS([i1 i2]) = lab([i2 i1]);
+writeRec(fullfile(workDir, 'raw_s13'), 'sub-13', 'msit', X, labS, mk, fs);
+writetable(table(lab, repmat("EEG", 127, 1), repmat("uV", 127, 1), 'VariableNames', {'name', 'type', 'units'}), ...
+    fullfile(workDir, 'raw_s13', 'sub-13', 'eeg', 'sub-13_task-msit_channels.tsv'), 'FileType', 'text', 'Delimiter', '\t');
+writeEvents(fullfile(workDir, 'raw_s13', 'sub-13', 'eeg', 'sub-13_task-msit_events.tsv'), evRows);
+labB = lab; j1 = find(lab == "Fp1"); j2 = find(lab == "Fz"); labB([j1 j2]) = lab([j2 j1]);
+writeRec(fullfile(workDir, 'raw_badlab'), 'sub-90', 'msit', X, labB, mk, fs);
+writetable(table(lab, repmat("EEG", 127, 1), repmat("uV", 127, 1), 'VariableNames', {'name', 'type', 'units'}), ...
+    fullfile(workDir, 'raw_badlab', 'sub-90', 'eeg', 'sub-90_task-msit_channels.tsv'), 'FileType', 'text', 'Delimiter', '\t');
+writeEvents(fullfile(workDir, 'raw_badlab', 'sub-90', 'eeg', 'sub-90_task-msit_events.tsv'), evRows);
+for r = {'raw_s13', 'raw_badlab'}, writeManifest(fullfile(workDir, r{1}), fullfile(workDir, [r{1} '_manifest.tsv'])); end
+T13 = T(T.subject == "sub-90" & T.task == "msit", :); T13.subject(:) = {'sub-13'}; bt13 = fullfile(workDir, 'blocks13.csv'); writetable(T13, bt13);
+p13 = setf(p, 'subject', 'sub-13', 'rawRoot', fullfile(workDir, 'raw_s13'), 'manifest', fullfile(workDir, 'raw_s13_manifest.tsv'), 'blockTable', bt13);
+f13 = fullfile(workDir, 's13.mat'); stage3_p1_compute_one(p13, f13); S13 = load(f13);
+r4 = isequal(string({S13.EEG.chanlocs.labels}), string({E.chanlocs.labels})) && S13.EEG.etc.stage3.labelsRelabelledFromTsv == 2;
+r5 = refused(@() stage3_p1_compute_one(setf(p, 'rawRoot', fullfile(workDir, 'raw_badlab'), 'manifest', fullfile(workDir, 'raw_badlab_manifest.tsv')), fullfile(workDir, 'x5.mat')), 'labels differ');
+c4 = c4a && r1 && r2 && r3 && r4 && r5;
+fprintf('4 rest blocks %d; shifted events refused %d; S10 off refused %d; sub-42 refused %d; sub-13 pair swap accepted with tsv labels %d; other swap refused %d\n', c4a, r1, r2, r3, r4, r5);
 % ---- 5. set compare detects differences --------------------------------------------------------
 EEG = E; EEG.data(5, 100) = EEG.data(5, 100) + 1; fd = fullfile(workDir, 'd.mat'); save(fd, 'EEG');
 EEG = E; EEG.etc.stage3.removedChannels = {'Fz'}; fe = fullfile(workDir, 'e.mat'); save(fe, 'EEG');

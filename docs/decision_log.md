@@ -1864,3 +1864,33 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
     - **(c2)** use the coordinates as given (CapTrak origin at ear level; `.bvef` origin near the centre, so the two groups would differ);
     - **(c3)** a fixed shift.
   - Claude's recommendation: (c1). Spherical splines assume a sphere; c1 treats both groups alike; it is the usual step for digitised positions (e.g. EEGLAB's optimised head centre).
+
+## S3a-D6-impl · 2026-10-17 · D6 as an A/B job type (implemented; NOT started: S3a-D2-close open point)
+
+- **Job** `revision/stage3/stage3_d6_compute_one.m` (job-list type `d6`, one job per subject, recording type `d6`, compare kind `all`). It needs both conditions for the union rule. Per subject:
+  1. **Inputs:** the subject's rest and MSIT+ part-1 `.set` files, each hash-checked against `<EegOutRoot>/stage3_part1/manifest.tsv`; they must have identical channel sets. Also the test P table (expected SHA-256 passed in the job list), and the position file (checked against the verified raw manifest).
+  2. **Known-bad channels**, removed before RANSAC:
+     - the D4e-4 pair (sub-13: FFT8h, FCC6h; sub-41: FC5, FT9);
+     - the dependent channels, 1 − R² < `S.d6.r2Thr` = 1e-6 in rest or MSIT+ (`channels.tsv` labels of the test P table).
+  3. **Individual positions** (`stage3_positions.m`, S3a-D2-close): `.bvct`, or `.bvef` for sub-12/23/24; RAS mm converted to the EEGLAB frame. The centring is `S.d6.posCentering`, which is **empty until decided**, and the job refuses to run while it is empty.
+  4. **Per condition**, on a copy low-passed at 100 Hz (`pop_eegfiltnew`, default design): `pop_clean_rawdata` with FlatlineCriterion 5, ChannelCriterion 0.80, LineNoiseCriterion `off`, Highpass/Burst/Window criteria and BurstRejection `off`, Distance `Euclidian`.
+  5. **Union and exclusion:** the union over categories and conditions, in montage order; excluded if nBad / 125 > 0.15.
+- **Output:** variable `D6` with the **decisions only**:
+  - per category (pair, dependent with their 1 − R², RANSAC rest/MSIT+), the union (`removedChannels`), nBad, fraction and excluded;
+  - the positions used (labels, X/Y/Z, source, centring, centre, radius, fiducials), the parameters, the inputs and the log-entry hashes.
+  - No data are changed or interpolated here. Removal before ICA and interpolation after ICA happen in the later stages. `removedChannels` becomes `EEG.etc.stage3.removedChannels` there (S3a-INF-1-setspec).
+- **Outcome-blind:** no spectrum or power is computed or saved. RANSAC correlates the 100 Hz low-passed signals, as the D4 default fixes.
+- **Synthetic test:** `test_stage3_d6_compute_one.m`. It uses subject "sub-13", template positions on a 95 mm sphere centred 50 mm above the file origin, smooth sources, a flat O1 in rest, an independent noisy P4 in MSIT+, and Pz dependent in rest only. Expected bad set: FFT8h, FCC6h, Pz, O1, P4. It also checks the fitted centre, A = B, exclusion at 19 bad channels, and three refusals (undecided centring, sub-42, a changed part-1 file).
+- **Run:** `Invoke-Stage3D6.ps1`. Chain `d6`: timing on sub-06 (3 replicas), then the A/B batch **`d6_1`**, then the summary `<outRoot>/stage3/d6/d6_summary.csv`.
+  - The job list holds **37 subjects**: all with both part-1 files exported, minus sub-42. Waiting: sub-13 and sub-41 (part 1, held by S3a-P1-issueA) and sub-20 and sub-23 (rest part 1 failed, S3a-P1-issueA).
+  - **Not started:** the S3a-D2-close centring is undecided. It starts once Amirhossein decides it; the later subjects follow in a second batch.
+
+## S3a-P1-amend1 · 2026-10-17 · Part 1 for sub-13 and sub-41 (S3a-D6 item 5); sub-42 refused
+
+- **Following S3a-D6** (item 4: sub-42 excluded; item 5: the sub-13/41 pairs are marked bad in D6):
+  - `stage3_p1_compute_one.m` refuses only sub-42 now.
+  - For sub-13 and sub-41, a label difference between `.vhdr` and `channels.tsv` is allowed **only** at the D4e-4 pair (sub-13 FFT8h/FCC6h, sub-41 FC5/FT9). Those columns take the `channels.tsv` labels; the count is stored in `EEG.etc.stage3.labelsRelabelledFromTsv`. Any other difference still stops the recording.
+  - Since both channels of the pair are bad and interpolated, which data column carries which of the two labels does not affect the result.
+- `New-Stage3JobList -Type s3p1` now leaves out only sub-42. The `jobs_s3p1.json` of `s3p1_1` is unchanged.
+- **Synthetic test** (`test_stage3_p1_compute_one.m`, PASS): a `.vhdr` with exactly the sub-13 pair swapped is accepted with `channels.tsv` labels (2 relabelled). A non-pair swap (Fp1/Fz) is refused. sub-42 is refused.
+- **Not run yet:** the `.vmrk` files of sub-13 and sub-41 contain the empty-description Stimulus marker of S3a-P1-issueA, which still stops the job until Amirhossein decides that item. The planned batch is `s3p1_2`: sub-13 and sub-41 (rest and MSIT+), plus sub-20 rest and sub-23 rest, with the timeouts of `s3p1_1`.

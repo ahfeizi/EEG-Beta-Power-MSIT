@@ -18,14 +18,16 @@
               (H with the notches, S3a-D5a-H); -NotchA required; -TestSet and the overrides as for d5bu (noise twins,
               S3a-D5a-test-amend1); recording types d5a_rest / d5a_msit
     s3p1      Stage 3 part 1 (S3a-P1): one job per recording of the D4e block table (runner_config BlockTable), in its
-              order, except sub-13/41/42 (D4e-4 stop, S3a-D4e-4-asm-amend1); recording types s3p1_rest / s3p1_msit;
+              order, except sub-42 (excluded, S3a-D6; sub-13/41 added: their D4e-4 pair is bad in D6); recording types s3p1_rest / s3p1_msit;
               compare kind 'set' (S3a-INF-1-setspec)
+    d6        D6 bad channels (S3a-D6, S3a-D6-impl): one job per subject whose rest and MSIT+ part-1 .set files are both in
+              <EegOutRoot>\stage3_part1\manifest.tsv, sub-42 excluded; recording type d6; compare kind 'all'
   -Only restricts the list (e.g. -Only sub-06_msit for acceptance or timing).
   A job = id, func (MATLAB job function), params (job-specific), recType (selects the timeout),
   compareKind (stage3_compare kind). See README.md, "Adding a job type".
 #>
 param(
-    [Parameter(Mandatory = $true)][ValidateSet('d5_0', 'd4e4', 'd5_0_asm', 'd4e4_asm', 'd5b', 'd5bu', 'd5bmerge', 'd5a', 's3p1')][string]$Type,
+    [Parameter(Mandatory = $true)][ValidateSet('d5_0', 'd4e4', 'd5_0_asm', 'd4e4_asm', 'd5b', 'd5bu', 'd5bmerge', 'd5a', 's3p1', 'd6')][string]$Type,
     [Parameter(Mandatory = $true)][string]$Out,
     [string[]]$Only,
     [string]$SourceBatch = 'd5_0_1',
@@ -83,13 +85,27 @@ if ($Type -eq 'd5_0_asm') {
         if ($ManifestOverride) { $pr.manifest = $ManifestOverride }
         $jobs += [ordered]@{ id = $id; func = 'stage3_d5a_compute_one'; params = $pr; recType = "d5a_$($r.task)"; compareKind = 'all' }
     }
+} elseif ($Type -eq 'd6') {
+    $exp = Join-Path $cfg.EegOutRoot 'stage3_part1'
+    $man = Join-Path $exp 'manifest.tsv'
+    $pt = Join-Path $cfg.OutRoot 'stage3\d4e4_test_v2\predictability_by_channel.csv'
+    $ptSha = (Get-FileHash -LiteralPath $pt -Algorithm SHA256).Hash.ToLower()
+    $files = @(Import-Csv -LiteralPath $man -Delimiter "`t" | ForEach-Object { $_.file })
+    $subs = @($files | ForEach-Object { ($_ -split '_')[0] } | Sort-Object -Unique)
+    foreach ($s in $subs) {
+        if ($s -eq 'sub-42') { continue }
+        $fr = "${s}_task-rest_s3p1.set"; $fm = "${s}_task-msit_s3p1.set"
+        if (($files -notcontains $fr) -or ($files -notcontains $fm)) { continue }
+        if ($Only -and $Only -notcontains $s) { continue }
+        $jobs += [ordered]@{ id = $s; func = 'stage3_d6_compute_one'; params = [ordered]@{ subject = $s; p1Rest = (Join-Path $exp $fr); p1Msit = (Join-Path $exp $fm); p1Manifest = $man; predTable = $pt; predSha = $ptSha }; recType = 'd6'; compareKind = 'all' }
+    }
 } elseif ($Type -eq 's3p1') {
     $seen = @{}
     foreach ($r in @(Import-Csv -LiteralPath $cfg.BlockTable)) {
         $id = "$($r.subject)_$($r.task)"
         if ($seen.ContainsKey($id)) { continue }
         $seen[$id] = $true
-        if ($r.subject -in @('sub-13', 'sub-41', 'sub-42')) { continue }
+        if ($r.subject -eq 'sub-42') { continue }                     # S3a-D6 item 4 (sub-13/41 added, item 5)
         if ($Only -and $Only -notcontains $id) { continue }
         $jobs += [ordered]@{ id = $id; func = 'stage3_p1_compute_one'; params = [ordered]@{ subject = $r.subject; task = $r.task }; recType = "s3p1_$($r.task)"; compareKind = 'set' }
     }
