@@ -1961,3 +1961,218 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - `Invoke-Stage3Part1.ps1` gains `-BatchId`/`-Only` (later batches reuse `timeouts_s3p1.json`; one manifest per batch; it stops instead of writing a second manifest).
   - `stage3_d6_summary` reads several batches.
   - Synthetic tests (PASS): `test_stage3_p1_compute_one.m` checks the marker at sample 1 is dropped and counted, with output equal to the clean run, and that the same marker at sample 2 is refused. `test_stage3_d6_compute_one.m` checks a dependent channel at 1 − R² = 5e-5, centring c1 by default, and that an unknown centring is refused.
+
+## S3a-D6-report · 2026-10-17 · D6 results: 2 subjects exceed 15 %; analysable n = 39; Fz/Cz/C4 bad in 5 of them
+
+- **Runs:**
+  - `s3p1_2` (S3a-P1-amend2): DONE 2026-10-17 13:33. 6/6 verified and exported (`manifest_s3p1_2.tsv`).
+  - `d6_1`: DONE 2026-10-17 20:14, 41/41 verified. 82 attempts, 0 crashed, 5.490 job-hours, 0 system events. Timing median per subject (both conditions) = 655/3 ≈ 218 s.
+  - Summary: `<outRoot>/stage3/d6/d6_summary.csv` (SHA-256 `81d20af3c356a0c9bc82ceac893f655534a8caedaf589c792b689e71f163e9fb`). Each row's D6 hash equals its verified state file, and each canonical output was re-hashed: 41/41 match.
+  - Report: `revision/stage3/stage3_d6_report.py` → `<outRoot>/stage3/d6/d6_report.csv` (SHA-256 `bf9b714c22b74cea4b96a25332eecc491a9f457253abd874ec062934f3e92b35`). Decision lists only; no spectra or power.
+- **Limitation:** flat and RANSAC channels are reported together. `pop_clean_rawdata` returns one removal list, and that is what the D6 output stores, so separating the two criteria would need a rerun.
+- **Per subject** (pair / dependent / flat+RANSAC union / union total, % of 125):
+
+  | subject | pair | dep | flat+RANSAC (rest, MSIT+) | union | % |
+  |---|---|---|---|---|---|
+  | sub-01 | 0 | 2 | 0 (0, 0) | 2 | 1.6 |
+  | sub-02 | 0 | 0 | 2 (0, 2) | 2 | 1.6 |
+  | sub-03 | 0 | 0 | 2 (1, 2) | 2 | 1.6 |
+  | sub-04 | 0 | 0 | 1 (1, 0) | 1 | 0.8 |
+  | sub-05 | 0 | 0 | 3 (3, 0) | 3 | 2.4 |
+  | sub-06 | 0 | 0 | 1 (0, 1) | 1 | 0.8 |
+  | sub-07 | 0 | 5 | 4 (2, 4) | 9 | 7.2 |
+  | sub-08 | 0 | 0 | 1 (1, 1) | 1 | 0.8 |
+  | sub-09 | 0 | 0 | 4 (2, 2) | 4 | 3.2 |
+  | sub-10 | 0 | 0 | 0 (0, 0) | 0 | 0.0 |
+  | sub-11 | 0 | 0 | 3 (2, 1) | 3 | 2.4 |
+  | sub-12 | 0 | 0 | 3 (2, 2) | 3 | 2.4 |
+  | sub-13 | 2 | 0 | 8 (3, 6) | 10 | 8.0 |
+  | sub-14 | 0 | 4 | 1 (1, 0) | 5 | 4.0 |
+  | sub-15 | 0 | 0 | 2 (2, 0) | 2 | 1.6 |
+  | sub-16 | 0 | 0 | 8 (7, 4) | 8 | 6.4 |
+  | sub-17 | 0 | 0 | 4 (2, 4) | 4 | 3.2 |
+  | sub-18 | 0 | 0 | 2 (1, 2) | 2 | 1.6 |
+  | sub-19 | 0 | 0 | 11 (9, 6) | 11 | 8.8 |
+  | sub-20 | 0 | 0 | 1 (0, 1) | 1 | 0.8 |
+  | sub-21 | 0 | 0 | 1 (1, 0) | 1 | 0.8 |
+  | sub-22 | 0 | 0 | 3 (3, 3) | 3 | 2.4 |
+  | sub-23 | 0 | 0 | 13 (13, 4) | 13 | 10.4 |
+  | sub-24 | 0 | 0 | 13 (13, 5) | 13 | 10.4 |
+  | sub-25 | 0 | 5 | 1 (1, 0) | 6 | 4.8 |
+  | sub-26 | 0 | 0 | 4 (4, 2) | 4 | 3.2 |
+  | sub-27 | 0 | 0 | 2 (1, 2) | 2 | 1.6 |
+  | **sub-28** | 0 | 16 | 3 (2, 1) | **19** | **15.2** |
+  | sub-29 | 0 | 0 | 2 (1, 2) | 2 | 1.6 |
+  | sub-30 | 0 | 0 | 5 (4, 1) | 5 | 4.0 |
+  | sub-31 | 0 | 0 | 6 (5, 5) | 6 | 4.8 |
+  | **sub-32** | 0 | 0 | 27 (27, 19) | **27** | **21.6** |
+  | sub-33 | 0 | 0 | 1 (1, 1) | 1 | 0.8 |
+  | sub-34 | 0 | 0 | 3 (1, 2) | 3 | 2.4 |
+  | sub-35 | 0 | 0 | 13 (12, 8) | 13 | 10.4 |
+  | sub-36 | 0 | 0 | 7 (5, 7) | 7 | 5.6 |
+  | sub-37 | 0 | 0 | 11 (11, 1) | 11 | 8.8 |
+  | sub-38 | 0 | 2 | 4 (0, 4) | 6 | 4.8 |
+  | sub-39 | 0 | 0 | 5 (5, 5) | 5 | 4.0 |
+  | sub-40 | 0 | 4 | 5 (4, 4) | 9 | 7.2 |
+  | sub-41 | 2 | 0 | 3 (3, 2) | 5 | 4.0 |
+
+  - Totals: pair 4 (2 subjects); dependent 38 (7 subjects); flat+RANSAC 193 (39 subjects).
+  - Union per subject: minimum 0, median 4, maximum 27; one subject with none.
+- **Excluded by the 15 % rule (> 18.75 of 125):**
+  - **sub-28** (19 = 15.2 %; 16 of them dependent): just above the threshold;
+  - **sub-32** (27 = 21.6 %).
+- **Fz, Cz or C4 bad** (to be interpolated): sub-12 Fz; sub-19 Fz + Cz; sub-22 Cz; sub-23 C4; sub-41 Fz; and, both excluded, sub-28 Fz and sub-32 Fz + Cz.
+  - So 5 analysable subjects have an interpolated key channel. This bears on D11 (revision plan: primary analysis on all, plus a sensitivity analysis without them).
+- **Analysable sample: n = 39 of 42.** sub-42 was excluded under S3a-D6 item 4, and sub-28 and sub-32 under the 15 % rule.
+
+## S3a-post-D6-options · 2026-10-17 · Remaining Stage-3 decisions after D6: options, trade-offs, recommendations (DRAFT; nothing decided)
+
+- **Status:** drafted by Claude at Amirhossein's request (2026-10-17). **No option is decided.** Recommendations are marked ▶. No MATLAB was run for this draft.
+- **Sources:**
+  - `revision_plan.md`, Stage 3a decision list: D7 ASR, D8 joint vs separate ICA, D9 ICA rank and algorithm, D10 ICLabel thresholds, D11 interpolated analysis channels, D12 trial inclusion, D13 QC content, D14 test subjects;
+  - D2b (re-reference) and S3a-D6 (bad channels removed before ICA, interpolated after);
+  - v1 = `legacy_v1/preprocessing/preprocess_rest_eeglab_staged_Pilot.m`.
+- **Binding constraints, from earlier decisions:**
+  - 100–200 Hz is kept for the EMG index (S3a-D4b), and f₀ ± 3 Hz is excluded at 100/150/200 Hz (S7-note-EMG-notch).
+  - One channel set is shared by rest and MSIT+ (S3a-D6 union rule).
+  - Dependent channels are removed, so no exactly redundant channel enters ICA (S3a-D6-amend1).
+  - A/B determinism: the seeds and internal reseeds of S3a-INF-1 §2.
+  - Outcome-blind: nothing in 13–30 or 55–95 Hz is computed, saved or inspected.
+- **Measured run times on this laptop (2 threads):** part 1, median 245 s (rest) and 531 s (MSIT+) per recording (`timeouts_s3p1.json` / 3); D6, about 218 s per subject (`timeouts_d6.json` / 3). **ICA, ASR and ICLabel times are not determinable without a run.** The S3a-INF-1-amend2 timing step measures them before any batch, and nothing is guessed here.
+- **Proposed order** (itself a choice; the items below follow it):
+  1. remove the D6 channels;
+  2. re-reference (D2b);
+  3. ASR (D7);
+  4. ICA training copy and ICA (D8, D9);
+  5. ICLabel and flagging (D10);
+  6. save the pre-removal copy (D1);
+  7. remove components;
+  8. interpolate (D6, D11);
+  9. final re-reference;
+  10. save the final copy (D1).
+  - D12 to D14 follow.
+
+### R. Re-reference (D2b: average, FCz recovered): placement
+- **v1:** `pop_reref(EEG, [])` after interpolation, before ICA, without FCz; ICA then used pca = nbchan - 1, with interpolated channels inside, which is rank-deficient.
+- **Options:**
+  - **R1:** before ICA, the average of the good channels + FCz (zero channel, `refloc`). Then, after interpolation, re-reference again to the average of the full 126-channel montage. Re-referencing is linear, so the second step does not undo any cleaning.
+  - **R2:** re-reference only once, at the end, so ICA runs on FCz-referenced data.
+  - **R3:** as v1, interpolate before re-referencing and ICA (contradicts S3a-D6).
+- **Interactions:**
+  - Under R1 the data entering ICA have rank = the number of good recorded channels. Adding FCz and averaging restores the reference site but adds no rank. The ICA PCA dimension must equal that rank (D9).
+  - Under R2, ICLabel, which was trained on average-referenced data, would get FCz-referenced data, which is less suitable.
+- **Outcome bands:** none touched.
+- ▶ **R1.**
+
+### D7. ASR
+- **v1:** `clean_rawdata` ASR, burst criterion 20, **correcting** bursts in place (window criterion and burst rejection off), applied to the analysed data.
+- **Options:**
+  - **A1:** no ASR.
+  - **A2:** ASR k = 20 correcting the analysed data, as v1.
+  - **A3:** ASR k = 20 only on the **ICA training copy**. The analysed data are not ASR-modified; the ICA weights are transplanted, as v1 did with its 1 Hz copy.
+  - **A4:** burst rejection, i.e. removing time; this changes the data amount and adds boundaries.
+- **Interactions:**
+  - ASR rewrites the data inside bursts across all frequencies. Under A2 that includes the 13–30 Hz and 55–95 Hz content of muscle bursts, and possibly to different degrees in rest and MSIT+ (movement, responses). That could bias the rest-vs-task and control-band comparisons, and the EMG index would partly measure ASR's own correction.
+  - Determinism: pass an explicit `MaxMem`; assert that `hlp_diskcache` is absent and that the RAM fallback branch is not taken (S3a-INF-1 §2). The Riemannian variant is not used.
+- **Outcome-blind:** the parameters are fixed beforehand. Under A3 the outcome data are untouched; under A2 they are modified (not inspected, but altered).
+- ▶ **A3** (ASR helps the decomposition without changing the analysed signal). A1 is the fallback.
+
+### D8. Joint vs separate ICA
+- **v1:** separate pipelines per condition.
+- **Options:**
+  - **J1:** joint: rest and MSIT+ of a subject concatenated (after the shared re-reference), one decomposition, the same components removed in both conditions.
+  - **J2:** separate decompositions per condition.
+- **Interactions:**
+  - J1 needs the same channel set in both conditions, which the D6 union rule provides. It doubles the data per decomposition (part-1 output per subject: about 600 s rest + about 1000 s MSIT+), which matters for about 120 components.
+  - J2 lets the removed components differ between conditions, a confound for the within-subject contrast and for the EMG index.
+  - Block boundaries are kept: ICA ignores time order, and the weights are applied back to each condition separately.
+- **Outcome bands:** under J2 a condition-specific muscle removal would act directly on the outcome bands.
+- ▶ **J1.**
+
+### D9. ICA input, algorithm and rank
+- **v1:** a 1 Hz high-pass copy for fitting, weights transplanted to the 0.1 Hz data; Picard first (runica fallback); pca = nbchan - 1.
+- **Options:**
+  - **Input:**
+    - **I1:** a 1 Hz high-pass copy, full band (up to about 200 Hz);
+    - **I2:** as I1, plus a 100 Hz low-pass for fitting;
+    - **I3:** a 2 Hz high-pass.
+  - **Algorithm:**
+    - **G1:** Picard (fixed internal seed 5489, deterministic per S3a-INF-1 §2, fast);
+    - **G2:** runica extended with reset_randomseed = no.
+  - **Rank:**
+    - **K1:** pca = the number of good recorded channels (rank after R1), with an assert that the numeric rank (eigenvalues) matches;
+    - **K2:** nbchan - 1 as in v1. This is wrong once channels are removed or interpolated, and it was rank-deficient in v1.
+- **Interactions:**
+  - I2 would make muscle components less separable, while EMG must be separable for ICLabel and is part of the question. I1 keeps the training band equal to the analysed band.
+  - The dependent channels are already gone (S3a-D6-amend1), so no near-singular covariance remains from them.
+  - The training copy is the ASR-cleaned one under A3.
+- **Outcome-blind:** ICA itself is not band-specific, and no component spectra are saved or inspected by us (ICLabel, D10, computes its own features).
+- ▶ **I1 + G1 + K1** (with the rank assert, logged per subject).
+
+### D10. ICLabel thresholds
+- **v1:** reject Muscle, Eye, Heart, Line noise or Channel noise if p >= 0.80; Brain and Other are never rejected.
+- **Options:**
+  - **L1:** the v1 thresholds (0.80);
+  - **L2:** reject when the top class is non-brain and non-other (argmax);
+  - **L3:** 0.80, but muscle stricter (>= 0.90) or looser (>= 0.50);
+  - **L4:** keep muscle components (remove eye, heart and noise only), so that the EMG index keeps all muscle activity.
+- **Interactions:**
+  - Removing muscle ICs changes both the 13–30 Hz and the 55–95 Hz content. The EMG index then measures residual EMG.
+  - The D1 pre-removal copy, which stores the ICA weights and ICLabel probabilities, allows a sensitivity analysis on the alternative without rerunning ICA. That is the reason D1 keeps it.
+  - Under J1 the same components are removed in both conditions.
+  - ICLabel calls rng('default'), then rng('shuffle'). The next step reseeds (S3a-INF-1 §2).
+- **Outcome-blind:** ICLabel computes component PSD features up to 100 Hz internally, which overlaps both outcome bands. Only the class probabilities are saved and used, and the thresholds are fixed beforehand.
+- ▶ **L1 as primary** (continuity with v1). **L4 as a pre-registered sensitivity analysis** for the EMG index, from the stored pre-removal copy.
+
+### D6/D11. Interpolation and interpolated analysis channels
+- **v1:** spherical (`pop_interp`, template positions), before ICA.
+- **Options:**
+  - **Method:**
+    - **P1:** spherical spline (`pop_interp` 'spherical') with the individual, centred positions (S3a-D2-centring), after component removal;
+    - **P2:** an inverse-distance or nearest-neighbour average.
+  - **D11 analyses:**
+    - **N1:** primary on all 39, plus a sensitivity analysis without the 5 subjects whose Fz/Cz/C4 is interpolated (sub-12, sub-19, sub-22, sub-23, sub-41; S3a-D6-report), as in the revision plan;
+    - **N2:** exclude them from the primary analysis;
+    - **N3:** use a small neighbour ROI instead of the single channel.
+- **Interactions:** interpolation adds no rank; the final re-reference (R1) is over the full montage.
+- **Outcome bands:** a spherical spline mixes neighbours across all frequencies equally. It is not band-selective.
+- ▶ **P1 + N1.**
+
+### D1 (storage), now binding
+- D1 keeps two continuous versions: final, and pre-component-removal.
+- **Projection:** the 78 included part-1 files total 14.82 GB. Two versions are about 29.65 GB, and the final has 126 rather than 125 channels, so slightly more. D: has 41.1 GB free (2026-10-17), leaving **about 11.5 GB, below the 15 GB gate** (S3a-D1).
+- **Options:**
+  - **S1:** store the pre-removal copy plus the ICA matrices and the rejected list, and reconstruct the final deterministically (component subtraction, interpolation, re-reference) when loading;
+  - **S2:** store both, after deleting the part-1 intermediate files (they can be rebuilt by `s3p1`);
+  - **S3:** free other space on D:.
+- ▶ **S1.** It keeps D1's purpose with one stored copy; the `set` compare covers the stored copy plus the lists.
+
+### D12. Trial inclusion (MSIT+; applied in Stages 5–6, rules fixed now)
+- **Plan default:** all trials, plus a correct-trials-only sensitivity analysis. Block-first trials are excluded (S3a-D3e). The trials lost at the block edges are known (S3a-D5a-H-result).
+- **Options:**
+  - **T1:** no epoch-level rejection (cleaning is continuous only);
+  - **T2:** amplitude criterion on each pre-stimulus window (peak-to-peak above a fixed value);
+  - **T3:** joint-probability or kurtosis rejection.
+  - **Minimum trial count per subject × condition × trial type** (first-in-mini-block / later): a fixed number below which that cell is excluded.
+- **Outcome-blind:** T2 and T3 must be broadband (no band-limited criterion) and fixed beforehand.
+- ▶ **T2** with a broadband peak-to-peak threshold, plus a minimum count. **Both numbers are Amirhossein's decision;** the counts available are in `<outRoot>/stage3/d4e_d5a3/d4e_trials_by_condition.csv`.
+
+### D13. QC content
+- **v1:** QC included a beta-peak indicator and PSD figures. **That is excluded here** (outcome-blind until the S3b registration).
+- **Proposal:** per recording, report:
+  - the channels removed by category, and the interpolated key channels;
+  - for ASR (training copy only), the fraction of samples modified;
+  - the ICA rank, and the number of ICs by top class and removed;
+  - the variance removed by component rejection (broadband);
+  - the trial counts per cell after D12;
+  - the flags (sub-25 blocks, relabelled pairs, dropped markers).
+- No spectral quantities.
+- ▶ as proposed.
+
+### D14. Test subjects before the full run
+- **Plan:** test on 2 subjects, then run all.
+- **Options:**
+  - **E1:** the D14 set already drawn (sub-25, sub-08, sub-15; S3a-D14-draw-result);
+  - **E2:** a new draw;
+  - **E3:** rely on the A/B timing runs (sub-06) as the test.
+- ▶ **E1**, plus the S3a-INF-1-amend2 timing runs.
