@@ -1802,3 +1802,65 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
 - sub-13, sub-41 and sub-42 (if kept) need part 1 run after the D4e-4 stop is lifted for them (a later batch).
 - The removed-channel list goes to `EEG.etc.stage3.removedChannels` (S3a-INF-1-setspec).
 - The ICA rank (D9) is reduced by every interpolated and every linearly dependent channel.
+
+## S3a-P1-issueA · 2026-10-17 · s3p1_1: 76/78 verified; sub-20 rest and sub-23 rest fail on an empty-description Stimulus marker (decision pending)
+
+- **Batch `s3p1_1`** (S3a-P1): status DONE, 2026-10-17 11:18:25. 76 recordings verified and exported (`D:\Revision_EEG\stage3_part1\`, 76 hard links, `manifest.tsv`). 2 failed after 5 attempts each (Amirhossein: 0 Application Error 1000 events, so not hardware).
+- **Both failures** are the assert in `stage3_p1_compute_one.m`, line 84: "an empty-type event that is not Time 0".
+  - **sub-20 rest** and **sub-23 rest**. The offending line in both `.vmrk` files is `Mk2=Stimulus,,1,0,0,0`: type `Stimulus`, **empty description**, position 1 (the first sample), size 0.
+  - Each file also has **two** `Time 0` markers (Mk1, Mk3) and a `New Segment` at sample 1 (Mk4).
+  - The marker is **not in `events.tsv`**, which has only the four rest markers, and it lies **outside every block**: the first clipped block starts at 32.168 s (sub-20) and 12.207 s (sub-23).
+  - Marker lists: sub-20 Mk1–Mk8 and sub-23 Mk1–Mk9 (Mk9 = `New Segment` at 696921, the known raw boundary). A normal file (sub-06 rest) has Mk1 `Time 0`, Mk2 `New Segment`, then the stimuli.
+- **The same `Mk2=Stimulus,,1,0,0,0` marker occurs in 8 of the 84 `.vmrk` files:** sub-20 rest, sub-23 rest, and both recordings of sub-13, sub-41 and sub-42. The part-1 run of sub-13 and sub-41 (S3a-D6, item 2) would therefore fail on the same assert.
+  - The D4e survey ignores markers with an empty description, so it is not affected.
+- **Proposal (Claude; NOT applied; Amirhossein decides):** a named, exact exception, not a relaxed assert.
+  - A non-boundary event is removed (and counted in `EEG.etc.stage3.removedEmptyStimulusAtStart`) only if **all** of the following hold: code `Stimulus`, empty description, latency 1, duration 0, and no `events.tsv` row at sample 1.
+  - Every other empty-type event still stops the recording.
+  - Rationale: it carries no information (no event type), is absent from `events.tsv`, lies at the first sample, outside every block and ≥ H from any analysed sample, and matches the pattern of an EEGLAB export artifact (these files were exported from EEGLAB).
+  - The 76 verified recordings are unaffected: their files have no such marker. The fix changes `stage3_p1_compute_one.m`, so the 2 (later 6) recordings run in a new batch with the changed job function, recorded in that batch's fingerprints.
+  - Alternatives: keep the event as an empty-type event in the output (no use downstream); exclude the recordings (disproportionate).
+
+## S3a-D6 · 2026-10-17 · D6 bad channels: decisions (recorded before any D6 output exists)
+
+- **Decisions (Amirhossein, 2026-10-17)**, chosen from S3a-D6-options:
+  1. **Detection = 1b:** the v1 settings (`clean_channels` via `pop_clean_rawdata`: FlatlineCriterion 5 s, ChannelCriterion 0.80, RANSAC) **without** the LineNoise criterion.
+     - Rationale: that criterion scores content above ~50 Hz, so the 55–95 Hz control band (an outcome variable of the EMG test) would influence channel selection. Line noise is already removed by D5.
+     - Detection runs on a temporary copy low-passed at 100 Hz (S3a-D4 D6 default), separately in rest and MSIT+.
+  2. **Union rule:** a channel bad in rest or in MSIT+ is bad in both, so both conditions share one channel set (the main contrast is within-subject).
+  3. **Subject exclusion:** more than 15 % of channels bad. This is a convention, stated as such: of the 125 channels, ≥ 19 bad → excluded.
+  4. **sub-42: excluded** (2a), so n = 41 before any other exclusion.
+  5. **sub-13 and sub-41:** the affected pair is marked bad and interpolated (4a): sub-13 FFT8h + FCC6h; sub-41 FC5 + FT9. Both subjects are added to the part-1 job list. Their part-1 run is held by S3a-P1-issueA, since the same marker occurs in their files.
+  6. **Linearly dependent channels (3a + 3e), in every subject:** a channel whose 1 − R² from the other channels (the test P statistic, S3a-D4e-4-test) is **< 1e-6** in rest or MSIT+ is marked bad, removed before ICA and interpolated afterwards with our method.
+     - **Source:** `<outRoot>/stage3/d4e4_test_v2/predictability_by_channel.csv` (SHA-256 `a785d90110f3bd5d881e246813eb0c6659313efded2d9573e2a676ba678c2540`).
+     - **At 1e-6 this selects only sub-28:** the same 16 channels in both conditions.
+     - **Flagged for Amirhossein:** test P itself called a channel near-perfect at 1 − R² < **1e-4** (S3a-D4e-4-test). Between 1e-6 and 1e-4 there are 25 channel-recordings in sub-01, sub-07, sub-14, sub-25, sub-38 and sub-40 (1 − R² from 2.87e-5 to 9.80e-5). They are **not** marked by this rule as written.
+- **Implementation choices (Claude; flagged, not decisions):**
+  - The known-bad channels (items 5 and 6) are removed **before** RANSAC, so a perfectly predictable channel cannot pass RANSAC and cannot enter the prediction of other channels.
+  - All bad channels count toward the 15 % rule.
+  - Interpolation of **all** bad channels happens after ICA, as item 6 specifies for the dependent channels. D6 itself writes no interpolated data.
+- **Order and dependency:** D6 runs only after D2 is closed (S3a-D2-close) and its open point is decided.
+
+## S3a-D2-close · 2026-10-17 · D2 closed: individual positions (CapTrak; rounded .bvef for sub-12/23/24); one open point blocks D6
+
+- **Decision (Amirhossein, 2026-10-17):** interpolation (and therefore RANSAC, which interpolates) uses **individual positions**:
+  - the digitised CapTrak `.bvct` for 39 subjects;
+  - the integer-rounded `.bvef` for sub-12, sub-23 and sub-24;
+  - as noted in S3a-D2-reopen, this quality difference is reported in Methods.
+  - D2a (drop TP9/TP10) and D2b (recover FCz at re-referencing, now with its individual position) remain.
+- **Frame and units, established from the files (2026-10-17; text only):**
+  - **`.bvct` (39 files, 132 points each):** in every file LPA and RPA lie on the x axis (y = z = 0) and the nasion on +y (x = z = 0); Cz has positive z.
+    - So x points to the right ear (RPA), y anterior (nasion), z up; RAS orientation, in mm (nasion y 100.3–125.2, Cz z 126.2–150.0).
+    - The origin is the point of the LPA–RPA line below the nasion (the LPA–RPA midpoint lies at x = −7.7 to +9.9 mm), i.e. at ear level.
+  - **`.bvef` (3 files):** x = r sin θ cos φ, y = r sin θ sin φ, z = r cos θ gives the same orientation (Fz at +y, T8 at +x, Cz at +z), in mm (radius 77–128). Here, however, the fiducials lie at z = −40.7 to −46.0 mm, so the origin is already about 43 mm above ear level, close to the head centre.
+  - **EEGLAB frame:** X anterior, Y left, Z up. Conversion: X_eeglab = y, Y_eeglab = −x, Z_eeglab = z.
+- **Open point (blocks D6; Amirhossein decides): the centre.**
+  - Spherical-spline interpolation and RANSAC (`clean_channels`) project the positions onto a sphere around the origin.
+  - Least-squares sphere fit to the 128 digitised electrodes of each `.bvct` (descriptive; scratch script, not in the repository):
+    - centre (x, y, z) = (−8.7…12.0, −2.4…20.0, **36.2…62.7**) mm, median z 49.7 mm;
+    - radius 91.3–101.4 mm; residual SD 3.8–8.0 mm.
+    - Around the given origin the electrode distances vary with a CV of 0.120–0.159.
+  - **Options:**
+    - **(c1)** recentre each subject on its best-fit sphere (also for the `.bvef`, for consistency);
+    - **(c2)** use the coordinates as given (CapTrak origin at ear level; `.bvef` origin near the centre, so the two groups would differ);
+    - **(c3)** a fixed shift.
+  - Claude's recommendation: (c1). Spherical splines assume a sphere; c1 treats both groups alike; it is the usual step for digitised positions (e.g. EEGLAB's optimised head centre).
