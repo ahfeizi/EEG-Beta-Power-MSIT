@@ -1894,3 +1894,12 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
 - `New-Stage3JobList -Type s3p1` now leaves out only sub-42. The `jobs_s3p1.json` of `s3p1_1` is unchanged.
 - **Synthetic test** (`test_stage3_p1_compute_one.m`, PASS): a `.vhdr` with exactly the sub-13 pair swapped is accepted with `channels.tsv` labels (2 relabelled). A non-pair swap (Fp1/Fz) is refused. sub-42 is refused.
 - **Not run yet:** the `.vmrk` files of sub-13 and sub-41 contain the empty-description Stimulus marker of S3a-P1-issueA, which still stops the job until Amirhossein decides that item. The planned batch is `s3p1_2`: sub-13 and sub-41 (rest and MSIT+), plus sub-20 rest and sub-23 rest, with the timeouts of `s3p1_1`.
+
+## S3a-D2-close-check · 2026-10-17 · Positions readable for all 41 subjects; fitted centres (supports the open centring choice)
+
+- `stage3_positions.m` (commit `7b8fe9f`) was run on the verified raw copy for all 41 subjects (sub-42 excluded), with both centrings. No EEG data were read.
+  - **All 41 have individual positions for the 125 montage channels and FCz.** Every position file matched the verified manifest.
+- **Fitted sphere centre (RAS z):**
+  - `.bvct` subjects: up to 62.7 mm above the file origin (S3a-D2-close: 36.2–62.7 mm);
+  - `.bvef` subjects: sub-12 (0.4, 6.5, 0.0) mm, radius 99.2; sub-23 (−1.8, 4.6, −0.1) mm, radius 98.2; sub-24 (4.8, 10.1, −2.2) mm, radius 93.3.
+  - So the `.bvef` coordinates are already centred near the head centre, whereas the CapTrak ones are not. Under centring (c2) the two groups would be projected differently. This is a fact for the S3a-D2-close decision, which stays open.
