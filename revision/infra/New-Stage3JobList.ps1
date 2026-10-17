@@ -21,7 +21,7 @@
               order, except sub-42 (excluded, S3a-D6; sub-13/41 added: their D4e-4 pair is bad in D6); recording types s3p1_rest / s3p1_msit;
               compare kind 'set' (S3a-INF-1-setspec)
     d6        D6 bad channels (S3a-D6, S3a-D6-impl): one job per subject whose rest and MSIT+ part-1 .set files are both in
-              <EegOutRoot>\stage3_part1\manifest.tsv, sub-42 excluded; recording type d6; compare kind 'all'
+              <EegOutRoot>\stage3_part1\manifest*.tsv (one per part-1 batch), sub-42 excluded; recording type d6; compare kind 'all'
   -Only restricts the list (e.g. -Only sub-06_msit for acceptance or timing).
   A job = id, func (MATLAB job function), params (job-specific), recType (selects the timeout),
   compareKind (stage3_compare kind). See README.md, "Adding a job type".
@@ -87,17 +87,17 @@ if ($Type -eq 'd5_0_asm') {
     }
 } elseif ($Type -eq 'd6') {
     $exp = Join-Path $cfg.EegOutRoot 'stage3_part1'
-    $man = Join-Path $exp 'manifest.tsv'
+    $mans = @(Get-ChildItem -LiteralPath $exp -Filter 'manifest*.tsv' | Sort-Object Name | ForEach-Object { $_.FullName })   # one per part-1 batch
     $pt = Join-Path $cfg.OutRoot 'stage3\d4e4_test_v2\predictability_by_channel.csv'
     $ptSha = (Get-FileHash -LiteralPath $pt -Algorithm SHA256).Hash.ToLower()
-    $files = @(Import-Csv -LiteralPath $man -Delimiter "`t" | ForEach-Object { $_.file })
+    $files = @($mans | ForEach-Object { Import-Csv -LiteralPath $_ -Delimiter "`t" } | ForEach-Object { $_.file })
     $subs = @($files | ForEach-Object { ($_ -split '_')[0] } | Sort-Object -Unique)
     foreach ($s in $subs) {
         if ($s -eq 'sub-42') { continue }
         $fr = "${s}_task-rest_s3p1.set"; $fm = "${s}_task-msit_s3p1.set"
         if (($files -notcontains $fr) -or ($files -notcontains $fm)) { continue }
         if ($Only -and $Only -notcontains $s) { continue }
-        $jobs += [ordered]@{ id = $s; func = 'stage3_d6_compute_one'; params = [ordered]@{ subject = $s; p1Rest = (Join-Path $exp $fr); p1Msit = (Join-Path $exp $fm); p1Manifest = $man; predTable = $pt; predSha = $ptSha }; recType = 'd6'; compareKind = 'all' }
+        $jobs += [ordered]@{ id = $s; func = 'stage3_d6_compute_one'; params = [ordered]@{ subject = $s; p1Rest = (Join-Path $exp $fr); p1Msit = (Join-Path $exp $fm); p1Manifest = @($mans); predTable = $pt; predSha = $ptSha }; recType = 'd6'; compareKind = 'all' }
     }
 } elseif ($Type -eq 's3p1') {
     $seen = @{}

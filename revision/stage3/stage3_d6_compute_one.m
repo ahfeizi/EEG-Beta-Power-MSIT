@@ -1,7 +1,7 @@
 function stage3_d6_compute_one(params, outFile)
 %STAGE3_D6_COMPUTE_ONE  D6 bad channels for one subject (S3a-D6, S3a-D2-close), as a runner job function.
-%   params: subject; p1Rest, p1Msit (part-1 .set files) and p1Manifest (export manifest.tsv: file, bytes,
-%   sha256, canonical; each file is hash-checked against it); predTable (test P table,
+%   params: subject; p1Rest, p1Msit (part-1 .set files) and p1Manifest (one or more export manifests: file,
+%   bytes, sha256, canonical; each file is hash-checked against them); predTable (test P table,
 %   predictability_by_channel.csv) and predSha (its expected SHA-256); plus rawRoot, manifest (common; for
 %   the position files); optional posCentering (else S.d6.posCentering), logFile.
 %   Steps (both conditions):
@@ -31,7 +31,10 @@ else, logFile = fullfile(fileparts(fileparts(here)), 'docs', 'decision_log.md');
 pairs = struct('sub_13', {{'FFT8h', 'FCC6h'}}, 'sub_41', {{'FC5', 'FT9'}});
 
 % ---- inputs ---------------------------------------------------------------------------------
-M = readtable(char(params.p1Manifest), 'FileType', 'text', 'Delimiter', '\t', 'TextType', 'string');
+mf = cellstr(params.p1Manifest);                         % one or more export manifests (one per part-1 batch)
+Mc = cellfun(@(m) readtable(m, 'FileType', 'text', 'Delimiter', '\t', 'TextType', 'string'), mf, 'uni', 0);
+M = vertcat(Mc{:});
+assert(numel(unique(M.file)) == height(M), 'stage3:d6', 'a part-1 file is listed in two manifests');
 E = struct();
 for c = {'rest', 'msit'}
     f = char(params.(['p1' upper(c{1}(1)) c{1}(2:end)]));
@@ -102,7 +105,7 @@ D6 = struct('subject', s, 'nChannels', nCh, 'channels', lab, ...
     'inputs', struct('p1Rest', char(params.p1Rest), 'p1Msit', char(params.p1Msit), ...
         'predTableSha256', char(params.predSha), 'positionsFile', P.file));
 D6.params.posCentering = cen;
-ids = {'S3a-D6', 'S3a-D2-close', 'S3a-D6-impl'};
+ids = {'S3a-D6', 'S3a-D2-close', 'S3a-D6-impl', 'S3a-D2-centring', 'S3a-D6-amend1'};
 D6.logEntries = struct('id', ids, 'sha256', cellfun(@(i) stage3_log_entry(logFile, i), ids, 'uni', 0));
 save(outFile, 'D6');
 fprintf('%s: %d bad of %d (pair %d, dependent %d, RANSAC rest %d / MSIT+ %d) -> %.1f %%, excluded %d\n', s, numel(bad), nCh, ...

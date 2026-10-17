@@ -4,10 +4,10 @@ function ok = test_stage3_d6_compute_one(workDir, labelsTsv)
 %   Subject "sub-13" (so the D4e-4 pair FFT8h/FCC6h applies). Positions: the standard-10-5-cap385 template
 %   on a 95 mm sphere whose centre lies 50 mm above the file origin (as in CapTrak), written as a .bvct.
 %   Data: 125 channels, 500 Hz, 100 s per condition, 30 broad smooth spatial sources plus small sensor noise.
-%   Defects: rest O1 flat for 20 s (flatline); MSIT+ P4 independent large noise (RANSAC); Pz 1 - R^2 = 1e-8
-%   in rest only (dependent; union -> bad in both). Expected bad set: FFT8h, FCC6h, Pz, O1, P4.
+%   Defects: rest O1 flat for 20 s (flatline); MSIT+ P4 independent large noise (RANSAC); Pz 1 - R^2 = 5e-5
+%   (5e-5: dependent under 1e-4, S3a-D6-amend1) in rest only (union -> bad in both). Expected bad set: FFT8h, FCC6h, Pz, O1, P4.
 %   Checks: 1. bad set, categories, not excluded; 2. 'spherefit' centre = [0 0 50] mm, 'origin' = 0;
-%   3. A = B ('all' compare); 4. 19 dependent channels -> excluded; 5. refusals: undecided centring,
+%   3. A = B ('all' compare); 4. 19 dependent channels -> excluded; 5. refusals: unknown centring,
 %   sub-42, a part-1 file whose hash differs from the manifest.
 
 here = fileparts(mfilename('fullpath'));
@@ -82,13 +82,14 @@ fprintf('3 A = B: %d\n', c3);
 p19 = base; p19.predTable = pt19; p19.predSha = sha(pt19); f19 = fullfile(workDir, 'x19.mat'); stage3_d6_compute_one(p19, f19);
 Q = load(f19); c4 = Q.D6.excluded && Q.D6.nBad >= 19;
 fprintf('4 19 dependent channels: nBad %d, excluded %d -> %d\n', Q.D6.nBad, Q.D6.excluded, c4);
-r1 = refused(@() stage3_d6_compute_one(rmfield(base, 'posCentering'), fullfile(workDir, 'r1.mat')), 'not decided');
+r1 = refused(@() stage3_d6_compute_one(setf(base, 'posCentering', 'bogus'), fullfile(workDir, 'r1.mat')), 'unknown centring');
+d0 = load(fa); c1 = c1 && strcmp(stage3_params().d6.posCentering, 'spherefit') && stage3_params().d6.r2Thr == 1e-4 && abs(d0.D6.dependent.rest.one_minus_r2 - 5e-5) < 1e-12;
 r2 = refused(@() stage3_d6_compute_one(setf(base, 'subject', 'sub-42'), fullfile(workDir, 'r2.mat')), 'excluded');
 copyfile(files.msit, fullfile(p1, 'tmp.set')); EEG = load(files.msit, '-mat'); EEG = EEG.EEG; EEG.data(1) = EEG.data(1) + 1; save(files.msit, 'EEG', '-mat');
 r3 = refused(@() stage3_d6_compute_one(base, fullfile(workDir, 'r3.mat')), 'SHA-256');
 movefile(fullfile(p1, 'tmp.set'), files.msit);
 c5 = r1 && r2 && r3;
-fprintf('5 refused: undecided centring %d, sub-42 %d, changed part-1 file %d\n', r1, r2, r3);
+fprintf('5 refused: unknown centring %d, sub-42 %d, changed part-1 file %d; defaults spherefit and 1e-4, dependent at 5e-5 -> %d\n', r1, r2, r3, c1);
 ok = c1 && c2 && c3 && c4 && c5;
 if ok, fprintf('D6 SYNTHETIC PASS\n'); else, fprintf('D6 SYNTHETIC FAIL\n'); end
 end
@@ -98,7 +99,7 @@ function f = writePred(workDir, name, s, mont, depLab, mode)
 rows = {};
 for c = ["rest", "msit"]
     v = 0.01 * ones(numel(mont), 1);
-    if mode == 2 || c == "rest", v(ismember(mont, depLab)) = 1e-8; end
+    if mode == 2 || c == "rest", v(ismember(mont, depLab)) = 5e-5; end   % below 1e-4 (S3a-D6-amend1), above 1e-6
     rows{end+1} = table(repmat(string(s), numel(mont), 1), repmat(c, numel(mont), 1), (1:numel(mont))', mont, mont, v, ...
         double(v < 1e-4), 'VariableNames', {'subject', 'task', 'column', 'label_tsv', 'label_vhdr', 'one_minus_r2', 'near_perfect'}); %#ok<AGROW>
 end

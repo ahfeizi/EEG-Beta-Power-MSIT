@@ -1,11 +1,12 @@
-function T = stage3_d6_summary(batchDir, outFile)
-%STAGE3_D6_SUMMARY  One row per subject from the verified D6 outputs of batchDir (S3a-D6-impl); each
+function T = stage3_d6_summary(batchDirs, outFile)
+%STAGE3_D6_SUMMARY  One row per subject from the verified D6 outputs of one or more batches (S3a-D6-impl); each
 %   canonical output is hash-checked against its state file. Writes outFile (CSV, never overwrites).
 assert(exist(outFile, 'file') ~= 2, 'refusing to overwrite %s', outFile);
-S = dir(fullfile(batchDir, 'state', '*.json'));
+S = [];
+for b = cellstr(batchDirs), S = [S; dir(fullfile(b{1}, 'state', '*.json'))]; end %#ok<AGROW>
 rows = {};
 for k = 1:numel(S)
-    st = jsondecode(fileread(fullfile(batchDir, 'state', S(k).name)));
+    st = jsondecode(fileread(fullfile(S(k).folder, S(k).name)));
     if ~any(strcmp(st.status, {'verified', 'flagged'})), continue; end
     assert(strcmp(sha256File(st.canonical.path), st.canonical.sha256), '%s: canonical output does not match its SHA-256', S(k).name);
     L = load(st.canonical.path); D = L.D6;

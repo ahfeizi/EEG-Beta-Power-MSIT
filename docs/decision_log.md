@@ -1903,3 +1903,61 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - `.bvct` subjects: up to 62.7 mm above the file origin (S3a-D2-close: 36.2–62.7 mm);
   - `.bvef` subjects: sub-12 (0.4, 6.5, 0.0) mm, radius 99.2; sub-23 (−1.8, 4.6, −0.1) mm, radius 98.2; sub-24 (4.8, 10.1, −2.2) mm, radius 93.3.
   - So the `.bvef` coordinates are already centred near the head centre, whereas the CapTrak ones are not. Under centring (c2) the two groups would be projected differently. This is a fact for the S3a-D2-close decision, which stays open.
+
+## S3a-P1-amend2 · 2026-10-17 · Named exception for the empty-description Stimulus marker at sample 1 (S3a-P1-issueA resolved)
+
+- **Decision (Amirhossein, 2026-10-17):** the narrow, named exception proposed in S3a-P1-issueA.
+  - A non-boundary event is dropped, and counted in `EEG.etc.stage3.removedEmptyStimulusAtStart`, **only if** all of the following hold:
+    - code `Stimulus`;
+    - empty description (EEGLAB type);
+    - latency = 1 and duration = 0;
+    - no `events.tsv` row at sample 1.
+  - Anything else (any other empty-type event that is not `Time 0`) still stops the recording.
+- **Run:** batch **`s3p1_2`**, A/B, with the timeouts of `s3p1_1` (`timeouts_s3p1.json`), on sub-13 and sub-41 (rest and MSIT+), sub-20 rest and sub-23 rest. It is then exported to `<EegOutRoot>/stage3_part1/`.
+  - Each batch has its own export manifest (`manifest.tsv` for `s3p1_1`, `manifest_s3p1_2.tsv` for `s3p1_2`); nothing is overwritten.
+  - The 76 recordings verified in `s3p1_1` are not rerun: their files contain no such marker (S3a-P1-issueA), so the exception would not change them.
+
+## S3a-D2-centring · 2026-10-17 · Centring of the individual positions = c1 (fitted sphere centre)
+
+- **Decision (Amirhossein, 2026-10-17): c1.** Per subject, the coordinates are re-centred on the least-squares sphere centre of the EEG electrodes (fiducials and GND excluded). This applies to the `.bvct` and the `.bvef` alike (`S.d6.posCentering = 'spherefit'`).
+- **Rationale (Amirhossein):**
+  - spherical-spline interpolation and RANSAC assume electrodes on a sphere around the origin;
+  - the CapTrak origin sits about 50 mm below the head centre (S3a-D2-close);
+  - c1 also puts `.bvct` and `.bvef` on the same footing (S3a-D2-close-check).
+- This closes the open point of S3a-D2-close. D6 may run.
+
+## S3a-D6-amend1 · 2026-10-17 · Dependent-channel threshold 1 − R² < 1e-4 (replaces 1e-6)
+
+- **Decision (Amirhossein, 2026-10-17):** the threshold of S3a-D6 item 6 is **1e-4**, not 1e-6.
+  - Reasons: the 1e-6 was set from sub-28's values only. 1e-4 is the "near-perfect" definition already used by the committed test P (S3a-D4e-4-test). A channel with ≤ 0.01 % unique variance carries no independent information and ill-conditions ICA.
+  - The decision is outcome-blind: it rests on channel dependence in 1–10 Hz only.
+- **Effect** (`d4e4_test_v2/predictability_by_channel.csv`): sub-28 keeps its 16 channels, and 25 channel-recordings are added in sub-01, sub-07, sub-14, sub-25, sub-38 and sub-40 (1 − R² from 2.87e-5 to 9.80e-5). The union rule applies (bad in both conditions).
+- **Descriptive report (does not change the rule):** for these channels, whether their main predictors are adjacent electrodes (possible gel bridges). Source: the predictor check of test P in `d4e4_test_v2/near_perfect_predictors.csv` (6 largest standardised weights; how many are among the 6 nearest sites). Written by `stage3_d6_dependent_report.m` to `<outRoot>/stage3/d6/dependent_channels_predictors.csv`.
+- **Synthetic test** updated: a channel with 1 − R² = 5e-5 is now dependent.
+
+## S3a-D6-dep-report · 2026-10-17 · Dependent channels: are their main predictors adjacent? (descriptive; the rule is unchanged)
+
+- **Run:** `stage3_d6_dependent_report.m` on the test P tables of `d4e4_test_v2`. No EEG data. Output: `<outRoot>/stage3/d6/dependent_channels_predictors.csv` (SHA-256 `e78d31119ddea852fda7f8dfe37653dafac682d07a72c64eb363d67d7e00e937`).
+  - 57 channel-recordings with 1 − R² < 1e-4: 32 in sub-28 and 25 in the six other subjects.
+  - "Adjacent" = how many of the 6 largest standardised predictors are among the channel's 6 nearest sites (test P predictor check, individual positions).
+- **The six subjects** (sub-01, 07, 14, 25, 38, 40; 1 − R² from 2.87e-5 to 9.80e-5):
+  - number of adjacent predictors among the top 6: 1 in 2 rows, 2 in 9, 3 in 7, 4 in 6, 5 in 1;
+  - in 22 of the 25, the top predictor is itself a dependent channel that names the first one back (mutual pairs or small clusters), e.g. sub-40 AFp1 ↔ AFp2, sub-01 AF8 ↔ AFF6h, sub-25 F8/FT8/FT10/FFT8h/FFT10h.
+  - This pattern fits gel bridges between neighbouring electrodes. It is not tested here.
+- **sub-28** (32 rows, the same 16 channels in both conditions): 0 adjacent predictors in 30 rows, 1 in 2, as in S3a-D4e-4-asm-amend1. So these are not neighbour-based.
+- **Rule unchanged** (S3a-D6-amend1): all 57 channel-recordings are bad, and the union rule applies.
+
+## S3a-D6-run · 2026-10-17 · Queue: s3p1_2, then D6 batch d6_1 (all subjects with both part-1 files)
+
+- **Serial queue** `Invoke-Stage3QueueP1D6.ps1` (two MATLAB batches never run at once, S3a-INF-1 §1). Detached; resumable with the same command; log `<EegOutRoot>/stage3_runs/queue_p1d6.log`.
+  1. **`s3p1_2`** (S3a-P1-amend2): sub-13 and sub-41 (rest and MSIT+), sub-20 rest, sub-23 rest. A/B with the timeouts of `s3p1_1`, then export to `manifest_s3p1_2.tsv`.
+  2. **`d6_1`** (S3a-D6, -amend1, S3a-D2-centring): timing on sub-06 (3 replicas), then the A/B batch, then `<outRoot>/stage3/d6/d6_summary.csv`.
+     - The job list is built when the chain first starts, from all export manifests. If `s3p1_2` succeeds it therefore contains all 41 subjects; sub-42 is excluded.
+     - So sub-13/20/23/41 need no separate D6 batch. If a part-1 recording of theirs fails, that subject is missing from `d6_1` and follows in `d6_2`.
+- **Code changes for this run:**
+  - `stage3_p1_compute_one` gains the S3a-P1-amend2 exception.
+  - `stage3_params` sets `S.d6.posCentering = 'spherefit'` and `S.d6.r2Thr = 1e-4`.
+  - `stage3_d6_compute_one` and the `d6` job list accept several export manifests.
+  - `Invoke-Stage3Part1.ps1` gains `-BatchId`/`-Only` (later batches reuse `timeouts_s3p1.json`; one manifest per batch; it stops instead of writing a second manifest).
+  - `stage3_d6_summary` reads several batches.
+  - Synthetic tests (PASS): `test_stage3_p1_compute_one.m` checks the marker at sample 1 is dropped and counted, with output equal to the clean run, and that the same marker at sample 2 is refused. `test_stage3_d6_compute_one.m` checks a dependent channel at 1 − R² = 5e-5, centring c1 by default, and that an unknown centring is refused.

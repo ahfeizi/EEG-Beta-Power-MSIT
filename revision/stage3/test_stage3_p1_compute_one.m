@@ -9,7 +9,8 @@ function ok = test_stage3_p1_compute_one(workDir, labelsTsv)
 %   block, the Time 0 marker removed; 2. group size 16 vs 50 and two runs: 'set' compare equal;
 %   3. pop_loadset reads the output under a .set name; 4. an events.tsv shifted by 1 ms is refused;
 %   a rest S10 off by 20 ms is refused; sub-42 is refused; a .vhdr swap of exactly the sub-13 pair is accepted
-%   (channels.tsv labels used), any other swap is refused; 5. 'set' compare reports a changed data
+%   (channels.tsv labels used), any other swap is refused; the empty-description Stimulus marker at sample 1
+%   is dropped and counted (S3a-P1-amend2), at sample 2 it is refused; 5. 'set' compare reports a changed data
 %   sample and a field present in one file only as different.
 
 here = fileparts(mfilename('fullpath'));
@@ -103,7 +104,21 @@ p13 = setf(p, 'subject', 'sub-13', 'rawRoot', fullfile(workDir, 'raw_s13'), 'man
 f13 = fullfile(workDir, 's13.mat'); stage3_p1_compute_one(p13, f13); S13 = load(f13);
 r4 = isequal(string({S13.EEG.chanlocs.labels}), string({E.chanlocs.labels})) && S13.EEG.etc.stage3.labelsRelabelledFromTsv == 2;
 r5 = refused(@() stage3_p1_compute_one(setf(p, 'rawRoot', fullfile(workDir, 'raw_badlab'), 'manifest', fullfile(workDir, 'raw_badlab_manifest.tsv')), fullfile(workDir, 'x5.mat')), 'labels differ');
-c4 = c4a && r1 && r2 && r3 && r4 && r5;
+% S3a-P1-amend2: the exact empty-description Stimulus marker at sample 1 is dropped and counted (output
+% 'set'-equal to the clean run); the same marker at sample 2 is refused
+for r = {'raw_es', 'raw_es2'}
+    copyfile(raw, fullfile(workDir, r{1}));
+    pos = 1 + strcmp(r{1}, 'raw_es2');
+    addMarker(fullfile(workDir, r{1}, 'sub-90', 'eeg', 'sub-90_task-msit_eeg.vmrk'), sprintf('Stimulus,,%d,0,0,0', pos));
+    writeManifest(fullfile(workDir, r{1}), fullfile(workDir, [r{1} '_manifest.tsv']));
+end
+fes = fullfile(workDir, 'es.mat');
+stage3_p1_compute_one(setf(p, 'rawRoot', fullfile(workDir, 'raw_es'), 'manifest', fullfile(workDir, 'raw_es_manifest.tsv')), fes);
+ES = load(fes); jes = fullfile(workDir, 'cmp_es.json'); stage3_compare(fa, fes, 'set', jes);
+r6 = ES.EEG.etc.stage3.removedEmptyStimulusAtStart == 1 && E.etc.stage3.removedEmptyStimulusAtStart == 0 && jsondecode(fileread(jes)).equal;
+r7 = refused(@() stage3_p1_compute_one(setf(p, 'rawRoot', fullfile(workDir, 'raw_es2'), 'manifest', fullfile(workDir, 'raw_es2_manifest.tsv')), fullfile(workDir, 'x7.mat')), 'not Time 0');
+fprintf('4b empty Stimulus marker at sample 1 dropped and counted, output equal %d; at sample 2 refused %d\n', r6, r7);
+c4 = c4a && r1 && r2 && r3 && r4 && r5 && r6 && r7;
 fprintf('4 rest blocks %d; shifted events refused %d; S10 off refused %d; sub-42 refused %d; sub-13 pair swap accepted with tsv labels %d; other swap refused %d\n', c4a, r1, r2, r3, r4, r5);
 % ---- 5. set compare detects differences --------------------------------------------------------
 EEG = E; EEG.data(5, 100) = EEG.data(5, 100) + 1; fd = fullfile(workDir, 'd.mat'); save(fd, 'EEG');
@@ -116,6 +131,14 @@ c5 = ~D.equal && fd_.n_diff == 1 && abs(fd_.max_abs_diff - 1) < 1e-3 && ~Q.equal
 fprintf('5 set compare: changed sample found %d; field in one file only = different %d\n', ~D.equal && fd_.n_diff == 1, ~Q.equal && ~fq_.equal);
 ok = c1 && c2 && c3 && c4 && c5;
 if ok, fprintf('P1 SYNTHETIC PASS\n'); else, fprintf('P1 SYNTHETIC FAIL\n'); end
+end
+
+function addMarker(f, spec)
+t = fileread(f);
+k = regexp(t, '^Mk(\d+)=', 'tokens', 'lineanchors'); m = max(cellfun(@(c) str2double(c{1}), k));
+nl = sprintf('\r\n'); if ~contains(t, nl), nl = newline; end
+if ~endsWith(t, nl), t = [t nl]; end
+fid = fopen(f, 'w'); fwrite(fid, [t sprintf('Mk%d=%s', m + 1, spec) nl]); fclose(fid);
 end
 
 function s = setf(s, varargin)
