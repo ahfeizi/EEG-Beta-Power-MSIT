@@ -2176,3 +2176,49 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - **E2:** a new draw;
   - **E3:** rely on the A/B timing runs (sub-06) as the test.
 - ▶ **E1**, plus the S3a-INF-1-amend2 timing runs.
+
+## S3a-D6-final · 2026-10-24 · The 15 % rule stands: sub-28 and sub-32 excluded; N = 39
+
+- **Decision (Amirhossein, 2026-10-24):** the D6 exclusion rule is applied **as pre-registered** (S3a-D6 item 3).
+  - sub-28 (19 of 125 = 15.2 %) and sub-32 (27 = 21.6 %) are excluded (S3a-D6-report).
+  - Together with sub-42 (S3a-D6 item 4), the analysable sample is **N = 39**.
+  - Nothing was changed after seeing the results.
+
+## S3a-P2 · 2026-10-24 · Stage-3 decisions after D6 (re-reference, ASR, ICA, ICLabel, interpolation, storage, D12–D14)
+
+- **Decisions (Amirhossein, 2026-10-24)**, from the options of S3a-post-D6-options; recorded before any output of these steps exists.
+  1. **Re-reference = R1.** Before ICA: the average of the good channels, with FCz recovered (zero channel with its individual position, `refloc`). After interpolation: re-referenced again to the average of the full 126-channel montage.
+  2. **ASR = A3:** `clean_asr`, burst criterion 20, applied **only to the ICA-training copy, never to the analysed data**.
+  3. **ICA:**
+     - J1, joint rest + MSIT+ per subject;
+     - trained on a 1 Hz high-pass, full-band copy (I1);
+     - Picard (G1);
+     - pca = the number of good channels (K1), with a numerical rank check that **stops the job** on mismatch.
+  4. **ICLabel and the EMG test** (thresholds p ≥ 0.8):
+     - beta analyses (primary): remove **all non-brain classes** at p ≥ 0.8;
+     - **the EMG control-band test runs primarily on the version in which muscle components are NOT removed**, because testing for EMG after removing EMG is circular;
+     - beta on that version is a sensitivity analysis;
+     - both versions are rebuilt deterministically from S1 (item 6).
+  5. **Interpolation:** spherical spline, individual positions with c1 centring (S3a-D2-centring), after ICA.
+     - Primary analysis on N = 39.
+     - Sensitivity analysis without sub-12, sub-19, sub-22, sub-23 and sub-41 (Fz/Cz/C4 interpolated; S3a-D6-report).
+  6. **Storage = S1:** one stored copy per subject. It holds the pre-component-removal data, the ICA matrices, the ICLabel classifications and the rejection lists. Each analysed version is rebuilt deterministically by component removal, interpolation and the final re-reference.
+  7. **D12, trial selection:**
+     - a trial is rejected if the peak-to-peak amplitude (broadband, time domain) within the Stage-5 analysis window exceeds **150 µV** on Fz, Cz or C4;
+     - a subject is excluded if fewer than **50 %** of trials remain in any condition;
+     - rest pseudo-epochs use the same rule;
+     - trial counts per subject and condition are reported (counts only).
+  8. **D13:** no spectral QC metrics. **D14:** sub-25, sub-08 and sub-15 (S3a-D14-draw-result) form the test batch.
+- **Run plan (Amirhossein):**
+  - the remaining Stage-3 steps are implemented as A/B job types, with synthetic tests first;
+  - the D14 subjects run first, as a separate batch;
+  - the report gives run time per job, crashes, the number of components removed per class (counts only), and the trial counts. Then work **stops for review** before the full batch;
+  - **if a single ICA job takes more than about 45 min in the timing run, stop and report** instead of proceeding (this laptop crashes under long sustained load).
+  - Outcome-blind: no spectra or power in 13–30 or 55–95 Hz.
+- **Points flagged for Amirhossein (Claude), not decided here:**
+  - **(i) "All non-brain classes" and ICLabel's "Other".** v1 and option L1 of S3a-post-D6-options never rejected "Other"; read literally, item 4 also rejects "Other" at p ≥ 0.8.
+    - Both lists are stored (S1), so the choice needs no recomputation.
+    - The D14 report gives the component counts for both readings.
+  - **(ii) D12 needs the Stage-5 analysis window, which is not defined yet.** `revision_plan.md` gives only "identical 200 ms estimator for rest and task"; the within-task window and the rest pseudo-epochs are open.
+    - D12 is therefore implemented as a tested function of the window and is applied in Stage 5, once the windows are fixed.
+    - The D14 report can give only trial counts **before** D12 (stimuli inside the clipped blocks, block-first excluded).
