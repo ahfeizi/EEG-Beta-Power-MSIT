@@ -2222,3 +2222,49 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - **(ii) D12 needs the Stage-5 analysis window, which is not defined yet.** `revision_plan.md` gives only "identical 200 ms estimator for rest and task"; the within-task window and the rest pseudo-epochs are open.
     - D12 is therefore implemented as a tested function of the window and is applied in Stage 5, once the windows are fixed.
     - The D14 report can give only trial counts **before** D12 (stimuli inside the clipped blocks, block-first excluded).
+
+## S3a-P2-impl · 2026-10-24 · Stage 3 part 2 as an A/B job type; S1 rebuild; D12 function; D14 batch p2_d14 (before any output)
+
+- **Job** `revision/stage3/stage3_p2_compute_one.m` (job-list type `p2`, one job per subject; recording type `p2`; compare kind `all`). Per subject, both conditions, in double precision:
+  1. **Inputs:**
+     - the part-1 rest and MSIT+ files, hash-checked against the export manifests;
+     - the subject's verified D6 output, hash-checked against the `d6_1` state; the job is refused if the subject is excluded;
+     - the individual centred positions come from the D6 output (S3a-D2-centring).
+  2. **D6 channels removed** (S3a-D6, -amend1).
+  3. **ICA-training copy** (S3a-P2 items 2, 3): rest + MSIT+ merged (`pop_mergeset`), high-pass 1 Hz (`pop_eegfiltnew`), then `clean_asr` with burst criterion 20 and default windows.
+     - MaxMem is explicitly 1024 MB. Asserted: no `hlp_diskcache`, and the RAM-dependent branch of `asr_process.m:131` is not taken.
+     - **ASR is applied to this copy only.**
+     - The fraction of training samples it modified is stored (D13).
+  4. **Re-reference R1:** FCz is added with its individual position and the average reference computed (`pop_reref([], 'refloc', FCz)`), identically for the analysed rest, the analysed MSIT+ and the training copy. ASR runs before this step, on the FCz-referenced training copy; the re-reference is linear.
+  5. **Rank check** (item 3): the training covariance must have exactly the good-channel count of eigenvalues above **1e-10 × the largest**. Otherwise the job **stops**.
+     - The tolerance is fixed here (implementation). An exact dependency, such as the average reference's sum-to-zero, falls far below it; genuine channels lie far above it.
+  6. **Picard** (`pop_runica 'picard'`, pca = the number of good channels; plugin defaults; internal seed per S3a-INF-1 §2) on the training copy. The weights are transplanted to the analysed data, which are never ASR-modified.
+  7. **ICLabel** (`iclabel`, default version) on the merged analysed data. Afterwards the global RNG is reseeded with SEED_GLOBAL (S3a-INF-1 §2).
+     - Rejection lists at p ≥ 0.8:
+       - `beta_withoutOther` (Muscle, Eye, Heart, Line Noise, Channel Noise) and `beta_withOther` (+ Other);
+       - `emg_withoutOther` (Eye, Heart, Line Noise, Channel Noise; Muscle kept) and `emg_withOther` (+ Other).
+     - Both readings of S3a-P2 point (i) are stored.
+- **Output = the S1 bundle** (variable `P2`):
+  - per condition, the pre-component-removal EEG (data single; good channels + FCz, average reference; ICA matrices; ICLabel classification in `etc`);
+  - the classifications, the lists, the removed channels;
+  - `fullChanlocs` (the 125 montage channels + FCz, individual centred positions) for interpolation;
+  - the settings, the input hashes and the log-entry hashes;
+  - **QC (D13; counts only):** good channels, rank, pca, the number of ICs, the ICs with p ≥ 0.8 per class, the ICs by top class, the rejected counts per list, the ASR-modified fraction, the removed channels. No spectral quantity.
+- **Rebuild** `stage3_p2_rebuild(P2, cond, version, rejectOther)`:
+  - version `beta` | `emg` | `none`;
+  - `rejectOther` is **required** until point (i) is decided;
+  - steps: component removal (`pop_subcomp`), spherical-spline interpolation of the D6 channels onto `fullChanlocs` (126 channels, `pop_interp 'spherical'`), average reference over the full montage (R1, second step). Deterministic.
+- **D12** `stage3_d12_trials(EEG, eventTypes, window, chans, thr)`: broadband peak-to-peak > 150 µV on Fz, Cz or C4 within the window → the trial is rejected. **Applied in Stage 5**, once the window is fixed (S3a-P2 point ii).
+  - **Implementation choices (flagged):**
+    - a trial whose window crosses a boundary or the data edge counts as "outside", not as kept;
+    - the 50 % rule uses kept / (trials − outside).
+- **Synthetic test:** `test_stage3_p2_compute_one.m`. It checks the bundle sizes and rank; that the analysed data equal the re-referenced part-1 data (no ASR on them); A = B; that a dependent channel stops the job; the rebuild (126 channels, average reference, deterministic, `rejectOther` required); that an excluded subject is refused; and the D12 counts.
+- **Job list** `p2`: the 39 subjects verified in `d6_1` and not excluded (`d6_summary.csv`), with the D6 hash cross-checked against the state.
+  - `New-Stage3JobList.ps1` now splits a comma `-Only` list, as `-File` passes it as one string.
+- **Chain guard:** `Invoke-Stage3JobTypeChain.ps1 -MaxTimingSeconds` makes the chain **stop** after a timing run if any replica took longer than the limit or timed out.
+- **D14 run** (`Invoke-Stage3P2.ps1 -Name p2d14 -BatchId p2_d14 -Only sub-25,sub-08,sub-15 -TimingJob sub-25`):
+  1. timing on sub-25 (3 replicas, per-replica kill at 3000 s); **the chain stops if any replica exceeds 2700 s (45 min)**;
+  2. then the A/B batch **`p2_d14`**;
+  3. export: hard links `<EegOutRoot>/stage3_part2/<sub>_s3p2.mat`, plus `manifest_p2_d14.tsv`.
+  - Then **stop for Amirhossein's review**; the full batch is not started.
+- **Disk:** the bundle has about the size of the two part-1 files of a subject (data single, one copy; S1). For the 39 subjects that is about 15 GB, with 41.1 GB free on D: (S3a-post-D6-options).

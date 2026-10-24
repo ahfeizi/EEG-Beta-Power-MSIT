@@ -10,12 +10,13 @@
   powershell -NoProfile -ExecutionPolicy Bypass -File Invoke-Stage3JobTypeChain.ps1 -Type d5_0_asm -Name d5asm -TimingJobs d5_0_asm_d5_0_1 -BatchId d5asm_1
 #>
 param(
-    [Parameter(Mandatory = $true)][ValidateSet('d4e4', 'd5_0_asm', 'd4e4_asm', 'd5b', 'd5bu', 'd5bmerge', 'd5a', 's3p1', 'd6')][string]$Type,
+    [Parameter(Mandatory = $true)][ValidateSet('d4e4', 'd5_0_asm', 'd4e4_asm', 'd5b', 'd5bu', 'd5bmerge', 'd5a', 's3p1', 'd6', 'p2')][string]$Type,
     [Parameter(Mandatory = $true)][string]$Name,
     [Parameter(Mandatory = $true)][string]$TimingJobs,      # comma-separated job ids of the full list
     [Parameter(Mandatory = $true)][string]$BatchId,
     [string]$SourceBatch,
     [int]$TimingTimeoutS = 0,                              # S3a-INF-1-amend3: per-replica timeout of the timing runs (0 = AcceptanceTimeoutS)                                  # assembly types: the batch to assemble (default of New-Stage3JobList)
+    [int]$MaxTimingSeconds = 0,                            # S3a-P2-impl: stop if any timing replica runs longer (0 = no limit)
     [string]$Config,
     [switch]$SkipPrechecksForTest                          # synthetic tests only (the runner refuses it without TestMode)
 )
@@ -72,6 +73,11 @@ foreach ($id in @($TimingJobs -split ',' | ForEach-Object { $_.Trim() } | Where-
     if ($v -ne 'TIMING_ONLY') { Say "CHAIN STOPPED: $b verdict '$v'"; exit 4 }
     if ([int](Read-Json $af).replicasOk -lt 1) { Say "CHAIN STOPPED: $b has no successful replica (see its summary)"; exit 4 }
     Say "$b finished: median $((Read-Json $af).medianWallSeconds) s"
+    if ($MaxTimingSeconds -gt 0) {
+        $acc = Read-Json $af
+        $mx = (@($acc.wallSecondsSuccessful) | Measure-Object -Maximum).Maximum
+        if ([int]$acc.timeouts -gt 0 -or $mx -gt $MaxTimingSeconds) { Say "CHAIN STOPPED: $b exceeds the $MaxTimingSeconds s limit (max replica $mx s, timeouts $($acc.timeouts))"; exit 5 }
+    }
 }
 
 # 3. job-type timeouts

@@ -22,12 +22,15 @@
               compare kind 'set' (S3a-INF-1-setspec)
     d6        D6 bad channels (S3a-D6, S3a-D6-impl): one job per subject whose rest and MSIT+ part-1 .set files are both in
               <EegOutRoot>\stage3_part1\manifest*.tsv (one per part-1 batch), sub-42 excluded; recording type d6; compare kind 'all'
+    p2        Stage 3 part 2 (S3a-P2, S3a-P2-impl): one job per subject verified in batch d6_1 and not excluded
+              (<OutRoot>\stage3\d6\d6_summary.csv); part-1 files and manifests as for d6; recording type p2;
+              compare kind 'all'
   -Only restricts the list (e.g. -Only sub-06_msit for acceptance or timing).
   A job = id, func (MATLAB job function), params (job-specific), recType (selects the timeout),
   compareKind (stage3_compare kind). See README.md, "Adding a job type".
 #>
 param(
-    [Parameter(Mandatory = $true)][ValidateSet('d5_0', 'd4e4', 'd5_0_asm', 'd4e4_asm', 'd5b', 'd5bu', 'd5bmerge', 'd5a', 's3p1', 'd6')][string]$Type,
+    [Parameter(Mandatory = $true)][ValidateSet('d5_0', 'd4e4', 'd5_0_asm', 'd4e4_asm', 'd5b', 'd5bu', 'd5bmerge', 'd5a', 's3p1', 'd6', 'p2')][string]$Type,
     [Parameter(Mandatory = $true)][string]$Out,
     [string[]]$Only,
     [string]$SourceBatch = 'd5_0_1',
@@ -44,6 +47,7 @@ $ErrorActionPreference = 'Stop'
 if (-not $Config) { $Config = Join-Path $PSScriptRoot 'runner_config.psd1' }
 Import-Module (Join-Path $PSScriptRoot 'Stage3Runner.psm1') -Force
 $cfg = Import-Stage3Config $Config
+$Only = @($Only | ForEach-Object { $_ -split ',' } | Where-Object { $_ })   # -File passes a comma list as one string
 $jobs = @()
 if ($Type -eq 'd5_0_asm') {
     $src = Join-Path (Join-Path $cfg.EegOutRoot 'stage3_runs') $SourceBatch
@@ -84,6 +88,20 @@ if ($Type -eq 'd5_0_asm') {
         if ($RawRootOverride) { $pr.rawRoot = $RawRootOverride }
         if ($ManifestOverride) { $pr.manifest = $ManifestOverride }
         $jobs += [ordered]@{ id = $id; func = 'stage3_d5a_compute_one'; params = $pr; recType = "d5a_$($r.task)"; compareKind = 'all' }
+    }
+} elseif ($Type -eq 'p2') {
+    $exp = Join-Path $cfg.EegOutRoot 'stage3_part1'
+    $mans = @(Get-ChildItem -LiteralPath $exp -Filter 'manifest*.tsv' | Sort-Object Name | ForEach-Object { $_.FullName })
+    $sum = @(Import-Csv -LiteralPath (Join-Path $cfg.OutRoot 'stage3\d6\d6_summary.csv'))
+    $d6b = Join-Path (Join-Path $cfg.EegOutRoot 'stage3_runs') 'd6_1'
+    foreach ($r in $sum) {
+        $s = $r.subject
+        if ($r.excluded -in @('1', 'true')) { continue }
+        if ($Only -and $Only -notcontains $s) { continue }
+        $st = Read-Json (Join-Path $d6b "state\$s.json")
+        if ($st.status -notin @('verified', 'flagged')) { throw "D6 of ${s} is $($st.status)" }
+        if ($st.canonical.sha256 -ne $r.d6_sha256) { throw "D6 of ${s}: summary and state hashes differ" }
+        $jobs += [ordered]@{ id = $s; func = 'stage3_p2_compute_one'; params = [ordered]@{ subject = $s; p1Rest = (Join-Path $exp "${s}_task-rest_s3p1.set"); p1Msit = (Join-Path $exp "${s}_task-msit_s3p1.set"); p1Manifest = @($mans); d6File = $st.canonical.path; d6Sha = $st.canonical.sha256 }; recType = 'p2'; compareKind = 'all' }
     }
 } elseif ($Type -eq 'd6') {
     $exp = Join-Path $cfg.EegOutRoot 'stage3_part1'
