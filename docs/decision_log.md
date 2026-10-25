@@ -2268,3 +2268,43 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   3. export: hard links `<EegOutRoot>/stage3_part2/<sub>_s3p2.mat`, plus `manifest_p2_d14.tsv`.
   - Then **stop for Amirhossein's review**; the full batch is not started.
 - **Disk:** the bundle has about the size of the two part-1 files of a subject (data single, one copy; S1). For the 39 subjects that is about 15 GB, with 41.1 GB free on D: (S3a-post-D6-options).
+
+## S3a-P2-other · 2026-10-25 · Clarification: ICLabel "Other" is not removed (S3a-P2 item 4, point i)
+
+- **Decision (Amirhossein, 2026-10-25):** the wording "all non-brain" in S3a-P2 was ambiguous. "Other" is **not** removed, as in v1.
+  - **Primary analysed version:** remove Eye, Muscle, Heart, Line Noise and Channel Noise at p ≥ 0.8 (`lists.beta_withoutOther`; `stage3_p2_rebuild(..., 'beta', false)`).
+  - **EMG-test version:** the same, but Muscle is kept (`lists.emg_withoutOther`; `stage3_p2_rebuild(..., 'emg', false)`).
+
+## S3a-D12-defer · 2026-10-25 · D12 is applied in Stage 5; its window is recorded before any Stage-5 output
+
+- **Decision (Amirhossein, 2026-10-25):** the deferral of S3a-P2 point (ii) is approved.
+  - `stage3_d12_trials` is applied in Stage 5.
+  - The analysis window, and the rest pseudo-epoch definition, must be recorded as a dated entry before any Stage-5 output exists.
+
+## S3a-P2-d14 · 2026-10-25 · D14 batch p2_d14: times, crashes, component counts, trial counts (counts only)
+
+- **Timing run** `p2d14_t_sub-25`, 2026-10-24 21:21 to 2026-10-25 11:10:
+  - 3 successful replicas: 1652.3, 1408.5 and 1373.1 s (all under the 2700 s limit);
+  - 6 attempts, of which **2 crashed** (Application Error 1000 for MATLAB.exe: 2; no kernel event);
+  - batch timeout set to 4226 s (`timeouts_p2d14.json`).
+- **Batch** `p2_d14`, 2026-10-25 11:10 to 13:45: DONE. sub-08, sub-15 and sub-25 all verified with A = B; 6 attempts, 0 crashes, 2.494 job-hours.
+  - Per subject (A + B): sub-08 2986.7 s, sub-15 3096.3 s, sub-25 2894.2 s, i.e. about 24–26 min per job.
+  - Exported to `<EegOutRoot>/stage3_part2/` (`manifest_p2_d14.tsv`).
+- **Components** (`stage3_p2_qc_report.m` → `<outRoot>/stage3/p2/p2_d14_qc.csv`, SHA-256 `3a79ca34c15ea6a123f6de68b6bd891e65ac8fa17d90d4bff80d63e8eb41d5c1`). ICs with p ≥ 0.8 per class; removed counts per S3a-P2-other:
+
+  | subject | good ch = rank = ICs | Brain | Muscle | Eye | Heart | Line | Chan | Other | removed, primary | removed, EMG version | ASR-modified fraction (training copy) |
+  |---|---|---|---|---|---|---|---|---|---|---|---|
+  | sub-08 | 124 | 17 | 8 | 2 | 0 | 0 | 14 | 6 | 24 | 16 | 0.231 |
+  | sub-15 | 123 | 13 | 9 | 2 | 0 | 0 | 15 | 1 | 26 | 17 | 0.163 |
+  | sub-25 | 119 | 15 | 28 | 2 | 0 | 0 | 5 | 2 | 35 | 7 | 0.237 |
+
+- **MSIT+ trial counts before D12** (`<outRoot>/stage3/d4e_d5a3/d4e_trials_by_condition.csv`: inside the clipped blocks, block-first excluded; total / first-in-mini-block / later):
+
+  | subject | F0 | FS | 00 | S0 |
+  |---|---|---|---|---|
+  | sub-08 | 94 / 23 / 71 | 101 / 27 / 74 | 97 / 27 / 70 | 100 / 26 / 74 |
+  | sub-15 | 101 / 27 / 74 | 79 / 21 / 58 | 97 / 26 / 71 | 99 / 26 / 73 |
+  | sub-25 | 83 / 22 / 61 | 81 / 21 / 60 | 98 / 27 / 71 | 116 / 31 / 85 |
+
+  - Rest pseudo-epoch counts do not exist until the Stage-5 definition (S3a-D12-defer).
+- **Full batch: not started** (Amirhossein starts it after review). It covers the remaining 36 subjects as batch `p2_1`, with the timeouts of `p2d14` and no new timing run (`Invoke-Stage3P2.ps1 -TimeoutsFrom p2d14`).

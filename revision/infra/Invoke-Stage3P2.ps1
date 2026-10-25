@@ -13,7 +13,8 @@
 param(
     [Parameter(Mandatory = $true)][string]$Name,
     [Parameter(Mandatory = $true)][string]$BatchId,
-    [Parameter(Mandatory = $true)][string]$TimingJob,
+    [string]$TimingJob,
+    [string]$TimeoutsFrom,                                  # S3a-P2-d14: reuse timeouts_<TimeoutsFrom>.json, no timing run
     [string[]]$Only,
     [string]$Config
 )
@@ -36,9 +37,15 @@ if (-not (Test-Path $jl)) {
     & (Join-Path $PSScriptRoot 'New-Stage3JobList.ps1') @a | Out-Host
     Say "job list written: $jl ($((Read-JsonArray $jl).Count) jobs)"
 }
-$a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot 'Invoke-Stage3JobTypeChain.ps1'),
-       '-Type', 'p2', '-Name', $Name, '-TimingJobs', $TimingJob, '-BatchId', $BatchId, '-TimingTimeoutS', '3000',
-       '-MaxTimingSeconds', '2700', '-Config', $Config)
+if ($TimeoutsFrom) {
+    $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot 'Invoke-Stage3Batch.ps1'), '-Config', $Config,
+           '-Mode', 'Batch', '-BatchId', $BatchId, '-JobList', $jl, '-JobTimeouts', (Join-Path $runs "timeouts_$TimeoutsFrom.json"))
+} else {
+    if (-not $TimingJob) { Say 'STOPPED: -TimingJob or -TimeoutsFrom is required'; exit 3 }
+    $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot 'Invoke-Stage3JobTypeChain.ps1'),
+           '-Type', 'p2', '-Name', $Name, '-TimingJobs', $TimingJob, '-BatchId', $BatchId, '-TimingTimeoutS', '3000',
+           '-MaxTimingSeconds', '2700', '-Config', $Config)
+}
 & powershell.exe @a | Out-Host
 $c = $LASTEXITCODE
 $bf = Join-Path $runs "$BatchId\batch.json"
