@@ -2322,3 +2322,115 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
   - `test_stage3_p2_compute_one.m` (with bad channels) reproduces the earlier values exactly: ASR-modified fraction 0.223, max |analysed − re-referenced part-1| 7.5e-6 µV, A = B.
 - **New synthetic case (check 8):** a subject with no bad channel. Good channels 125, rank 125; analysed data = part-1 + FCz, average reference (< 1e-3 µV); `removedchans` is empty afterwards. PASS (8/8).
 - **Run:** batch `p2_2` = sub-10 only, A/B, with the timeouts of `p2d14` (`Invoke-Stage3P2.ps1 -Name p2s10 -BatchId p2_2 -TimeoutsFrom p2d14 -Only sub-10`).
+
+## S3a-close · 2026-10-26 · Stage 3 complete for N = 39 (final sample, batches, locations)
+
+- **Final sample: N = 39 of 42.**
+  - **Included (39):** sub-01 to sub-27, sub-29 to sub-31, sub-33 to sub-41. That is every subject except sub-28, sub-32 and sub-42.
+  - **Excluded (3):**
+    - **sub-42:** 35 of 125 channels with an unresolved label assignment (S3a-D4e-4-asm-amend1; excluded under S3a-D6 item 4);
+    - **sub-28:** 19 of 125 bad channels = 15.2 % > 15 % (16 of them dependent; S3a-D6-report, S3a-D6-final);
+    - **sub-32:** 27 of 125 bad channels = 21.6 % > 15 % (S3a-D6-report, S3a-D6-final).
+  - **Flags carried forward:**
+    - Fz/Cz/C4 interpolated in sub-12, sub-19, sub-22, sub-23 and sub-41 (D11 sensitivity analysis, S3a-P2 item 5);
+    - the D4e-4 pairs of sub-13 and sub-41 were marked bad (S3a-D6 item 5);
+    - sub-25's rest blocks (S3a-D3c);
+    - the marker exception in sub-13, sub-20, sub-23 and sub-41 (S3a-P1-amend2).
+- **Batches** (all DONE; every listed recording or subject verified A = B):
+  - **part 1:** `s3p1_1` (76 of 78 verified; sub-20 rest and sub-23 rest failed, S3a-P1-issueA) and `s3p1_2` (6/6: sub-13 and sub-41, both tasks, plus sub-20 rest and sub-23 rest);
+  - **D6:** `d6_1` (41/41);
+  - **part 2:** `p2_d14` (3: sub-08, sub-15, sub-25), `p2_1` (35 of 36; sub-10 failed: 5 non-zero exits, counted as crashes in the summary, S3a-P2-fix1) and `p2_2` (sub-10).
+- **Locations:**
+  - **Part-1 `.set`** (82 recordings): `<EegOutRoot>/stage3_part1/`, manifests `manifest.tsv` (76) and `manifest_s3p1_2.tsv` (6).
+  - **S1 bundles** (39 subjects, `<sub>_s3p2.mat`, hard links to the verified canonical outputs): `<EegOutRoot>/stage3_part2/`, manifests `manifest_p2_d14.tsv` (3), `manifest_p2_1.tsv` (35) and `manifest_p2_2.tsv` (1).
+  - **Analysed versions** are rebuilt with `stage3_p2_rebuild(P2, cond, version, false)`:
+    - `'beta'` = the primary version (Eye, Muscle, Heart, Line Noise and Channel Noise removed at p ≥ 0.8; Other kept);
+    - `'emg'` = the EMG-test version (Muscle also kept; S3a-P2-other).
+  - **Tables:** `<outRoot>/stage3/d6/` (D6) and `<outRoot>/stage3/p2/` (D14 QC). Batch summaries: `<outRoot>/stage3/runs/`.
+- **Carried to Stage 5:** D12 (window and rest pseudo-epochs recorded before any Stage-5 output; S3a-D12-defer). No spectrum or power was computed in Stage 3.
+
+## S4-options · 2026-10-26 · Stage 4 (rest beta peak): options and recommendations (DRAFT; nothing decided)
+
+- **Status:** drafted by Claude at Amirhossein's request; **nothing decided**. Recommendations are marked ▶. No MATLAB was run.
+- **Framework** (`revision_plan.md`, Stage 3b and Stage 4):
+  - specparam/FOOOF;
+  - "has a beta peak" = at least one fitted Gaussian with its centre in 13–30 Hz and height ≥ a threshold;
+  - the primary threshold is calibrated by simulation (false positives < 5 %);
+  - a sensitivity grid, split-half reliability (block 1 vs 2), ICC (Koo & Li 2016), and the disclosure wording;
+  - **the pre-registration goes to Zenodo as a standalone record** before any peak analysis on the new data.
+- **v1 and its lessons:**
+  - v1 used Welch PSDs with 2 s Hann windows at rest and five peak-detection methods based on the spectral maximum in the beta band ("edge-based argmax"; feature files `beta_features_full42_fixed/_knee/_sgf.csv`).
+  - About half of the sample (20/42 and 22/42 depending on the method) had no stable resting beta peak.
+  - **Lessons:**
+    1. An argmax always returns a frequency. Without a peak it lands at the band edge, so presence must be decided by a model that separates periodic from aperiodic power, not by a maximum.
+    2. Presence depends on a threshold. That calls for a calibrated primary value plus a grid, never a single unexplained number.
+    3. Stability must be shown (split-half), not assumed.
+    4. Those results are public (Zenodo 10.5281/zenodo.22232799) and known to Amirhossein, so the registration must say so.
+
+### 1. Spectral estimator and rest pseudo-epochs
+- **Options:**
+  - **E1:** Welch, 2 s Hann, 50 % overlap (0.5 Hz bins, as in v1);
+  - **E2:** Welch, 4 s Hann (0.25 Hz bins, fewer segments, more variance);
+  - **E3:** multitaper.
+  - In all cases segments lie within a block only (S3a-D3 rule), from the primary rebuilt version (`'beta'`).
+- **Pseudo-epochs:** the same 2 s segments, non-overlapping for D12. D12 rejects a pseudo-epoch when its peak-to-peak exceeds 150 µV on Fz, Cz or C4, and excludes a subject when fewer than 50 % remain. The window and the definition must be recorded before any Stage-4 output (S3a-D12-defer).
+- **Channels:** v1's six a-priori candidate channels (#9), or Fz/Cz/C4, each separately and/or as an ROI mean. The unit of the peak decision (channel vs ROI) sets the false-positive rate (item 4).
+- **Note:** Stage 5 uses an identical 200 ms estimator for rest and task. That is a different purpose; Stage 4 needs frequency resolution.
+- ▶ **E1** (comparable with v1; enough segments: about 300 per 600 s); D12 on 2 s pseudo-epochs; **a single pre-registered decision unit**: the ROI mean of the a-priori channels, with per-channel results as secondary.
+
+### 2. Aperiodic model and frequency range
+- **Options:**
+  - **A1:** 'fixed' (no knee), range 2–40 Hz (the plan);
+  - **A2:** 'knee', 1–40 or 2–40 Hz;
+  - **A3:** choose fixed vs knee by a pre-registered fit-quality rule (e.g. knee only if it lowers the median fit error by a stated amount across subjects and the knee parameter is positive).
+- **Trade-offs:** the knee matters when the range starts low (bending below about 5 Hz). Fixed is simpler and more stable. A range starting at 2 Hz includes alpha, so alpha is modelled as its own peak (the plan's intent). 40 Hz stays below the 47–53 Hz notch band.
+- ▶ **A3** within **2–40 Hz**, decided on fit-quality statistics only (allowed by the plan: "fit-quality diagnostics may be shown, never peak counts").
+
+### 3. Peak criterion and parameters
+- **Criterion:** at least 1 Gaussian with its centre in [13, 30] Hz and height ≥ `min_peak_height` (calibrated, item 4).
+  - IBF = the centre of the highest beta peak; IBB = its bandwidth (as specparam reports it, i.e. 2 × SD).
+- **Parameters:**
+  - `peak_width_limits`: lower ≥ 2 × the frequency resolution (1 Hz under E1), e.g. [1, 8] Hz;
+  - `max_n_peaks` (e.g. 6);
+  - `peak_threshold` (relative, specparam default 2 SD);
+  - `min_peak_height` (calibrated).
+- **Edge handling (open, flagged):**
+  - a peak centred at 13–14 Hz may be an alpha shoulder;
+  - optional rule: no peak within ±1 Hz of 2 × IAF counts (alpha harmonic).
+- **Poor fits** (stated R²/error criterion) are reported separately, never as "no peak" (the plan).
+- ▶ specparam defaults except `min_peak_height` (calibrated) and `peak_width_limits` = [1, 8]. The alpha-harmonic rule as a pre-registered **sensitivity** analysis, not the primary.
+  - Every number is checked against the specparam documentation before registration (Step 1 of the plan; cited, not from memory).
+
+### 4. Simulation design for the threshold calibration
+- **What is simulated:**
+  - **time series** (not spectra), passed through the same estimator (E1) and the same fit, so that estimator variance is realistic;
+  - aperiodic 1/f^χ (with a knee under A2/A3) plus an alpha oscillation (bursty, amplitude-modulated) plus white measurement noise;
+  - the parameters (offset, exponent, knee, alpha centre/width/power, noise level, number of segments) are drawn from distributions matched to the real data.
+- **Two classes:**
+  - half **without** a beta peak;
+  - half **with** a beta peak, its centre uniform in 13–30 Hz, height on a grid, width in a stated range.
+- **Targets:**
+  - primary `min_peak_height` = the lowest value with false-positive rate < 5 % **per decision unit**. If several channels are combined, the rate refers to that combination;
+  - also reported: the detection rate (power) as a function of true height, and IBF bias and error for detected peaks.
+- **Size:** e.g. 2000 spectra per class per grid cell, with a seeded RNG, under A/B.
+- ▶ as above, **time-domain simulation**; the FPR target per decision unit.
+
+### 5. Outcome leakage, and how to stay blind
+- **Allowed** from the real data (the plan): fit-quality and aperiodic/alpha/noise statistics. **Never** beta peak counts, beta peak parameters, or spectra in 13–30 Hz.
+- **Risks:**
+  - (a) fit-error statistics computed over 2–40 Hz include the beta region;
+  - (b) noise estimated from residuals that include beta;
+  - (c) choosing the decision channels after seeing anything;
+  - (d) the 55–95 Hz band (not used in Stage 4).
+- **Mitigation:**
+  - compute the noise level from residuals in 2–12 Hz and 31–40 Hz only;
+  - report fit error as a single scalar per subject (no spectrum);
+  - extract the real-data statistics with a committed script whose output contains only those summaries, audited before use;
+  - fix the channels and the decision unit in the registration;
+  - nobody views spectra or peak results until the Zenodo record exists.
+- ▶ all of the above. The registration also states that v1's results are known (lesson 4).
+
+### 6. Pre-registration (Zenodo, standalone record)
+- **Contents:** items 1–5 with their numbers; the simulation code (commit hash); the calibrated threshold (or the rule that produces it); the sensitivity grid; the split-half and ICC plans; the interpretation rules (plan Step 4); the poor-fit rule; the D12 pseudo-epoch definition; and the disclosure (secondary data, earlier public edge-based results, what was known).
+- **Order:** commit, then the Zenodo DOI, then the decision-log entry citing the DOI, then and only then the Stage-4 analysis.
+- ▶ as listed.
