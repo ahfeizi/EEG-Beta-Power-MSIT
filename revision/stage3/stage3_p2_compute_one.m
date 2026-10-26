@@ -87,8 +87,8 @@ asrModifiedFraction = mean(any(T.data ~= before, 1));
 clear before
 
 % ---- 4. re-reference R1 (FCz recovered) --------------------------------------------------------
-for c = {'rest', 'msit'}, E.(c{1}) = pop_reref(E.(c{1}), [], 'refloc', fcz); end
-T = pop_reref(T, [], 'refloc', fcz);
+for c = {'rest', 'msit'}, E.(c{1}) = rerefFCz(E.(c{1}), fcz); end
+T = rerefFCz(T, fcz);
 assert(isequal({E.rest.chanlocs.labels}, {T.chanlocs.labels}) && strcmp(E.rest.chanlocs(end).labels, 'FCz'), 'stage3:p2', 'montage after re-reference');
 
 % ---- 5. rank check -----------------------------------------------------------------------------
@@ -147,6 +147,17 @@ save(outFile, 'P2', '-v7');
 fprintf('%s: %d good channels, rank %d, %d ICs; ASR modified %.4f of training samples; rejected beta %d/%d, EMG %d/%d (without/with Other)\n', ...
     s, nGood, rk, size(p, 1), asrModifiedFraction, numel(lists.beta_withoutOther), numel(lists.beta_withOther), ...
     numel(lists.emg_withoutOther), numel(lists.emg_withOther));
+end
+
+function X = rerefFCz(X, fcz)
+% S3a-P2-fix1: pop_reref(..., 'refloc') errors if EEG.chaninfo.removedchans is empty (pop_reref.m:357-368; only
+% its bookkeeping, after the arithmetic in reref.m). The list is filled by the D6 pop_select; a subject with no
+% bad channel (sub-10) has none, so the FCz entry is placed there first and pop_reref removes it again. With
+% bad channels the list is non-empty and this branch is not taken (unchanged code path).
+if ~isfield(X.chaninfo, 'removedchans') || isempty(X.chaninfo.removedchans)
+    X.chaninfo.removedchans = fcz;
+end
+X = pop_reref(X, [], 'refloc', fcz);
 end
 
 function k = maxIdx(p)

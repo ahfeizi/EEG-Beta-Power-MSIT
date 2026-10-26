@@ -2308,3 +2308,17 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
 
   - Rest pseudo-epoch counts do not exist until the Stage-5 definition (S3a-D12-defer).
 - **Full batch: not started** (Amirhossein starts it after review). It covers the remaining 36 subjects as batch `p2_1`, with the timeouts of `p2d14` and no new timing run (`Invoke-Stage3P2.ps1 -TimeoutsFrom p2d14`).
+
+## S3a-P2-fix1 · 2026-10-26 · p2_1: sub-10 failed on pop_reref (no bad channel); fixed without changing any decision
+
+- **Batch `p2_1`** (36 subjects): 35 exported. **sub-10 failed deterministically**: all 5 attempts of replica A exited 1 with "Missing reference channel information" at `pop_reref` (`stage3_p2_compute_one.m` line 90). This is not a hardware crash (Amirhossein).
+- **Cause:**
+  - `pop_reref(EEG, [], 'refloc', FCz)` updates the bookkeeping list `EEG.chaninfo.removedchans`, and errors if that list is empty (`pop_reref.m:357–368`). This step comes after the arithmetic, which is done in `reref.m`.
+  - The list is filled only by the D6 removal (`pop_select('nochannel', …)`). **sub-10 has 0 bad channels** (S3a-D6-report; the only analysable subject with none), so `pop_select` is not called and the list stays empty.
+- **Fix (no decision changed):** a local function `rerefFCz`. **Only if** the list is empty, it places the FCz entry there; `pop_reref` then removes it again. The re-reference itself is unchanged (R1).
+- **The other 38 subjects are unaffected:**
+  - each has at least one bad channel, so the list is non-empty and the new branch is not taken; their code path and arithmetic are unchanged;
+  - their outputs (`p2_d14`, `p2_1`) stay as verified.
+  - `test_stage3_p2_compute_one.m` (with bad channels) reproduces the earlier values exactly: ASR-modified fraction 0.223, max |analysed − re-referenced part-1| 7.5e-6 µV, A = B.
+- **New synthetic case (check 8):** a subject with no bad channel. Good channels 125, rank 125; analysed data = part-1 + FCz, average reference (< 1e-3 µV); `removedchans` is empty afterwards. PASS (8/8).
+- **Run:** batch `p2_2` = sub-10 only, A/B, with the timeouts of `p2d14` (`Invoke-Stage3P2.ps1 -Name p2s10 -BatchId p2_2 -TimeoutsFrom p2d14 -Only sub-10`).

@@ -97,7 +97,14 @@ Z.event = struct('type', {'S 6', 'S 6', 'S 6', 'S 6', 'boundary'}, 'latency', {o
 [kp, Rd] = stage3_d12_trials(Z, "S 6", [-0.2 0], {'Fz', 'Cz', 'C4'}, 150);
 c7 = isequal(kp, [true false true false]) && Rd.n_outside == 1 && Rd.n_rejected == 1 && Rd.n_kept == 2 && abs(Rd.frac_kept - 2 / 3) < 1e-12;
 fprintf('7 D12: keep %s, outside %d, rejected %d -> %d\n', mat2str(kp), Rd.n_outside, Rd.n_rejected, c7);
-ok = c1 && c2 && c3 && r4 && c5 && r6 && c7;
+% 8. S3a-P2-fix1: a subject with no bad channel (as sub-10) runs; analysed = part-1 + FCz, average reference
+D6.excluded = false; D6.removedChannels = strings(0, 1); d60 = fullfile(workDir, 'd60.mat'); save(d60, 'D6');
+f0 = fullfile(workDir, 'zero.mat'); stage3_p2_compute_one(setf(base, 'd6File', d60, 'd6Sha', sha(d60)), f0); Z0 = load(f0);
+L = load(files.rest, '-mat'); Y0 = [double(L.EEG.data); zeros(1, L.EEG.pnts)]; Y0 = Y0 - mean(Y0, 1);
+c8 = Z0.P2.qc.nGood == 125 && Z0.P2.qc.rank == 125 && Z0.P2.rest.nbchan == 126 && max(abs(double(Z0.P2.rest.data(:)) - Y0(:))) < 1e-3 ...
+    && isempty(Z0.P2.rest.chaninfo.removedchans);
+fprintf('8 no bad channel: good %d, rank %d, analysed = re-referenced part-1 -> %d\n', Z0.P2.qc.nGood, Z0.P2.qc.rank, c8);
+ok = c1 && c2 && c3 && r4 && c5 && r6 && c7 && c8;
 if ok, fprintf('P2 SYNTHETIC PASS\n'); else, fprintf('P2 SYNTHETIC FAIL\n'); end
 end
 
