@@ -38,7 +38,7 @@ CF_RANGE = (13.0, 30.0)                                   # §3.6: CF ~ U[13, 30
 BW_SIM = (1.0, 8.0)                                       # §3.6: BW ~ U[1, 8]
 PERCENTILES = (90, 95, 99)                                # §3.6, §3.5.2; 95 = primary
 CI_LEVEL = 0.95                                           # §3.6: Clopper-Pearson at 95 % (decided 2026-10-30)
-FIELDS = ['subject', 'pair', 'level_pw', 'rep', 'cf_injected', 'bw_injected', 'model_chosen', 'fit_failed',
+FIELDS = ['subject', 'pair', 'level_pw', 'rep', 'cf_injected', 'bw_injected', 'fit_failed',
           'r2', 'n_beta_peaks', 'max_beta_pw']
 
 
@@ -73,7 +73,7 @@ def run_cell(pair_idx, cond, pair, n_reps):
         res = core.run_pipeline(freqs, psd, simulated=True)
         rows.append(dict(subject=pair['subject'], pair=pair_idx, level_pw=0.0 if pw is None else pw, rep=rep,
                          cf_injected='' if cf is None else cf, bw_injected='' if bw is None else bw,
-                         model_chosen=res['model_chosen'], fit_failed=int(res['fit_failed']),
+                         fit_failed=int(res['fit_failed']),
                          r2=res['r2'], n_beta_peaks=len(core.beta_peaks(res['peaks'])),
                          max_beta_pw=core.max_beta_pw(res['peaks'])))
     return rows

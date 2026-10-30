@@ -7,12 +7,12 @@ GATE (§3.7): refuses to run unless --doi is a Zenodo DOI that already appears i
 is not the v1 archive DOI. Frozen at tag S4-prereg-frozen; to be run by Amirhossein only after the DOI of
 the pre-registration is logged.
 
-Per subject retained by D12: welch_runs -> run_pipeline (ΔBIC model choice, full fooof fit) -> peak
+Per subject retained by D12: welch_runs -> run_pipeline (full fooof fit, fixed aperiodic model) -> peak
 criterion at the primary (p95) threshold and at p90 / p99 (§3.5.2); poor fit (R^2 < 0.90 or failed full
 fit) = indeterminate (§3.5.1); tallest beta Gaussian = primary peak; alpha-harmonic flag (§3.5).
 Split-half (§3.8): odd / even kept epochs, full pipeline per half at p95; agreement rate among subjects
 not poor-fit in either half; ICC(2,1) of the primary-peak PW among subjects with a peak in both halves.
-A failed fixed aperiodic-only fit stops the script (real data, decided 2026-10-30).
+A failed aperiodic-only fit stops the script (real data, decided 2026-10-30).
 Not implemented here (decided 2026-10-30): the single-channel secondary results of §3.3. If added later, as
 a clearly labelled exploratory analysis, they carry the same 13-30 Hz information and must sit behind the
 same check_doi gate.
@@ -114,7 +114,7 @@ def main():
         res = analyse(rec['runs'], rec['fs'])
         bp = core.beta_peaks(res['peaks'])                # tallest first
         iaf, harm = core.alpha_harmonic(res['peaks'])
-        row.update(model_chosen=res['model_chosen'], fit_ok=int(res['fit_ok']), r2_full=res['r2'],
+        row.update(fit_ok=int(res['fit_ok']), r2_full=res['r2'],
                    poor_fit=int(core.classify(res, 0.0) == 'poor_fit'), n_beta_peaks=len(bp),
                    primary_cf=bp[0, 0] if len(bp) else '', primary_pw=bp[0, 1] if len(bp) else '',
                    primary_bw=bp[0, 2] if len(bp) else '', iaf='' if np.isnan(iaf) else iaf,
@@ -130,7 +130,7 @@ def main():
         hr = [analyse(h, rec['fs']) for h in (h1, h2)]
         half.append(dict(subject=rec['subject'], n_epochs_h1=len(h1), n_epochs_h2=len(h2),
                          **{f'{k}_h{i}': v for i, r in enumerate(hr, 1) for k, v in
-                            (('model', r['model_chosen']), ('r2', r['r2']),
+                            (('r2', r['r2']),
                              ('class', core.classify(r, thr[PRIMARY])), ('max_beta_pw', core.max_beta_pw(r['peaks'])))}))
         print(f"{rec['subject']}  {row[f'class_{PRIMARY}']}  halves {half[-1]['class_h1']}/{half[-1]['class_h2']}", flush=True)
 
@@ -141,7 +141,7 @@ def main():
             w.writerows(rows)
 
     write(names['peaks_primary.csv'], primary,
-          ['subject', 'excluded_D12', 'n_pseudoepochs_kept', 'model_chosen', 'fit_ok', 'r2_full', 'poor_fit',
+          ['subject', 'excluded_D12', 'n_pseudoepochs_kept', 'fit_ok', 'r2_full', 'poor_fit',
            'n_beta_peaks', 'primary_cf', 'primary_pw', 'primary_bw', 'iaf', 'primary_alpha_harmonic']
           + [f'class_{t}' for t in THR_NAMES])
     write(names['peaks_all_in_range.csv'], allpk,

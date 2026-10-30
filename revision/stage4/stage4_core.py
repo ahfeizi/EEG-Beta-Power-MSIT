@@ -3,9 +3,12 @@
 Used identically by stage4_extraction_only.py, stage4_simulate_threshold.py and stage4_peak_detection.py,
 so real and simulated data pass through the same code.
 
-Leakage rule (§3.7): the extraction-only script may call only load_roi, welch_runs, aperiodic_only,
-select_model and noise_floor. full_fit, run_pipeline and the peak functions (periodic fit, peaks) are for
-the simulation and, after the Zenodo DOI is logged, the peak-detection script.
+Aperiodic model: 'fixed' for every subject and every simulated signal; there is no knee model and no model
+selection (decided 2026-10-30, after the extraction-only run showed non-physiological knee fits).
+
+Leakage rule (§3.7): the extraction-only script may call only load_roi, welch_runs, aperiodic_only and
+noise_floor. full_fit, run_pipeline and the peak functions (periodic fit, peaks) are for the simulation
+and, after the Zenodo DOI is logged, the peak-detection script.
 """
 import warnings
 
@@ -28,8 +31,8 @@ ROI = ('C3', 'Cz', 'C4', 'FC1', 'FC2', 'CP1', 'CP2')      # §3.3
 EPOCH_S = 2.0                                             # §3.1.1 pseudo-epoch = §3.2 Welch segment
 FIT_RANGE = (2.0, 40.0)                                   # §3.2, §3.4, inclusive
 N_BINS = 77                                               # §3.2
-DBIC_KNEE = 10.0                                          # §3.4: knee only if BIC_fixed - BIC_knee > 10
-K_PARAMS = {'fixed': 2, 'knee': 3}                        # §3.4
+APERIODIC_MODE = 'fixed'                                  # §3.4 (decided 2026-10-30): no knee, no selection
+K_PARAMS = 2                                              # §3.4: offset, exponent
 FOOOF_SETTINGS = dict(peak_width_limits=[1, 8], max_n_peaks=np.inf, peak_threshold=2, min_peak_height=0)  # §3.5
 BETA = (13.0, 30.0)                                       # §3.5, inclusive
 BW_RANGE = (1.0, 8.0)                                     # §3.5, inclusive
@@ -82,56 +85,46 @@ def welch_runs(runs, fs):
     return f, (acc / n_win).mean(axis=0)
 
 
-def _fooof(mode):
-    return FOOOF(aperiodic_mode=mode, verbose=False, **FOOOF_SETTINGS)
+def _fooof():
+    return FOOOF(aperiodic_mode=APERIODIC_MODE, verbose=False, **FOOOF_SETTINGS)
 
 
-def aperiodic_only(freqs, psd, mode):
-    """§3.4: fooof's robust aperiodic fit (_robust_ap_fit), i.e. the aperiodic curve before any peak is
-    fitted, over 2-40 Hz. Returns the parameters, the curve and log10 power on the 77 fit bins, RSS,
-    BIC = n ln(RSS/n) + k ln(n) and R^2 (fooof's definition: squared correlation of log10 power and curve).
-    ok is False if the fit fails or the curve is not finite (e.g. knee < -f^exponent)."""
-    fm = _fooof(mode)
+def aperiodic_only(freqs, psd):
+    """§3.4: fooof's robust aperiodic fit (_robust_ap_fit, fixed model), i.e. the aperiodic curve before any
+    peak is fitted, over 2-40 Hz. Returns the parameters (offset, exponent), the curve and log10 power on the
+    77 fit bins, RSS, BIC = n ln(RSS/n) + k ln(n) with k = 2 (reported only) and R^2 (fooof's definition:
+    squared correlation of log10 power and curve). ok is False if the fit fails or the curve is not finite."""
+    fm = _fooof()
     fm.add_data(freqs, psd, list(FIT_RANGE))              # trims to 2-40 Hz inclusive, log10 power
     n = fm.freqs.size
     assert n == N_BINS, f'{n} bins in {FIT_RANGE}, {N_BINS} expected'
-    out = dict(mode=mode, ok=False, freqs=fm.freqs, logpow=fm.power_spectrum,
-               params=np.full(K_PARAMS[mode], np.nan), curve=np.full(n, np.nan),
-               rss=np.nan, bic=np.nan, r2=np.nan)
+    out = dict(ok=False, freqs=fm.freqs, logpow=fm.power_spectrum, params=np.full(K_PARAMS, np.nan),
+               curve=np.full(n, np.nan), rss=np.nan, bic=np.nan, r2=np.nan)
     try:
         params = fm._robust_ap_fit(fm.freqs, fm.power_spectrum)
     except FitError:
         return out
     out['params'] = params
-    curve = gen_aperiodic(fm.freqs, params, mode)
+    curve = gen_aperiodic(fm.freqs, params, APERIODIC_MODE)
     if not np.all(np.isfinite(curve)):
         return out
     rss = float(np.sum((fm.power_spectrum - curve) ** 2))
-    k = K_PARAMS[mode]
-    out.update(ok=True, curve=curve, rss=rss, bic=float(n * np.log(rss / n) + k * np.log(n)),
+    out.update(ok=True, curve=curve, rss=rss, bic=float(n * np.log(rss / n) + K_PARAMS * np.log(n)),
                r2=float(np.corrcoef(fm.power_spectrum, curve)[0, 1] ** 2))
     return out
 
 
-def select_model(ap_fixed, ap_knee):
-    """§3.4: 'knee' only if its aperiodic-only fit succeeded and BIC_fixed - BIC_knee > 10; else 'fixed'."""
-    assert ap_fixed['ok'], 'fixed aperiodic-only fit failed'
-    if ap_knee['ok'] and ap_fixed['bic'] - ap_knee['bic'] > DBIC_KNEE:
-        return 'knee'
-    return 'fixed'
-
-
 def noise_floor(ap):
-    """§3.7: SD of the aperiodic-only residual (log10 power - curve, selected model) in 2-12 and 31-40 Hz."""
+    """§3.7: SD of the aperiodic-only residual (log10 power - fixed curve) in 2-12 and 31-40 Hz."""
     resid = ap['logpow'] - ap['curve']
     return {name: float(np.std(resid[(ap['freqs'] >= lo) & (ap['freqs'] <= hi)], ddof=NOISE_DDOF))
             for name, (lo, hi) in NOISE_BANDS.items()}
 
 
-def full_fit(freqs, psd, mode):
-    """§3.5: full fooof fit (aperiodic + peaks, settings FOOOF_SETTINGS) with the selected aperiodic mode.
+def full_fit(freqs, psd):
+    """§3.5: full fooof fit (fixed aperiodic + peaks, settings FOOOF_SETTINGS).
     Returns fit_ok, the full model's R^2 and peaks (n x 3: CF, PW, BW = fooof's peak_params_)."""
-    fm = _fooof(mode)
+    fm = _fooof()
     fm.fit(freqs, psd, list(FIT_RANGE))                   # fooof catches its own FitError -> no model
     if not fm.has_model:
         return dict(fit_ok=False, r2=np.nan, peaks=np.empty((0, 3)))
@@ -139,21 +132,18 @@ def full_fit(freqs, psd, mode):
 
 
 def run_pipeline(freqs, psd, simulated=False):
-    """§3.4-3.5: both aperiodic-only fits -> ΔBIC model choice -> full fit with the chosen mode.
-    Failures (decided 2026-10-30): a failed knee fit leaves 'fixed' (select_model). A failed fixed
-    aperiodic-only fit stops on real data; on simulated data it returns fit_failed = True with no peaks
-    (counted as a non-detection, max PW = 0). A failed full fit gives fit_ok = False: 'poor_fit' on real
-    data (classify), fit_failed = True with no peaks on simulated data."""
-    ap_fixed = aperiodic_only(freqs, psd, 'fixed')
-    ap_knee = aperiodic_only(freqs, psd, 'knee')
-    if not ap_fixed['ok']:
+    """§3.4-3.5: fixed aperiodic-only fit (failure check) -> full fit (fixed).
+    Failures (decided 2026-10-30): a failed aperiodic-only fit stops on real data; on simulated data it
+    returns fit_failed = True with no peaks (counted as a non-detection, max PW = 0). A failed full fit
+    gives fit_ok = False: 'poor_fit' on real data (classify), fit_failed = True with no peaks on simulated
+    data."""
+    ap = aperiodic_only(freqs, psd)
+    if not ap['ok']:
         if not simulated:
-            raise RuntimeError('fixed aperiodic-only fit failed on real data: stop and report')
-        return dict(fit_ok=False, fit_failed=True, r2=np.nan, peaks=np.empty((0, 3)), model_chosen='',
-                    ap_fixed=ap_fixed, ap_knee=ap_knee)
-    mode = select_model(ap_fixed, ap_knee)
-    res = full_fit(freqs, psd, mode)
-    res.update(fit_failed=not res['fit_ok'], model_chosen=mode, ap_fixed=ap_fixed, ap_knee=ap_knee)
+            raise RuntimeError('aperiodic-only fit failed on real data: stop and report')
+        return dict(fit_ok=False, fit_failed=True, r2=np.nan, peaks=np.empty((0, 3)), ap=ap)
+    res = full_fit(freqs, psd)
+    res.update(fit_failed=not res['fit_ok'], ap=ap)
     return res
 
 
