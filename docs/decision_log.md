@@ -2434,3 +2434,22 @@ Design decisions are recorded one by one as they are made. The pipeline runs onl
 - **Contents:** items 1–5 with their numbers; the simulation code (commit hash); the calibrated threshold (or the rule that produces it); the sensitivity grid; the split-half and ICC plans; the interpretation rules (plan Step 4); the poor-fit rule; the D12 pseudo-epoch definition; and the disclosure (secondary data, earlier public edge-based results, what was known).
 - **Order:** commit, then the Zenodo DOI, then the decision-log entry citing the DOI, then and only then the Stage-4 analysis.
 - ▶ as listed.
+## S4-decided · 2026-10-27 · Stage-4 beta-peak criteria decided
+See docs/zenodo_preregistration_stage4.md for full specification
+(ROI, estimator, model-selection rule, peak criterion, simulation design,
+leakage prevention, Zenodo ordering).
+
+## S4-spec-resolved · 2026-10-30 · Open specification gaps resolved
+ΔBIC formula, noise-floor definitions, rest-specific D12 rule (resolves the
+S3a-D12-defer/Stage-4 sequencing question — that deferral concerned only the
+task window, not rest), and package choice (fooof==1.1.1, not specparam —
+no stable release exists). Full detail in docs/zenodo_preregistration_stage4.md.
+
+## S4-impl-resolved · 2026-10-30 · D1-D15 implementation decisions + 3 additions
+Architecture, pseudo-epoch/Welch mechanics, aperiodic-only fit method,
+fooof settings, simulation design (full factorial over empirical
+offset/exponent pairs, uniform CF/BW injection, percentile-based threshold),
+plus three additions beyond the original draft: poor-fit flag (R²<0.90,
+§3.5.1), threshold-grid sensitivity (90th/99th percentiles, §3.5.2), and
+split-half/ICC reliability (§3.8). Full detail in
+docs/zenodo_preregistration_stage4.md.
