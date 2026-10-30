@@ -64,7 +64,11 @@ for s = 1:numel(subjects)
     incomplete = logical(incomplete);
 
     % D12 with the tested Stage-3 helper: one marker event per pseudo-epoch, appended in onset order
-    E = EEG; n0 = numel(E.event);
+    % a boundary at latency <= 1 lies at or before the first sample and separates no data (artefact of the
+    % Stage-3 cropping); removed from the helper's copy only, otherwise epoch 1 would count as outside
+    E = EEG;
+    E.event(strcmp({E.event.type}, 'boundary') & [E.event.latency] <= 1) = [];
+    n0 = numel(E.event);
     for k = 1:numel(on), E.event(n0 + k).type = 's4_pe'; E.event(n0 + k).latency = on(k); end
     [keep, R] = stage3_d12_trials(E, 's4_pe', [0 epochSec], d12Chans, d12ThrUV);
     clear E
