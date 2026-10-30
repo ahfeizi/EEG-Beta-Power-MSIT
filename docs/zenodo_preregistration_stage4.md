@@ -2,7 +2,7 @@
 
 **Project:** EEG beta-power study, Nencki-Symfonia MSIT+ dataset (OpenNeuro ds004621 / GigaDB DOI 10.5524/100990)
 **Author:** Amirhossein Feizi (ORCID 0000-0001-8929-0910); Supervisor: Prof. Ali Motie Nasrabadi (ORCID 0000-0002-3702-8547)
-**Status:** DRAFT — to be committed, tagged, and deposited to Zenodo for DOI assignment *before* the peak-detection code below is executed on real data.
+**Status:** FROZEN CODE, DRAFT TEXT — code is committed and tagged (`S4-prereg-frozen`, commit `be6f091d6de82473221d0439f915959513cb9152`); this text is still to be deposited to Zenodo for DOI assignment *before* `stage4_peak_detection.py` is executed on real data.
 **Related code/data archive:** Zenodo DOI 10.5281/zenodo.22232799 (prior analysis artifact)
 **Repo:** `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`, file `docs/zenodo_preregistration_stage4.md` (alongside `docs/decision_log.md`). Implementation files live under `revision/stage4/`.
 
@@ -43,7 +43,7 @@ Does each subject's resting-state EEG show statistical evidence of a discrete be
 ### 3.3 Decision unit (ROI)
 - The primary decision unit is the **mean PSD across a 7-channel region of interest**: C3, Cz, C4, FC1, FC2, CP1, CP2.
 - This ROI was selected a priori from the established topography of resting mu/beta rhythms over sensorimotor cortex (Pfurtscheller & Lopes da Silva, 1999), independent of any result from the present dataset (see Section 1).
-- Single-channel results (any channel, including Fz/Cz/C4) are reported as secondary/exploratory only, never as the primary peak/no-peak decision.
+- Single-channel results (any channel, including Fz/Cz/C4) are reported as secondary/exploratory only, never as the primary peak/no-peak decision. **This is not implemented in the frozen `S4-prereg-frozen` pipeline** (the ROI-only export does not currently include Fz). If added later, it is a separate, clearly-labeled exploratory addition, and it must be gated by the same Zenodo-DOI rule as the primary analysis (§3.7), since it carries the same category of 13–30 Hz information.
 
 ### 3.4 Aperiodic model and fit range
 - Spectral parameterization using the **`fooof`** Python package (Donoghue et al., 2020), **version 1.1.1** — the current official stable release, installed pinned in a user-level Python 3.12 environment. (`specparam` 2.0 was considered but rejected: only release candidates exist, and a pre-release API is not appropriate for a frozen, citable pre-registered pipeline; `fooof`/1.1.1 also matches the name cited by this project's own v1 analysis.)
@@ -101,7 +101,7 @@ Each simulated signal represents the **ROI-level decision unit directly** — on
   - `model_chosen` (fixed/knee, per the ΔBIC rule);
   - noise-floor power: the standard deviation (`ddof=1`) of the aperiodic-fit residual (log10(power) minus the fitted aperiodic curve, from the selected model) computed separately over frequency bins in 2–12 Hz (`noise_2_12Hz`) and 31–40 Hz (`noise_31_40Hz`). **Caveat:** `noise_2_12Hz` overlaps the alpha band, so it partly reflects alpha-rhythm power rather than a pure noise floor; this is a known limitation, not a reason to change the definition.
 - This script calls only the aperiodic-only fit and model-selection functions of the shared module (`stage4_core.py`) — never the full (periodic) fit function. No output in the 13–30 Hz range, and no peak count, height, or frequency, is computed or stored.
-- The peak-detection code (`stage4_peak_detection.py`) is committed and tagged at a fixed commit hash **before** this pre-registration is deposited to Zenodo and a DOI is obtained, and additionally enforces this programmatically: it refuses to run on real data unless invoked with the registered Zenodo DOI as an argument, and that DOI must already be present in `docs/decision_log.md`.
+- The peak-detection code (`stage4_peak_detection.py`) is committed and tagged (`S4-prereg-frozen`, commit `be6f091d6de82473221d0439f915959513cb9152`) **before** this pre-registration text is deposited to Zenodo and a DOI is obtained, and additionally enforces this programmatically: it refuses to run on real data unless invoked with the registered Zenodo DOI as an argument, that DOI must match the `10.5281/zenodo.<number>` format, it must **not** equal the v1 archive's DOI (`10.5281/zenodo.22232799`), and it must already be present in `docs/decision_log.md`.
 - No spectra or peak counts/heights from the real resting-state data are viewed by the author before the DOI is registered.
 
 ### 3.8 Split-half reliability (secondary analysis)
@@ -109,17 +109,18 @@ For each subject, the retained (post-D12) rest pseudo-epochs are split into two 
 
 The full pipeline (§3.2–3.5) is run independently on each half, using the primary (95th-percentile) threshold for both halves.
 
-Reported: (a) the peak/no-peak classification agreement rate between halves, computed only among subjects who are **not** flagged poor-fit (§3.5.1) in either half (poor-fit counts in either half are reported separately); (b) the intraclass correlation of peak height (PW) between halves — **ICC(2,1), two-way random-effects, absolute agreement, single measures (Koo & Li, 2016)** — computed among subjects classified as having a peak in both halves.
+Reported: (a) the peak/no-peak classification agreement rate between halves, computed only among subjects who are **not** flagged poor-fit (§3.5.1) in either half (poor-fit counts in either half are reported separately); (b) the intraclass correlation of peak height (PW) between halves — **ICC(2,1), two-way random-effects, absolute agreement, single measures (Koo & Li, 2016)** — computed among subjects classified as having a peak in both halves. (The ICC(2,1) implementation was verified against the published Shrout & Fleiss (1979) worked example, reproducing their reference value of 0.29.)
 
 ## 4. Deviation policy
 Any deviation from the above procedure (e.g., change of ROI, threshold rule, or model-selection rule after seeing real-data beta-band results) will be reported in the manuscript as a post hoc, exploratory departure from this pre-registration, clearly labeled as such, and will not replace the pre-registered primary analysis.
 
 ## 5. Code and data availability
-- Analysis code: [repository + commit hash to be filled in at tagging] (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`, files under `revision/stage4/`)
+- **Analysis code:** repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`, files under `revision/stage4/` (`stage4_export_roi.m`, `stage4_core.py`, `stage4_extraction_only.py`, `stage4_simulate_threshold.py`, `stage4_peak_detection.py`). Frozen at tag **`S4-prereg-frozen`**, commit **`be6f091d6de82473221d0439f915959513cb9152`** (short: `be6f091`), 2026-10-30. This commit has not been pushed to the remote as of this writing. The tag's annotation records that the pipeline was frozen prior to Zenodo registration, that `fooof==1.1.1` is pinned, and the pre-registration-text commit it corresponds to (`36ab9e5`).
+- **Note on ordering:** this Section 5 edit, and any later text-only edit to this document, necessarily lands in a commit *after* the `S4-prereg-frozen` tag — the tag stays fixed on `be6f091...` and the frozen code is never altered by these text updates. Only the pre-registration *text* file changes after the freeze; the five Stage-4 scripts do not.
 - `fooof` package version: **1.1.1** (pinned; installed in Python 3.12)
 - Preprocessing provenance: Stage-3 decision log, commit range `d7176e8..30ed2ea`
 - Raw data: OpenNeuro ds004621 / GigaDB DOI 10.5524/100990
 - This record: Zenodo DOI [to be assigned on deposit]
 
 ---
-*Drafted 2026-10-27; specification details (ΔBIC formula, noise definitions, rest D12 rule) resolved 2026-10-30; package fixed to `fooof==1.1.1` 2026-10-30; implementation details (D1–D15), poor-fit flag, threshold-grid sensitivity, and split-half/ICC added 2026-10-30; further ambiguities (single-signal simulation unit, sub-0.5Hz zeroing, ICC type, split-half mechanics, multi-peak IAF, CI/logistic/percentile methods, D12-excluded-subject handling, fit-failure handling, ddof, CI confidence level) resolved 2026-10-30 across several rounds of script-writing review. To be finalized, tagged, and deposited prior to any execution of the peak-detection code on real resting-state data.*
+*Drafted 2026-10-27; specification details (ΔBIC formula, noise definitions, rest D12 rule) resolved 2026-10-30; package fixed to `fooof==1.1.1` 2026-10-30; implementation details (D1–D15), poor-fit flag, threshold-grid sensitivity, and split-half/ICC added 2026-10-30; further ambiguities (single-signal simulation unit, sub-0.5Hz zeroing, ICC type, split-half mechanics, multi-peak IAF, CI/logistic/percentile methods, D12-excluded-subject handling, fit-failure handling, ddof, CI confidence level) resolved 2026-10-30 across several rounds of script-writing review; single-channel secondary analysis deferred (§3.3) and code frozen at `S4-prereg-frozen` (`be6f091`) 2026-10-30. To be deposited to Zenodo prior to any execution of `stage4_peak_detection.py` on real resting-state data.*
