@@ -1,8 +1,8 @@
 
 # Decision Log — Stage 3 Close & Stage 4 Decisions
 
-Date: 2026-10-26 (Stage 3 close) / 2026-10-27 (Stage 4 decided) / 2026-10-30–31 (spec details + package resolved; code frozen; boundary-event bug fixed; fixed-only aperiodic model adopted; threshold calibration redesigned twice; extraction and simulation run on real/simulated data; Zenodo DOI registered)
-Commits: `d7176e8..30ed2ea` (pushed, Stage 3); pre-registration text: `47d8b8c`, `1d0b05c`, `36ab9e5`, `890ae1b`, `884d457`, `03f40b1` (not yet pushed); code: `be6f091` (superseded) → `bcbac0c` (superseded) → `4207162` (superseded) → `2923dc2` → `f73dcda` → `4e48a03` → `0d53db6` → `bd96a95c175ddcb04af225a2716b56a52e9f8087` tagged `S4-prereg-frozen` (annotated tag; Stage-4 code, not yet pushed to remote as of this writing — local branch `revision-v2` is ahead of `origin/revision-v2`; tag moved via `git tag -f` five times on 2026-10-30/31 — see §5, §6, §7). Zenodo deposit published 2026-10-31: DOI **10.5281/zenodo.23843194** (see §8).
+Date: 2026-10-26 (Stage 3 close) / 2026-10-27 (Stage 4 decided) / 2026-10-30–31 (spec details + package resolved; code frozen; boundary-event bug fixed; fixed-only aperiodic model adopted; threshold calibration redesigned twice; extraction and simulation run on real/simulated data; Zenodo DOI registered; real-data peak-detection run completed)
+Commits: `d7176e8..30ed2ea` (pushed, Stage 3); pre-registration text: `47d8b8c`, `1d0b05c`, `36ab9e5`, `890ae1b`, `884d457`, `03f40b1` (not yet pushed); code: `be6f091` (superseded) → `bcbac0c` (superseded) → `4207162` (superseded) → `2923dc2` → `f73dcda` → `4e48a03` → `0d53db6` → `bd96a95c175ddcb04af225a2716b56a52e9f8087` tagged `S4-prereg-frozen` (annotated tag; Stage-4 code, not yet pushed to remote as of this writing — local branch `revision-v2` is ahead of `origin/revision-v2`; tag moved via `git tag -f` five times on 2026-10-30/31 — see §5, §6, §7). Zenodo deposit published 2026-10-31: DOI **10.5281/zenodo.23843194** (see §8). DOI logged in repo at commit `9c53d5f85bf0e171207b7eae396890cc2f5d2548` (one commit after the frozen tag, text-only per §5's own note); real-data peak-detection run at that same commit (working tree clean) — see §9.
 Repo: `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`. Decision log lives at `docs/decision_log.md` in that repo (not a `decision_log/` folder). The pre-registration file is saved alongside it at `docs/zenodo_preregistration_stage4.md`. Implementation files are at `revision/stage4/`.
 
 ## 1. Stage 3 Close (`S3a-close`)
@@ -34,7 +34,7 @@ Prior D12 history (for context, see `S3a-P2` §7, `S3a-P2-impl`, `S3a-D12-defer`
 - `S3a-D12-defer` (2026-10-25) deferred applying D12 until Stage 5, because D12 needs the **task** analysis window, which was not yet fixed. It required the window and the rest pseudo-epoch definition to be recorded before Stage-5 output.
 - `S4-options` (draft, 2026-10-26) proposed D12 for rest using 2s non-overlapping pseudo-epochs — but this predates the Stage-4/Stage-5 sequencing resolution below.
 
-## 2. Stage 4 Decisions (`S4-decided`) — FINAL, DOI registered (§8)
+## 2. Stage 4 Decisions (`S4-decided`) — FINAL, DOI registered (§8), results obtained (§9)
 
 Decided 2026-10-27, talked through item by item (Amir chose/confirmed each).
 
@@ -44,8 +44,8 @@ Decided 2026-10-27, talked through item by item (Amir chose/confirmed each).
 | Aperiodic model & frequency range | **Superseded 2026-10-30 — see §6.** (Originally: fit range 2–40 Hz, fixed default, knee selected if ΔBIC > 10. Replaced with fixed-only throughout, for the reasons in §6.) |
 | Peak criterion | At least one Gaussian with center in [13, 30] Hz, width in [1, 8] Hz, height ≥ calibrated threshold. **Threshold is now per-subject, see §7** (originally planned as one pooled threshold — superseded). If multiple Gaussians fall in range, the tallest (highest power) is the primary peak; others reported as secondary/sensitivity. Alpha-harmonic rule (2×IAF) kept as a sensitivity analysis only. |
 | Simulation for threshold calibration | **Superseded 2026-10-30/31 — see §7.** (Originally: one pooled threshold = 95th percentile of the null distribution pooled across all 39 subjects' empirical (offset, exponent) pairs. Replaced with per-subject calibration, including a per-subject spectral-roughness parameter and a per-subject threshold, for the reasons in §7.) |
-| Leakage prevention | A separate "extraction-only" script computes, from real data, only: fit-quality stats, aperiodic parameters, and noise-floor power from 2–12 Hz and 31–40 Hz residuals (column set updated per §6 — fixed-model only). No 13–30 Hz output or peak count/height is computed or stored. Peak-detection code on real data is committed and frozen (tagged `S4-prereg-frozen`) before the Zenodo DOI is obtained, and additionally refuses to run without a `--doi` argument matching a DOI already logged here (and not equal to the v1 archive DOI). |
-| Zenodo pre-registration | Order: finalize protocol text + code → commit with tag → upload to Zenodo (code + pre-registration text) → obtain DOI → run Stage-4 analysis on real data → log DOI in this decision log. **Completed through DOI registration — see §8.** Pre-registration text explicitly discloses that v1 results on this same dataset were already known to the author, and that the ROI/criteria here were chosen independently of those results (not from the data-driven Fz/Cz/C4 selection). |
+| Leakage prevention | A separate "extraction-only" script computes, from real data, only: fit-quality stats, aperiodic parameters, and noise-floor power from 2–12 Hz and 31–40 Hz residuals (column set updated per §6 — fixed-model only). No 13–30 Hz output or peak count/height is computed or stored. Peak-detection code on real data is committed and frozen (tagged `S4-prereg-frozen`) before the Zenodo DOI is obtained, and additionally refuses to run without a `--doi` argument matching a DOI already logged here (and not equal to the v1 archive DOI). **Executed 2026-10-31 — see §9.** |
+| Zenodo pre-registration | Order: finalize protocol text + code → commit with tag → upload to Zenodo (code + pre-registration text) → obtain DOI → run Stage-4 analysis on real data → log DOI in this decision log. **Completed in full — see §8 (DOI) and §9 (results).** Pre-registration text explicitly discloses that v1 results on this same dataset were already known to the author, and that the ROI/criteria here were chosen independently of those results (not from the data-driven Fz/Cz/C4 selection). |
 
 **Lessons from v1 (motivating these choices):**
 - argmax always returns a frequency; with no real peak, it lands at the band edge. In v1, 20–22 of 42 subjects had no stable beta peak.
@@ -196,23 +196,61 @@ Three linked revisions, in order, all made using only aperiodic/noise statistics
 - **Frozen-code archive:** built via `git archive --format=zip ... S4-prereg-frozen -- revision/stage4` from the annotated tag (dereferences to commit `bd96a95c175ddcb04af225a2716b56a52e9f8087`); verified identical to that commit's `revision/stage4` tree via `git diff bd96a95c175ddcb04af225a2716b56a52e9f8087 S4-prereg-frozen -- revision/stage4` (empty diff).
 - **Zenodo deposit:** published 2026-10-31 by Amirhossein, manually via the Zenodo web UI. Two files: `stage4_frozen_code.zip` (the above archive) and `zenodo_preregistration_stage4.md` (the rewritten pre-registration text). Title "Resting-State Beta-Peak Detection Criterion - Stage 4 Pre-Registration and Frozen Analysis Code (Nencki-Symfonia MSIT+ EEG)"; author Feizi, Amirhossein (ORCID 0000-0001-8929-0910); upload type Software; version string `S4-prereg-frozen (commit bd96a95c)`.
 - **DOI:** **10.5281/zenodo.23843194** (https://doi.org/10.5281/zenodo.23843194). Verified: matches the required `10.5281/zenodo.<number>` format; not equal to the v1 archive DOI (`10.5281/zenodo.22232799`); record content (title/author/files/version) confirmed by fetching the Zenodo record page before logging here.
-- **This satisfies the `stage4_peak_detection.py` DOI gate (§3.7/§4):** once this entry is present in `docs/decision_log.md` in the actual repo (sync pending — see Next steps), the script's `--doi 10.5281/zenodo.23843194` argument will pass all three checks (format, ≠ v1 DOI, present in decision log).
-- **Not yet done:** running `stage4_peak_detection.py --doi 10.5281/zenodo.23843194` on real data — reserved for Amirhossein to run himself, per the project's standing rule that the first look at real 13–30 Hz output happens only after the DOI is both registered and logged.
+- **This satisfied the `stage4_peak_detection.py` DOI gate (§3.7/§4):** once logged in `docs/decision_log.md` in the actual repo (commit `9c53d5f85bf0e171207b7eae396890cc2f5d2548`), the script's `--doi 10.5281/zenodo.23843194` argument passed all three checks (format, ≠ v1 DOI, present in decision log) — confirmed by the successful run in §9.
+
+## 9. Stage 4 — Real-Data Peak-Detection Results (`S4-results`, 2026-10-31)
+
+**First point in the project where any 13–30 Hz quantity has been computed or viewed.** Run after §8's DOI was both registered and synced into the actual repo's `docs/decision_log.md` (commit `9c53d5f85bf0e171207b7eae396890cc2f5d2548`, local branch `revision-v2`, working tree clean, `revision/stage4/` content unchanged from `bd96a95` per §8's own diff check).
+
+- **Command:** `stage4_peak_detection.py --doi 10.5281/zenodo.23843194 --roi-dir D:\Revision_EEG\stage4\roi --thresholds ...\sim_rough\thresholds_per_subject.json --half-thresholds ...\sim_rough\thresholds_per_subject_half.json --out-dir ...\Revision_Output\stage4\peak_detection`. DOI gate passed (all three checks). `fooof` 1.1.1 deprecation warning only (cosmetic, package fully functional per pre-registration §3.4).
+- **Data integrity:** all 39 subjects `fit_ok=1` (no real-data fit failures anywhere); `excluded_D12=0` for all 39 (matches §5); `n_pseudoepochs_kept` per subject consistent with §5's export results.
+
+**Primary classification (p95 threshold, the pre-registered primary criterion):**
+
+| Class | n | % |
+|---|---|---|
+| peak | 24 | 61.5% |
+| no_peak | 14 | 35.9% |
+| poor_fit | 1 (sub-34, R²=0.8035 < 0.90, §3.5.1) | 2.6% |
+
+**Contrast with v1:** v1's uncalibrated argmax approach found 20–22/42 (~48–52%) with no stable beta peak. Here, under the pre-registered, simulation-calibrated criterion, only 14/39 (35.9%) show no peak — i.e. a **majority (61.5%) show a stable beta peak**, the opposite qualitative impression from v1. This is exactly the comparison §1 of the pre-registration anticipated reporting.
+
+**Threshold-grid sensitivity (§3.5.2, secondary):**
+
+| Threshold | peak | no_peak | poor_fit |
+|---|---|---|---|
+| p90 | 26 | 12 | 1 |
+| p95 (primary) | 24 | 14 | 1 |
+| p99 | 21 | 17 | 1 |
+
+Classification shifts by only 2–3 subjects across the threshold grid — the primary result is not a knife-edge artifact of the exact p95 choice.
+
+**Split-half reliability (§3.8):** `n_poor_fit_either`=1 (sub-34, poor-fit in both halves, excluded per protocol) → `n_evaluable`=38. **Agreement rate 37/38 = 97.4%** — only **sub-08** disagrees between halves (h1=peak, h2=no_peak). Among the 20 subjects classified peak in **both** halves, **ICC(2,1) of peak height (PW) = 0.919** — "excellent" reliability per Koo & Li (2016). The 8 subjects with an odd kept-epoch count (sub-05, 08, 13, 17, 22, 26, 35, 38) split into unequal half-lengths exactly as predicted in §7c.
+
+- **Secondary observation (not a protocol violation):** three subjects (**sub-05, sub-21, sub-31**) are classified "peak" on the full data but "no_peak" in **both** halves. This is consistent with §3.8's definition of agreement (between the two halves, not between primary and halves) and with the half-length threshold being calibrated higher than the full-length threshold (§7c) — expected to occasionally pull a full-data peak below both half thresholds even when the halves agree with each other.
+
+**Alpha-harmonic sensitivity flag (§3.5, D14 — exploratory only, not part of the primary criterion):** of the 24 primary (p95) peaks, **19/24 (79%)** have center frequency within 2×IAF ± 2 Hz of that subject's own alpha peak, i.e. flagged as possible alpha harmonics rather than independent beta oscillations (non-harmonic primary peaks: sub-03, 23, 24, 30, 40). This was pre-specified as a sensitivity/exploratory output (§3.5), so reporting it is not a deviation — but the fraction is large enough that it should be discussed explicitly alongside the 61.5% headline figure in the manuscript, rather than left as a footnote; it bears directly on whether "beta peak" and "independent beta oscillation" can be equated in this dataset. No methods decision has been revisited because of this — per the §4 deviation policy, that determination is left for manuscript-writing discussion, not for retroactively altering the frozen criterion.
+
+- **Output files** (`Revision_Output\stage4\peak_detection\`): `run_meta.json` (full thresholds/half-thresholds/git state), `peaks_primary.csv` (per-subject primary result + p90/p95/p99 classification), `peaks_all_in_range.csv` (every detected Gaussian in [13,30] Hz, with alpha-harmonic and threshold-grid flags), `sensitivity_counts.csv`, `split_half.csv` (per-half detail), `split_half_summary.json` (agreement rate, ICC).
+- **Not yet done:** no methods decision has been revisited based on this result. Any future change to ROI/threshold/model after this point must be disclosed per §4 as a post hoc, exploratory departure — the primary analysis above stands as the pre-registered result regardless.
 
 ## File locations (as of 2026-10-31)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
 - Implementation: `github/eeg-beta-project/revision/stage4/` — `stage4_export_roi.m`, `stage4_core.py`, `stage4_extraction_only.py`, `stage4_simulate_threshold.py`, `stage4_calibrate_rough_sigma.py`, `stage4_simulate_half_threshold.py`, `stage4_peak_detection.py`, `stage4_compare_half_full_thresholds.py`, plus the diagnostic scripts `diag_noise_floor_null.py` and `diag_calibrate_rough_sigma.py` (superseded design, provenance only).
-- Local repo root: `C:\Users\Amirhossein\Desktop\Prof. Nasrabadi\github\eeg-beta-project`. Stage-3 bundles and Stage-4 outputs live under `D:\Revision_EEG\...` / `C:\Users\Amirhossein\Desktop\Prof. Nasrabadi\Revision_Output\stage4\...`.
+- Local repo root: `C:\Users\Amirhossein\Desktop\Prof. Nasrabadi\github\eeg-beta-project`. Stage-3 bundles live under `D:\Revision_EEG\stage3_part2\`; Stage-4 ROI exports live under `D:\Revision_EEG\stage4\roi\`; other Stage-4 outputs live under `C:\Users\Amirhossein\Desktop\Prof. Nasrabadi\Revision_Output\stage4\...`.
 - Official Stage-4 extraction-only output: `Revision_Output\stage4\stage4_extraction_fixedonly.csv` + `_meta.json`.
 - Official Stage-4 threshold outputs (post-§7): `Revision_Output\stage4\sim_rough\thresholds_per_subject.json`, `thresholds_per_subject_half.json`, `rough_sigma_per_subject.csv`, plus `sim_null.csv`/`sim_injected.csv`/`sim_null_half.csv`. Superseded/provenance-only: `sim\` (no roughness), `sim_rough\thresholds.json` (pooled threshold with roughness).
 - Zenodo deposit: DOI `10.5281/zenodo.23843194`, https://zenodo.org/records/23843194 — contains `stage4_frozen_code.zip` (= `revision/stage4/` at `bd96a95`) and `zenodo_preregistration_stage4.md`.
+- **Official Stage-4 peak-detection output (§9):** `Revision_Output\stage4\peak_detection\` — `run_meta.json`, `peaks_primary.csv`, `peaks_all_in_range.csv`, `sensitivity_counts.csv`, `split_half.csv`, `split_half_summary.json`.
 
 ## Next steps
 1. ~~Rewrite `docs/zenodo_preregistration_stage4.md` §3.5, §3.5.2, §3.6, §3.8 to describe the §7 redesign.~~ Done.
 2. ~~Add `revision/stage4/__pycache__/` to `.gitignore`.~~ Done (2026-10-31, local commit).
 3. ~~Deposit the pre-registration text + frozen code (`bd96a95`) to Zenodo, obtain DOI.~~ Done — DOI `10.5281/zenodo.23843194` (§8).
-4. ~~Log the DOI here.~~ Done (this entry, §8).
-5. Sync this file (with §8) and the rewritten `docs/zenodo_preregistration_stage4.md` into the actual repo at `docs/decision_log.md` / `docs/zenodo_preregistration_stage4.md` — pending, repo-ready files delivered alongside this one.
-6. Only after that sync is committed locally: run `stage4_peak_detection.py --doi 10.5281/zenodo.23843194` on real ROI data — Amir runs this step himself.
-7. After Stage 4 peak-detection results are seen: begin Stage 5 (task-based exploratory analysis), including resolving the open boundary-event flag in MSIT/task bundles (§5) and defining the task analysis window + applying D12 for task.
+4. ~~Log the DOI here.~~ Done (§8).
+5. ~~Sync decision log + pre-registration doc (with DOI) into the actual repo.~~ Done — commit `9c53d5f85bf0e171207b7eae396890cc2f5d2548`.
+6. ~~Run `stage4_peak_detection.py --doi 10.5281/zenodo.23843194` on real ROI data.~~ Done — results in §9.
+7. Sync this §9 entry into the actual repo's `docs/decision_log.md` — repo-ready file delivered alongside this one.
+8. Begin Stage 5 (task-based exploratory analysis): resolve the open boundary-event flag in MSIT/task bundles (§5, still unchecked as of this entry), define the task analysis window, and apply D12 for task.
+9. For manuscript writing: the 79% alpha-harmonic rate among primary peaks (§9) needs explicit discussion alongside the 61.5% headline peak-detection rate — flagged here so it isn't lost before drafting results/discussion text.
