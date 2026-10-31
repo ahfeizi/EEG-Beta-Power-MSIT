@@ -26,3 +26,4 @@ outputs/
 
 # Exception: v1 pilot-stage diagnostic figures kept as evidence (see legacy_v1/README.md)
 !legacy_v1/diagnostics/*.png
+revision/stage4/__pycache__/
