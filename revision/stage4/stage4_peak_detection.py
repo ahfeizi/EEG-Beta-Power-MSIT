@@ -1,16 +1,19 @@
 """Stage 4 peak detection on real rest data (docs/zenodo_preregistration_stage4.md, §3.1.1-3.5.2, §3.8).
 
     python stage4_peak_detection.py --doi 10.5281/zenodo.NNNNNNN --roi-dir <eegOutRoot>/stage4/roi
-        --thresholds <outRoot>/stage4/sim/thresholds.json --out-dir <outRoot>/stage4/peaks
+        --thresholds <outRoot>/stage4/sim_rough/thresholds_per_subject.json --out-dir <outRoot>/stage4/peaks
 
 GATE (§3.7): refuses to run unless --doi is a Zenodo DOI that already appears in docs/decision_log.md and
 is not the v1 archive DOI. Frozen at tag S4-prereg-frozen; to be run by Amirhossein only after the DOI of
 the pre-registration is logged.
 
+Thresholds are per subject (decided 2026-10-31, option (ii)): each subject's p90 / p95 / p99 of its own
+1000 null simulations, from thresholds_per_subject.json (stage4_per_subject_thresholds.py); every retained
+subject must have its own entry.
 Per subject retained by D12: welch_runs -> run_pipeline (full fooof fit, fixed aperiodic model) -> peak
-criterion at the primary (p95) threshold and at p90 / p99 (§3.5.2); poor fit (R^2 < 0.90 or failed full
+criterion at the subject's primary (p95) threshold and at its p90 / p99 (§3.5.2); poor fit (R^2 < 0.90 or failed full
 fit) = indeterminate (§3.5.1); tallest beta Gaussian = primary peak; alpha-harmonic flag (§3.5).
-Split-half (§3.8): odd / even kept epochs, full pipeline per half at p95; agreement rate among subjects
+Split-half (§3.8): odd / even kept epochs, full pipeline per half at the subject's p95; agreement rate among subjects
 not poor-fit in either half; ICC(2,1) of the primary-peak PW among subjects with a peak in both halves.
 A failed aperiodic-only fit stops the script (real data, decided 2026-10-30).
 Not implemented here (decided 2026-10-30): the single-channel secondary results of §3.3. If added later, as
@@ -90,7 +93,7 @@ def main():
         tj = json.load(fh)
     if tj.get('test_run', True):
         raise SystemExit('thresholds file is a TEST run (or lacks test_run): use the full calibration')
-    thr = {name: float(tj['thresholds'][name]) for name in THR_NAMES}
+    thr_all = {s: {name: float(v[name]) for name in THR_NAMES} for s, v in tj['thresholds'].items()}
     names = {k: os.path.join(args.out_dir, k) for k in
              ('peaks_primary.csv', 'peaks_all_in_range.csv', 'sensitivity_counts.csv', 'split_half.csv',
               'split_half_summary.json', 'run_meta.json')}
@@ -111,6 +114,10 @@ def main():
             row.update({f'class_{t}': 'excluded_D12' for t in THR_NAMES})
             primary.append(row)
             continue
+        if rec['subject'] not in thr_all:
+            raise SystemExit(f"{rec['subject']}: no per-subject threshold in {args.thresholds}")
+        thr = thr_all[rec['subject']]
+        row.update({f'thr_{t}': thr[t] for t in THR_NAMES})
         res = analyse(rec['runs'], rec['fs'])
         bp = core.beta_peaks(res['peaks'])                # tallest first
         iaf, harm = core.alpha_harmonic(res['peaks'])
@@ -128,7 +135,7 @@ def main():
         # §3.8 split-half at the primary threshold
         h1, h2 = core.split_half_runs(rec['runs'], rec['fs'])
         hr = [analyse(h, rec['fs']) for h in (h1, h2)]
-        half.append(dict(subject=rec['subject'], n_epochs_h1=len(h1), n_epochs_h2=len(h2),
+        half.append(dict(subject=rec['subject'], thr_p95=thr[PRIMARY], n_epochs_h1=len(h1), n_epochs_h2=len(h2),
                          **{f'{k}_h{i}': v for i, r in enumerate(hr, 1) for k, v in
                             (('r2', r['r2']),
                              ('class', core.classify(r, thr[PRIMARY])), ('max_beta_pw', core.max_beta_pw(r['peaks'])))}))
@@ -143,10 +150,10 @@ def main():
     write(names['peaks_primary.csv'], primary,
           ['subject', 'excluded_D12', 'n_pseudoepochs_kept', 'fit_ok', 'r2_full', 'poor_fit',
            'n_beta_peaks', 'primary_cf', 'primary_pw', 'primary_bw', 'iaf', 'primary_alpha_harmonic']
-          + [f'class_{t}' for t in THR_NAMES])
+          + [f'thr_{t}' for t in THR_NAMES] + [f'class_{t}' for t in THR_NAMES])
     write(names['peaks_all_in_range.csv'], allpk,
           ['subject', 'rank', 'cf', 'pw', 'bw', 'alpha_harmonic'] + [f'pw_ge_{t}' for t in THR_NAMES])
-    sens = [dict(threshold=t, value=thr[t], primary=int(t == PRIMARY),
+    sens = [dict(threshold=t, per_subject=1, primary=int(t == PRIMARY),
                  **{f'n_{c}': sum(r[f'class_{t}'] == c for r in primary)
                     for c in ('peak', 'no_peak', 'poor_fit', 'excluded_D12')}) for t in THR_NAMES]
     write(names['sensitivity_counts.csv'], sens, list(sens[0]))
@@ -158,7 +165,7 @@ def main():
     both = [r for r in evaluable if r['class_h1'] == r['class_h2'] == 'peak']
     pw = np.array([[r['max_beta_pw_h1'], r['max_beta_pw_h2']] for r in both], dtype=float).reshape(-1, 2)
     with open(names['split_half_summary.json'], 'w') as fh:
-        json.dump(dict(threshold=PRIMARY, threshold_value=thr[PRIMARY], n_subjects=len(half),
+        json.dump(dict(threshold=PRIMARY, threshold_per_subject=True, n_subjects=len(half),
                        n_poor_fit_h1=sum(r['class_h1'] == 'poor_fit' for r in half),
                        n_poor_fit_h2=sum(r['class_h2'] == 'poor_fit' for r in half),
                        n_poor_fit_either=len(poor_either), n_evaluable=len(evaluable), n_agree=agree,
@@ -167,7 +174,7 @@ def main():
                        n_peak_both=len(both), icc_pw=icc_2_1(pw) if len(both) else None), fh, indent=2)
     with open(names['run_meta.json'], 'w') as fh:
         json.dump(dict(script='stage4_peak_detection.py', doi=args.doi, thresholds_file=args.thresholds,
-                       thresholds=thr, fooof_version=core.FOOOF_VERSION, roi_dir=args.roi_dir,
+                       thresholds=thr_all, fooof_version=core.FOOOF_VERSION, roi_dir=args.roi_dir,
                        n_files=len(files), git=git_state()), fh, indent=2)
 
 
