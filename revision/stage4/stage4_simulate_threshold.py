@@ -1,10 +1,13 @@
 """Stage 4 threshold calibration by simulation (docs/zenodo_preregistration_stage4.md, §3.6).
 
-    python stage4_simulate_threshold.py --extraction <outRoot>/stage4/stage4_extraction.csv --out-dir <outRoot>/stage4/sim
+    python stage4_simulate_threshold.py --extraction <outRoot>/stage4/stage4_extraction_fixedonly.csv
+        --rough-sigma <outRoot>/stage4/rough_sigma_per_subject.csv --out-dir <outRoot>/stage4/sim_rough
 
 Design (full factorial): every subject retained by D12 gives one empirical (offset_fixed, exponent_fixed)
 pair and its run lengths (39 - k pairs if D12 excluded k subjects; decided 2026-10-30; the count used is
-reported). Per pair: 1000 null signals (no peak) and 1000 signals at each of 10 injected heights
+reported), plus its own roughness sigma_i from stage4_calibrate_rough_sigma.py (decided 2026-10-31; all
+values and the file's SHA-256 are recorded in thresholds.json). Per pair: 1000 null signals (no peak) and
+1000 signals at each of 10 injected heights
 (PW 0.05 ... 0.50, CF ~ U[13, 30] Hz, BW ~ U[1, 8] Hz). Every signal goes through the identical pipeline
 (stage4_core: welch_runs -> run_pipeline(simulated=True)). The poor-fit flag is not applied. A failed fit
 is labelled fit_failed and counts as a non-detection (max PW = 0).
@@ -21,6 +24,7 @@ parts/ when done, so an interrupted run resumes with identical results.
 """
 import argparse
 import csv
+import hashlib
 import json
 import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -38,19 +42,27 @@ CF_RANGE = (13.0, 30.0)                                   # §3.6: CF ~ U[13, 30
 BW_SIM = (1.0, 8.0)                                       # §3.6: BW ~ U[1, 8]
 PERCENTILES = (90, 95, 99)                                # §3.6, §3.5.2; 95 = primary
 CI_LEVEL = 0.95                                           # §3.6: Clopper-Pearson at 95 % (decided 2026-10-30)
-FIELDS = ['subject', 'pair', 'level_pw', 'rep', 'cf_injected', 'bw_injected', 'fit_failed',
+FIELDS = ['subject', 'pair', 'level_pw', 'rep', 'cf_injected', 'bw_injected', 'rough_sigma', 'fit_failed',
           'r2', 'n_beta_peaks', 'max_beta_pw']
 
 
-def read_pairs(path):
+def read_pairs(path, rough_sigma_csv=None):
+    """Retained subjects' (offset_fixed, exponent_fixed, run lengths); with rough_sigma_csv, also each
+    subject's calibrated rough_sigma (every retained subject must have a finite value)."""
     with open(path, newline='') as fh:
         rows = [r for r in csv.DictReader(fh) if r['excluded_D12'] == '0']
+    sig = {}
+    if rough_sigma_csv is not None:
+        with open(rough_sigma_csv, newline='') as fh:
+            sig = {r['subject']: float(r['rough_sigma']) for r in csv.DictReader(fh)}
+        assert set(sig) == {r['subject'] for r in rows}, 'rough-sigma subjects differ from the retained subjects'
+        assert all(np.isfinite(v) and v >= 0 for v in sig.values()), 'rough_sigma missing (ceiling) or negative'
     pairs = []
     for r in rows:
         fs = float(r['fs'])
         epoch = int(round(core.EPOCH_S * fs))
         pairs.append(dict(subject=r['subject'], fs=fs, offset=float(r['offset_fixed']),
-                          exponent=float(r['exponent_fixed']),
+                          exponent=float(r['exponent_fixed']), rough_sigma=sig.get(r['subject'], 0.0),
                           run_lengths=[int(k) * epoch for k in r['run_lengths_epochs'].split(';')]))
         assert np.isfinite(pairs[-1]['offset']) and np.isfinite(pairs[-1]['exponent'])
     return pairs
@@ -68,12 +80,12 @@ def run_cell(pair_idx, cond, pair, n_reps):
             cf = rng.uniform(*CF_RANGE)
             bw = rng.uniform(*BW_SIM)
         runs = core.simulate_runs(rng, pair['run_lengths'], pair['fs'], pair['offset'], pair['exponent'],
-                                  cf=cf, bw=bw, pw=pw)
+                                  cf=cf, bw=bw, pw=pw, rough_sigma=pair['rough_sigma'])
         freqs, psd = core.welch_runs(runs, pair['fs'])
         res = core.run_pipeline(freqs, psd, simulated=True)
         rows.append(dict(subject=pair['subject'], pair=pair_idx, level_pw=0.0 if pw is None else pw, rep=rep,
                          cf_injected='' if cf is None else cf, bw_injected='' if bw is None else bw,
-                         fit_failed=int(res['fit_failed']),
+                         rough_sigma=pair['rough_sigma'], fit_failed=int(res['fit_failed']),
                          r2=res['r2'], n_beta_peaks=len(core.beta_peaks(res['peaks'])),
                          max_beta_pw=core.max_beta_pw(res['peaks'])))
     return rows
@@ -112,11 +124,14 @@ def logistic_mle(h, y):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--extraction', required=True)
+    ap.add_argument('--rough-sigma', required=True, help='per-subject CSV from stage4_calibrate_rough_sigma.py')
     ap.add_argument('--out-dir', required=True)
     ap.add_argument('--workers', type=int, default=os.cpu_count())
     ap.add_argument('--test-reps', type=int, default=None,
                     help='TEST only: fewer repetitions; outputs get the prefix TEST_ and are not the calibration')
     args = ap.parse_args()
+    with open(args.rough_sigma, 'rb') as fh:
+        rough_sha256 = hashlib.sha256(fh.read()).hexdigest()
     n_reps = N_REPS if args.test_reps is None else args.test_reps
     prefix = '' if args.test_reps is None else 'TEST_'
     names = {k: os.path.join(args.out_dir, prefix + k) for k in
@@ -127,7 +142,7 @@ def main():
     parts = os.path.join(args.out_dir, f'{prefix}parts_r{n_reps}')
     os.makedirs(parts, exist_ok=True)
 
-    pairs = read_pairs(args.extraction)
+    pairs = read_pairs(args.extraction, args.rough_sigma)
     print(f'{len(pairs)} pairs (subjects retained by D12), {n_reps} repetitions per cell')
     cells = [(i, c) for i in range(len(pairs)) for c in range(len(LEVELS) + 1)]
     part = {cell: os.path.join(parts, f'p{cell[0]:02d}_c{cell[1]:02d}.csv') for cell in cells}
@@ -170,7 +185,10 @@ def main():
     with open(names['thresholds.json'], 'w') as fh:
         json.dump(dict(thresholds=thr, primary='p95', percentile_method='linear', n_null=int(null_pw.size),
                        n_pairs=len(pairs), subjects=[p['subject'] for p in pairs], n_reps=n_reps,
-                       levels=LEVELS, seed=SEED, ci_level=CI_LEVEL, fooof_version=core.FOOOF_VERSION,
+                       levels=LEVELS, seed=SEED, rough_sigma_file=args.rough_sigma,
+                       rough_sigma_sha256=rough_sha256,
+                       rough_sigma={p['subject']: p['rough_sigma'] for p in pairs}, ci_level=CI_LEVEL,
+                       fooof_version=core.FOOOF_VERSION,
                        null_fit_failed=int(null_failed.sum()), null_fit_failed_rate=float(null_failed.mean()),
                        injected_fit_failed=int(failed.sum()), injected_fit_failed_rate=float(failed.mean()),
                        test_run=args.test_reps is not None), fh, indent=2)

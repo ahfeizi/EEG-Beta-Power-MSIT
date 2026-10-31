@@ -180,11 +180,19 @@ def alpha_harmonic(peaks):
     return iaf, np.abs(bp[:, 0] - 2 * iaf) <= HARMONIC_TOL
 
 
-def simulate_runs(rng, run_lengths, fs, offset, exponent, cf=None, bw=None, pw=None):
+def simulate_runs(rng, run_lengths, fs, offset, exponent, cf=None, bw=None, pw=None, rough_sigma=0.0):
     """§3.6: one simulated signal per run length (samples): Gaussian white noise filtered in the frequency
     domain by sqrt(target PSD), target PSD = 10^(offset - log10(f^exponent) [+ PW Gaussian]) in uV^2/Hz,
     zero below 0.5 Hz (DC included). The Gaussian follows fooof's convention BW = 2 SD, so pw is in PW
-    units. Returns a list of (1, n) arrays: the same structure as the real runs (single-signal unit)."""
+    units. Returns a list of (1, n) arrays: the same structure as the real runs (single-signal unit).
+    rough_sigma > 0 (decided 2026-10-31): the target PSD is also multiplied by a systematic roughness factor,
+    one lognormal draw per Welch bin centre (k / EPOCH_S Hz, mean 1: ln-factor ~ N(-sigma^2/2, sigma^2)),
+    interpolated linearly in ln between the centres and shared by all runs of the signal; it is drawn
+    before the white noise. rough_sigma = 0 draws nothing, so the random stream is unchanged."""
+    ln_rough = None
+    if rough_sigma > 0:
+        centres = np.arange(0.0, fs / 2.0 + 1e-9, 1.0 / EPOCH_S)
+        ln_rough = rng.normal(-rough_sigma ** 2 / 2.0, rough_sigma, centres.size)
     out = []
     for n in run_lengths:
         f = np.fft.rfftfreq(n, d=1.0 / fs)
@@ -194,6 +202,8 @@ def simulate_runs(rng, run_lengths, fs, offset, exponent, cf=None, bw=None, pw=N
             logp = logp + gaussian_function(f[m], cf, pw, bw / 2.0)
         target = np.zeros_like(f)
         target[m] = 10.0 ** logp
+        if ln_rough is not None:
+            target[m] *= np.exp(np.interp(f[m], centres, ln_rough))
         # unit-variance white noise has one-sided density 2/fs, so a gain of sqrt(target * fs / 2) gives target
         x = np.fft.irfft(np.fft.rfft(rng.standard_normal(n)) * np.sqrt(target * fs / 2.0), n=n)
         out.append(x[None, :])
