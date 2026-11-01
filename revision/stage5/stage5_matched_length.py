@@ -25,8 +25,10 @@ What it does.
      re-run (§10h records that decision and its rejected alternative).
   3. Writes thresholds_per_subject_matched.json in the same shape as
      stage4_per_subject_thresholds.py's output, so stage5_peak_detection_task.py reads it unchanged.
-Resumable: each subject's cell is saved to parts_matched/ as soon as it completes, exactly as the frozen
-script does, and a rerun skips the cells already present.
+Resumable: each subject's cell is saved to parts_matched_r1000/ as soon as it completes, exactly
+as the frozen script does, and a rerun skips the cells already present. A rerun also accepts an
+existing stage5_extraction_task_matched.csv, but only after rebuilding it and confirming it is
+byte-identical, so a resume cannot mix cells from two different matched subsets.
 
 truncate_runs() is also imported by stage5_peak_detection_task.py, so the thresholds and the
 classification are guaranteed to use the same definition of the matched subset.
@@ -148,10 +150,23 @@ def main():
     for p in (thr_json, null_csv):
         if os.path.exists(p):
             raise SystemExit(f'output exists, not overwritten: {p}')
-    if os.path.exists(matched_csv):
-        raise SystemExit(f'output exists, not overwritten: {matched_csv}')
 
-    rows = build_matched_extraction(args.task_extraction, args.rest_extraction, matched_csv)
+    # matched_csv is written before the simulation starts, so a crash mid-run leaves it behind and a
+    # plain "output exists" guard would block the resume this script documents. Rebuild it next to the
+    # old one and continue only if the two are byte-identical; a difference means an input table has
+    # changed, which would silently invalidate the cells already in parts_matched_r1000/, so refuse.
+    if os.path.exists(matched_csv):
+        recheck = matched_csv + '.recheck'
+        rows = build_matched_extraction(args.task_extraction, args.rest_extraction, recheck)
+        with open(matched_csv, 'rb') as a, open(recheck, 'rb') as b:
+            same = a.read() == b.read()
+        os.remove(recheck)
+        if not same:
+            raise SystemExit(f'{matched_csv} exists but the current inputs give a different table; '
+                             f'move the old out-dir aside rather than mixing two runs')
+        print(f'resuming: {os.path.basename(matched_csv)} already present and unchanged')
+    else:
+        rows = build_matched_extraction(args.task_extraction, args.rest_extraction, matched_csv)
     wm = [r['n_windows_matched'] for r in rows]
     wr = [r['n_windows_rest'] for r in rows]
     rel = [abs(a - b) / b for a, b in zip(wm, wr)]
