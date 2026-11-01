@@ -600,6 +600,14 @@ averaging** — one segment in the baseline, three in the active window (0–250
   but does not vanish: it dilutes ERD% toward zero where alpha dominates. This is the same mechanism as
   audit item C, and far milder than v1's 200 ms window (first null 10 Hz away, i.e. leakage across the
   whole low-beta range).
+- **Verified on synthetic data, not asserted** (the standing Stage-5 PSD note asks for exactly this):
+  the 250-sample baseline is **1** Welch segment and the 500-sample active window **3**, confirmed both
+  by scipy's own segment formula and by an explicit manual segment average reproducing scipy's output to
+  a maximum relative difference of 3 × 10⁻¹⁵. `nfft = nperseg`, so **resolution and bin spacing are both
+  2 Hz and coincide** — unlike v1, where a 0.2 s window (5 Hz resolution) was reported on a zero-padded
+  1.95 Hz grid (`nfft = 256`), the distinction the project's PSD note flags for the Methods text. On this
+  grid the 13–30 Hz band is carried by **9 bins: 14, 16, …, 30 Hz**, identically in both windows (so the
+  ratio is unaffected; stated because it also defines the absolute secondary measures).
 
 **D12 for Track A.** A trial is usable only if **both** its windows pass D12 (peak-to-peak ≤ 150 µV on
 Fz/Cz/C4 within that window) — ERD% needs both sides, so a trial failing on either side is rejected
@@ -677,10 +685,46 @@ classes**, and they are reported separately rather than pooled.
 - **Timing:** Track A computation waits for the §10f threshold simulation to finish — it needs 39 MATLAB
   rebuilds and would contend with the 8-worker simulation for the same 8 cores.
 
+**Amendment, same day, before any real value was computed (`S5-trackA-erd-amend1`).** The paragraph above
+first specified ERD% as "per trial, then averaged per subject × condition". That is **not** the classic
+definition and is the worse estimator here, so the primary estimator is changed:
+- **Primary: `erd_pct` = (mean baseline power − mean active power) / mean baseline power × 100**, with the
+  band powers averaged over the trials of a subject × condition cell **first** — the classic ERD
+  definition (Pfurtscheller & Lopes da Silva, 1999), which is what the ERD literature this analysis sits
+  in actually computes.
+- **Secondary/diagnostic: `erd_pct_trialwise`**, the mean over trials of the per-trial ratio (plus its
+  median). Kept and reported, since it is what the first wording specified.
+- Reason for the change: a per-trial ratio divides a 1-segment baseline estimate by a 3-segment active
+  estimate, so it has heavy tails, and by Jensen's inequality the mean of ratios is biased upward
+  relative to the ratio of means. Averaging the powers first removes that bias and is the published
+  definition. Nothing is hidden: both estimators are computed and written to the same table.
+- This is an estimator choice, not a result-dependent one: it was made while writing the code, before any
+  value existed in either window.
+
+**Implementation (written, linted and smoke-tested; not yet run on real data).**
+- `revision/stage5/stage5_export_trials_task.m` — rebuild, per-trial two-window D12, ROI export.
+  Event types were read out of a real bundle rather than assumed: the condition markers are `'S  5'`,
+  `'S  6'`, `'S  7'`, `'S  8'` (**two** spaces), and **`'S 11'` survives the Stage-3 cropping inside
+  blocks while `'S 10'`/`'S 12'` do not**, because the latter two lie between blocks. The first-in-mini-
+  block flag therefore uses "first trial of a block, or an `'S 11'` since the previous trial", which is
+  what the vanished markers would have given; the Python step refuses to continue unless the resulting
+  total matches the independent `events.tsv`-based count (3,921, §10g above). Metadata is written for
+  every in-block trial, including rejected ones, so the bookkeeping is complete. `checkcode`: clean.
+- `revision/stage5/stage5_erd_by_condition.py` — the two PSDs, both ERD% estimators, the Welch
+  verification above, and the first-in-mini-block cross-check.
+- `revision/stage5/stage5_erd_stats.py` — the Friedman/Kendall-W omnibus and the Holm-corrected pairwise
+  Wilcoxon with Kerby (2014) rank-biserial, using the same r_rb definition as
+  `legacy_v1/statistics/effect_size_rankbiserial.m` so the effect sizes are comparable with the ones
+  already in the manuscript. Smoke-tested on synthetic cells with a known injected condition effect: it
+  recovered the effect in ERD% (χ² = 88.54, W = 0.757) and correctly found none in the baseline power
+  (p = 0.378) where none was injected.
+
 - **Data-leakage check:** the window verification reads only `*_task-msit_events.tsv` and the Stage-3
   block table; the 5-trial diagnosis read only `P2.msit.event` latencies and block-table columns; the
-  mini-block balance came from `d4e_trials_by_condition.csv` (trial counts). No EEG sample was read into
-  any spectral estimate, and no 13–30 Hz quantity, real or simulated, exists for Track A at this point.
+  mini-block balance came from `d4e_trials_by_condition.csv` (trial counts); the event-type check read
+  only `P2.msit.event` types and latencies; the Welch and statistics checks used synthetic data only.
+  No EEG sample was read into any spectral estimate, and no 13–30 Hz quantity, real or simulated, exists
+  for Track A at this point.
 
 ## File locations (as of 2026-11-01)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
@@ -695,16 +739,23 @@ classes**, and they are reported separately rather than pooled.
 **Stage 5 (§10):**
 - Implementation: `github/eeg-beta-project/revision/stage5/` — `stage5_soa_survey.py`,
   `stage5_export_roi_task.m`, `stage5_extraction_only_task.py`, `stage5_diag_knee_task.py`,
-  `stage5_peak_detection_task.py` (and, later, the Track-A script). The calibration path reuses
+  `stage5_peak_detection_task.py`, `stage5_window_overlap_check.py`, and the Track-A chain
+  `stage5_export_trials_task.m`, `stage5_erd_by_condition.py`, `stage5_erd_stats.py`. The calibration path reuses
   `revision/stage4/stage4_core.py`, `stage4_calibrate_rough_sigma.py`, `stage4_simulate_threshold.py`,
   `stage4_per_subject_thresholds.py`, `stage4_simulate_half_threshold.py` and `diag_noise_floor_null.py`
   **unchanged** (§10d).
-- Task ROI exports: `D:\Revision_EEG\stage5\roi\<sub>_msit_roi.mat` (39 files, 483 MB) + per-run manifests.
+- Task ROI exports (Track B): `D:\Revision_EEG\stage5\roi\<sub>_msit_roi.mat` (39 files, 483 MB) +
+  per-run manifests.
+- Task trial exports (Track A): `D:\Revision_EEG\stage5\trials\<sub>_msit_trials.mat` + per-run
+  `manifest_trials_<timestamp>.tsv` (not yet produced).
 - Stage-5 outputs: `Revision_Output\stage5\` — `stage5_soa_per_subject.csv`,
   `stage5_soa_candidates.csv`, `stage5_soa_summary.json`, `manifest_roi_task_all39.tsv`,
   `stage5_extraction_task.csv` (+ `_meta.json`), `stage5_diag_knee_task.csv` (+ `_meta.json`),
   `stage5_diag_noise_floor_null_task.csv`, `rough_sigma_task_per_subject.csv` (+ `_points.csv`),
   `stage5_window_overlap_per_subject.csv`, `stage5_window_overlap_summary.json` (§10g),
+  `erd\` (Track A: `stage5_erd_per_trial.csv`, `stage5_erd_per_subject_condition.csv`,
+  `stage5_erd_meta.json`, `stage5_erd_stats_omnibus.csv`, `stage5_erd_stats_pairwise.csv`,
+  `stage5_erd_stats_meta.json`),
   `sim_task\` (threshold simulation, resumable in `parts_r1000\`), `sim_task_run.log`,
   `sim_task_run.cmd` / `.pid` (detached-run bookkeeping, §10f).
 
@@ -724,5 +775,5 @@ classes**, and they are reported separately rather than pooled.
 11. Commit and tag `S5-task-peak-frozen`, then run `stage5_peak_detection_task.py` — the first look at any real 13–30 Hz task quantity.
 12. Evaluate §10d rule 5 (task vs rest detection-power curves) and, if it triggers, run the length-matched secondary analysis before reporting any rest-vs-task prevalence comparison.
 13. ~~**Awaiting Amirhossein's sign-off (§10b):** whether Track A carries a pre-stimulus window ... in addition to the approved post-onset window.~~ Answered 2026-11-01: yes — baseline `[−500, 0)` ms added, ERD% is the primary metric, absolute post-onset power secondary (§10g). Windows verified empirically over all 39 subjects.
-14. Build and run Track A once the §10f simulation frees the cores: MATLAB trial export (both windows, D12 on both, mini-block flag carried) → ERD% → the §10g analysis plan.
+14. Build and run Track A once the §10f simulation frees the cores. The three scripts are written, linted and smoke-tested (§10g): `stage5_export_trials_task.m` → `stage5_erd_by_condition.py` → `stage5_erd_stats.py`. Only the runs remain (39 MATLAB rebuilds, then two fast Python steps).
 15. Confirm the F/S/0 interference semantics of the four MSIT+ labels against Dzianok et al. 2022 before stating any ordered-trend hypothesis (§10g); the dataset's own `task-msit_events.json` does not define them.
