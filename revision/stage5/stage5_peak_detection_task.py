@@ -27,8 +27,17 @@ Thresholds come from the frozen Stage-4 calibration scripts run on the task extr
 parameterised by --extraction / --sim-dir and need no change for task data), so the task thresholds are
 produced by exactly the deposited implementation.
 
+Length-matched secondary pass (optional, §10d rule 5 / §10h): with --matched-thresholds and
+--rest-extraction, each subject's task kept-epoch sequence is also truncated in time order, preserving its
+run structure, to that subject's rest n_kept, and classified against the matched threshold calibrated at
+those same run lengths. The truncation function is imported from stage5_matched_length, the module that
+built those thresholds, so the thresholds and the classification cannot drift apart. This pass is required
+before any rest-vs-task prevalence comparison is reported, because §10h measured task detection to be up
+to 8.7 percentage points more sensitive than rest detection at the same injected peak height.
+
 Outputs (out-dir; never overwritten): peaks_primary.csv, peaks_all_in_range.csv, sensitivity_counts.csv,
-split_half.csv, split_half_summary.json, run_meta.json.
+split_half.csv, split_half_summary.json, run_meta.json, and - with the matched pass - peaks_matched.csv
+and sensitivity_counts_matched.csv.
 """
 import argparse
 import csv
@@ -41,9 +50,12 @@ import sys
 import numpy as np
 
 sys.dont_write_bytecode = True      # do not write __pycache__ into the frozen Stage-4 tree
-STAGE4 = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'stage4')
+HERE = os.path.dirname(os.path.abspath(__file__))
+STAGE4 = os.path.join(os.path.dirname(HERE), 'stage4')
 sys.path.insert(0, STAGE4)
+sys.path.insert(0, HERE)
 import stage4_core as core          # noqa: E402  (imported unchanged from the frozen Stage-4 code)
+from stage5_matched_length import truncate_runs   # noqa: E402  (same truncation as the thresholds)
 
 N_SUBJECTS = 39
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -103,7 +115,14 @@ def main():
     ap.add_argument('--thresholds', required=True)
     ap.add_argument('--half-thresholds', required=True)
     ap.add_argument('--out-dir', required=True)
+    ap.add_argument('--matched-thresholds', default=None,
+                    help='thresholds_per_subject_matched.json from stage5_matched_length.py; with '
+                         '--rest-extraction this adds the §10d rule-5 length-matched secondary pass')
+    ap.add_argument('--rest-extraction', default=None,
+                    help='stage4_extraction_fixedonly.csv, for each subject\'s rest n_pseudoepochs_kept')
     args = ap.parse_args()
+    if bool(args.matched_thresholds) != bool(args.rest_extraction):
+        raise SystemExit('--matched-thresholds and --rest-extraction must be given together')
     gate = check_frozen(args.frozen_tag)                  # before any data is read
 
     with open(args.thresholds) as fh:
@@ -116,9 +135,21 @@ def main():
     if hj.get('test_run', True):
         raise SystemExit('half-thresholds file is a TEST run (or lacks test_run)')
     thr_half = {s: {int(n): float(v[PRIMARY]) for n, v in d.items()} for s, d in hj['thresholds'].items()}
-    names = {k: os.path.join(args.out_dir, k) for k in
-             ('peaks_primary.csv', 'peaks_all_in_range.csv', 'sensitivity_counts.csv', 'split_half.csv',
-              'split_half_summary.json', 'run_meta.json')}
+    thr_matched, rest_kept, mj = None, None, None
+    if args.matched_thresholds:
+        with open(args.matched_thresholds) as fh:
+            mj = json.load(fh)
+        if mj.get('test_run', True):
+            raise SystemExit('matched-thresholds file is a TEST run (or lacks test_run)')
+        thr_matched = {s: {name: float(v[name]) for name in THR_NAMES} for s, v in mj['thresholds'].items()}
+        with open(args.rest_extraction, newline='') as fh:
+            rest_kept = {r['subject']: int(r['n_pseudoepochs_kept']) for r in csv.DictReader(fh)
+                         if r['excluded_D12'] == '0'}
+    out_files = ['peaks_primary.csv', 'peaks_all_in_range.csv', 'sensitivity_counts.csv', 'split_half.csv',
+                 'split_half_summary.json', 'run_meta.json']
+    if thr_matched is not None:
+        out_files += ['peaks_matched.csv', 'sensitivity_counts_matched.csv']
+    names = {k: os.path.join(args.out_dir, k) for k in out_files}
     for p in names.values():
         if os.path.exists(p):
             raise SystemExit(f'output exists, not overwritten: {p}')
@@ -127,7 +158,7 @@ def main():
         raise SystemExit(f'{len(files)} task ROI files found, {N_SUBJECTS} expected')
     os.makedirs(args.out_dir, exist_ok=True)
 
-    primary, allpk, half = [], [], []
+    primary, allpk, half, matched = [], [], [], []
     for f in files:
         rec = core.load_roi(f)
         row = dict(subject=rec['subject'], excluded_D12=int(rec['excluded_D12']),
@@ -164,7 +195,37 @@ def main():
                          **{f'{k}_h{i}': v for i, (r, t) in enumerate(zip(hr, th), 1) for k, v in
                             (('thr_p95', t), ('r2', r['r2']),
                              ('class', core.classify(r, t)), ('max_beta_pw', core.max_beta_pw(r['peaks'])))}))
-        print(f"{rec['subject']}  {row[f'class_{PRIMARY}']}  halves {half[-1]['class_h1']}/{half[-1]['class_h2']}", flush=True)
+        # §10d rule 5 / §10h: length-matched secondary pass. The task kept-epoch sequence is truncated
+        # in time order, preserving run structure, to this subject's rest n_kept, and classified against
+        # the matched threshold calibrated at those same run lengths. truncate_runs is imported from
+        # stage5_matched_length, the module that built those thresholds, so the subset is identical.
+        if thr_matched is not None:
+            if rec['subject'] not in thr_matched:
+                raise SystemExit(f"{rec['subject']}: no matched threshold in {args.matched_thresholds}")
+            if rec['subject'] not in rest_kept:
+                raise SystemExit(f"{rec['subject']}: no rest n_pseudoepochs_kept in {args.rest_extraction}")
+            target = rest_kept[rec['subject']]
+            mruns, mlens = truncate_runs(rec['runs'], rec['run_len_epochs'], target, rec['fs'])
+            if sum(mlens) != target:
+                raise SystemExit(f"{rec['subject']}: matched {sum(mlens)} epochs, rest has {target}")
+            mt = thr_matched[rec['subject']]
+            mres = analyse(mruns, rec['fs'])
+            mbp = core.beta_peaks(mres['peaks'])
+            miaf, mharm = core.alpha_harmonic(mres['peaks'])
+            matched.append(dict(subject=rec['subject'], n_epochs_matched=sum(mlens),
+                                n_epochs_full=rec['n_pseudoepochs_kept'], n_runs_matched=len(mlens),
+                                fit_ok=int(mres['fit_ok']), r2_full=mres['r2'],
+                                n_beta_peaks=len(mbp),
+                                primary_cf=mbp[0, 0] if len(mbp) else '',
+                                primary_pw=mbp[0, 1] if len(mbp) else '',
+                                primary_bw=mbp[0, 2] if len(mbp) else '',
+                                iaf='' if np.isnan(miaf) else miaf,
+                                primary_alpha_harmonic=int(mharm[0]) if len(mbp) else '',
+                                **{f'thr_{t}': mt[t] for t in THR_NAMES},
+                                **{f'class_{t}': core.classify(mres, mt[t]) for t in THR_NAMES},
+                                class_full_p95=row[f'class_{PRIMARY}']))
+        print(f"{rec['subject']}  {row[f'class_{PRIMARY}']}  halves {half[-1]['class_h1']}/{half[-1]['class_h2']}"
+              + (f"  matched {matched[-1][f'class_{PRIMARY}']}" if matched else ''), flush=True)
 
     def write(path, rows, fields):
         with open(path, 'w', newline='') as fh:
@@ -183,6 +244,14 @@ def main():
                     for c in ('peak', 'no_peak', 'poor_fit', 'excluded_D12')}) for t in THR_NAMES]
     write(names['sensitivity_counts.csv'], sens, list(sens[0]))
     write(names['split_half.csv'], half, list(half[0]) if half else ['subject'])
+    if thr_matched is not None:
+        write(names['peaks_matched.csv'], matched, list(matched[0]) if matched else ['subject'])
+        msens = [dict(threshold=t, per_subject=1, primary=int(t == PRIMARY), matched_to_rest_n_kept=1,
+                      **{f'n_{c}': sum(r[f'class_{t}'] == c for r in matched)
+                         for c in ('peak', 'no_peak', 'poor_fit')}) for t in THR_NAMES]
+        write(names['sensitivity_counts_matched.csv'], msens, list(msens[0]))
+        agree_fm = sum(r[f'class_{PRIMARY}'] == r['class_full_p95'] for r in matched)
+        print(f"\nmatched vs full-length agreement at {PRIMARY}: {agree_fm}/{len(matched)}")
 
     poor_either = [r for r in half if 'poor_fit' in (r['class_h1'], r['class_h2'])]
     evaluable = [r for r in half if r not in poor_either]
@@ -203,6 +272,10 @@ def main():
                        core_module='revision/stage4/stage4_core.py (unchanged)', gate=gate,
                        thresholds_file=args.thresholds, thresholds=thr_all,
                        half_thresholds_file=args.half_thresholds, half_thresholds=hj['thresholds'],
+                       matched_thresholds_file=args.matched_thresholds,
+                       matched_thresholds=(mj['thresholds'] if mj else None),
+                       rest_extraction=args.rest_extraction,
+                       matched_pass=bool(thr_matched is not None),
                        fooof_version=core.FOOOF_VERSION, roi_dir=args.roi_dir, n_files=len(files),
                        tags_at_head=git('tag', '--points-at', 'HEAD')[0].split()), fh, indent=2)
 
