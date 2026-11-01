@@ -563,6 +563,125 @@ empirically against the real `write_csv`/resume code before the restart: a part 
 existence of `<part>.csv`, so a stale `.tmp` is never counted as progress and is truncated on recompute;
 the assembly-time row-count assertions are a second net. No change was needed.
 
+### 10g. Track A gets a pre-stimulus baseline; ERD% becomes the primary metric (`S5-trackA-erd`)
+
+**Resolves the open item flagged in §10b. Decision (Amirhossein, 2026-11-01).** Written before any real
+value was computed in the new window; the only numbers below come from event timings and from one
+integrity check of event latencies.
+
+**Architecture.** Track A carries **two** windows per trial, both relative to the condition-marker onset *t*:
+
+| Window | Interval | Length | Role |
+|---|---|---|---|
+| baseline | `[t − 500, t)` ms | 500 ms (250 samples at 500 Hz) | pre-stimulus reference |
+| active | `[t, t + 1000)` ms | 1000 ms (500 samples) | post-onset, fixed in §10b |
+
+- **Primary metric: classic ERD% = (baseline_power − active_power) / baseline_power × 100**, per trial,
+  then averaged per subject × condition. Positive = desynchronization.
+- **Secondary/diagnostic:** the absolute post-onset band power of §10b, and the absolute baseline power,
+  reported alongside so it is visible which side of the ratio moves.
+- Same 7-channel Stage-4 ROI, same 13–30 Hz band average on linear power, same ROI averaging on linear
+  power, same D12 rule as everywhere else in the project.
+
+**Welch settings — identical segments in both windows (decision, Claude 2026-11-01).** ERD% is a *ratio*
+of two band-average powers. If the two PSDs were computed with different taper lengths, their spectral
+smoothing kernels would differ, so alpha leakage into 13–30 Hz would differ between numerator and
+denominator and the ratio would be biased even with no true beta change. The segment is therefore the
+same in both windows: **Hann, 250 samples (500 ms), 50 % overlap, `detrend='constant'`, density, mean
+averaging** — one segment in the baseline, three in the active window (0–250, 125–375, 250–500).
+- This happens to match the v1 pattern `winLen = min(nSamp, round(0.5*fs))`, but now for a stated reason
+  rather than by inheritance.
+- Rejected: a 1 s segment in the active window and 0.5 s in the baseline (unmatched leakage kernels —
+  precisely the bias the ratio cannot tolerate).
+- Rejected: shortening the active window to 500 ms so the segments match trivially — it would discard
+  half the post-onset data and end before the response in about half the trials (RT median 602 ms, §10b).
+- **Documented limitation:** a 500 ms Hann taper has its first spectral null 4 Hz from centre, so 10 Hz
+  alpha still leaks toward ~14 Hz. Being identical on both sides, it cancels to first order in the ratio
+  but does not vanish: it dilutes ERD% toward zero where alpha dominates. This is the same mechanism as
+  audit item C, and far milder than v1's 200 ms window (first null 10 Hz away, i.e. leakage across the
+  whole low-beta range).
+
+**D12 for Track A.** A trial is usable only if **both** its windows pass D12 (peak-to-peak ≤ 150 µV on
+Fz/Cz/C4 within that window) — ERD% needs both sides, so a trial failing on either side is rejected
+whole. The existing "outside" convention is inherited unchanged: a window crossing a `boundary` event or
+the data edge is *outside*, not kept, and the 50 % rule uses kept/(total − outside). The §5/§10c leading-
+boundary fix is applied on the helper's input copy, as in the pseudo-epoch path.
+
+**Empirical window verification (`revision/stage5/stage5_window_overlap_check.py`, all 39 subjects,
+15,492 in-block trials, 15,024 consecutive pairs).** Arithmetic alone says the windows cannot collide
+(SOA floor 1733 ms − 1500 ms of window = 233 ms of slack); this was checked trial by trial instead of
+assumed, as the post-onset window was.
+
+| Hard check | Count |
+|---|---|
+| baseline of trial *k+1* overlapping the active window of trial *k* | **0** |
+| baseline of trial *k+1* overlapping the baseline of trial *k* | **0** |
+| active window extending past its block's end | **0** |
+| baseline and active of the same trial overlapping | **0** |
+| baseline starting before its block's first sample | **5** (see below) |
+
+Clear space between one trial's active end and the next trial's baseline start: min **233 ms**, p01 233,
+median 534, max 3933 — the floor is exactly the predicted value, reached in every subject.
+
+**The 5 exceptions, and why they need no new rule.** One trial each in sub-02, sub-13, sub-17, sub-37 and
+sub-40 has its baseline window starting 12–425 ms before its block's first sample. All five are the first
+retained stimulus of a block that **D4e clipped** for filter-edge padding (`status=CLIPPED`): sub-02/13/37/40
+block 1 with `clip_start_reason='recording_start'` (pushed to 6.638 s ≈ H), sub-17 block 4 with
+`clip_start_reason='raw_boundary'`. The existing convention already excludes them: verified by reading
+`P2.msit.event` directly for the two distinct cases — sub-02's block 1 starts at latency 1, so the window
+would begin at latency −249 (`a < 1` → outside), and sub-17's block 4 starts at latency 124155 with one
+`boundary` event inside the window (→ outside). Loss: **5 of 15,492 trials (0.032 %)**, by the same
+mechanism that excluded Stage 4's incomplete block tails. No new rule, no code change.
+
+**Where the baseline actually sits — a real limitation, quantified rather than assumed.** The baseline is
+not a resting reference: it falls in the *previous* trial's post-response period, which is where
+post-movement beta rebound (ERS) occurs. Measured lag from the previous response to the baseline start:
+
+| Trial class | n | median lag | min | max |
+|---|---|---|---|---|
+| first in mini-block | 3,921 | **2940 ms** | 1164 | 4524 |
+| later in mini-block | 10,936 | **864 ms** | −344 | 1522 |
+
+(The previous response physically falls inside the baseline window in 26 of 14,857 trials, 0.175 %.)
+First-in-mini-block trials follow the `S 11` end-of-mini-block marker and so have long SOAs and a clean
+baseline; later trials have a baseline sitting ~0.9 s after the previous response, i.e. plausibly on the
+rebound. Baseline power — and therefore ERD% magnitude — is thus **not comparable between the two trial
+classes**, and they are reported separately rather than pooled.
+- **The condition comparison is protected**, though: the first-in-mini-block fraction is essentially
+  identical across the four conditions (group means F0 0.2640, FS 0.2622, 00 0.2642, S0 0.2630; median
+  within-subject spread across conditions 0.034, max 0.066, from `d4e_trials_by_condition.csv`), so this
+  asymmetry cannot by itself produce a condition difference.
+
+**Pre-specified analysis plan (CLAUDE.md rule 8; no value in either window computed yet).**
+- Unit of analysis: mean ERD% per subject × condition over usable trials; 39 subjects.
+- Primary: **Friedman test** across the four conditions with **Kendall's W** as effect size —
+  distribution-free, so no assumption check and therefore no data-dependent branch, and consistent with
+  the project's non-parametric tradition (v1 used Wilcoxon and Page's L).
+- Post hoc: **Wilcoxon signed-rank on all six pairs, Holm-corrected**, with **rank-biserial r** per pair
+  (the effect size `revision_plan.md` step 3 asks for).
+- Reported in parallel on the absolute post-onset power and the absolute baseline power, and separately
+  for first-in-mini-block and later trials.
+- Interpretation: a significant omnibus with a pairwise pattern separating interference conditions from
+  the control condition is evidence of conflict-related beta modulation in this ROI; a null is quantified
+  with BF₀₁ and TOST (`revision_plan.md` step 2) and read in light of the mini-block design — from the
+  second trial of a mini-block on the upcoming condition was partly predictable, so a null is *not* a
+  design-expected null for first-in-mini-block trials, while it is less surprising for later ones. If the
+  two subsets disagree, both are reported and the first-in-mini-block subset carries the cleaner test.
+- **Not pre-specified, and deliberately not guessed:** an *ordered* trend test (Page's L, audit item A)
+  needs the interference semantics of the four labels. The dataset's own `task-msit_events.json` defines
+  only the mapping (`S 5`=F0, `S 6`=FS, `S 7`=00, `S 8`=S0; `S 11`="End of a mini-block", `S 10`="Start of
+  a break", `S 12`="Beginning of the run") and **not** what F, S and 0 stand for. The natural reading
+  (0 = source absent, so 00 = control, F0/S0 = one source, FS = both) must be confirmed against Dzianok
+  et al. 2022 before any ordered hypothesis is stated. Until then only the omnibus and the pairwise
+  contrasts are pre-specified.
+- **Timing:** Track A computation waits for the §10f threshold simulation to finish — it needs 39 MATLAB
+  rebuilds and would contend with the 8-worker simulation for the same 8 cores.
+
+- **Data-leakage check:** the window verification reads only `*_task-msit_events.tsv` and the Stage-3
+  block table; the 5-trial diagnosis read only `P2.msit.event` latencies and block-table columns; the
+  mini-block balance came from `d4e_trials_by_condition.csv` (trial counts). No EEG sample was read into
+  any spectral estimate, and no 13–30 Hz quantity, real or simulated, exists for Track A at this point.
+
 ## File locations (as of 2026-11-01)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
@@ -584,7 +703,10 @@ the assembly-time row-count assertions are a second net. No change was needed.
 - Stage-5 outputs: `Revision_Output\stage5\` — `stage5_soa_per_subject.csv`,
   `stage5_soa_candidates.csv`, `stage5_soa_summary.json`, `manifest_roi_task_all39.tsv`,
   `stage5_extraction_task.csv` (+ `_meta.json`), `stage5_diag_knee_task.csv` (+ `_meta.json`),
-  `stage5_diag_noise_floor_null_task.csv`, `rough_sigma_task_per_subject.csv` (+ `_points.csv`).
+  `stage5_diag_noise_floor_null_task.csv`, `rough_sigma_task_per_subject.csv` (+ `_points.csv`),
+  `stage5_window_overlap_per_subject.csv`, `stage5_window_overlap_summary.json` (§10g),
+  `sim_task\` (threshold simulation, resumable in `parts_r1000\`), `sim_task_run.log`,
+  `sim_task_run.cmd` / `.pid` (detached-run bookkeeping, §10f).
 
 ## Next steps
 1. ~~Rewrite `docs/zenodo_preregistration_stage4.md` §3.5, §3.5.2, §3.6, §3.8 to describe the §7 redesign.~~ Done.
@@ -601,5 +723,6 @@ the assembly-time row-count assertions are a second net. No change was needed.
 10. Calibrate the task thresholds: `stage4_calibrate_rough_sigma.py` → `stage4_simulate_threshold.py` → `stage4_per_subject_thresholds.py` → `stage4_simulate_half_threshold.py`, all on `stage5_extraction_task.csv` (§10d).
 11. Commit and tag `S5-task-peak-frozen`, then run `stage5_peak_detection_task.py` — the first look at any real 13–30 Hz task quantity.
 12. Evaluate §10d rule 5 (task vs rest detection-power curves) and, if it triggers, run the length-matched secondary analysis before reporting any rest-vs-task prevalence comparison.
-13. **Awaiting Amirhossein's sign-off (§10b):** whether Track A carries a pre-stimulus window (and the mini-block first-vs-later split of `revision_plan.md` step 2) in addition to the approved post-onset window. Track B does not depend on this.
-14. Build and run Track A (condition contrast) once 13 is answered.
+13. ~~**Awaiting Amirhossein's sign-off (§10b):** whether Track A carries a pre-stimulus window ... in addition to the approved post-onset window.~~ Answered 2026-11-01: yes — baseline `[−500, 0)` ms added, ERD% is the primary metric, absolute post-onset power secondary (§10g). Windows verified empirically over all 39 subjects.
+14. Build and run Track A once the §10f simulation frees the cores: MATLAB trial export (both windows, D12 on both, mini-block flag carried) → ERD% → the §10g analysis plan.
+15. Confirm the F/S/0 interference semantics of the four MSIT+ labels against Dzianok et al. 2022 before stating any ordered-trend hypothesis (§10g); the dataset's own `task-msit_events.json` does not define them.
