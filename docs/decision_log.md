@@ -1,7 +1,7 @@
 
-# Decision Log — Stage 3 Close & Stage 4 Decisions
+# Decision Log — Stage 3 Close, Stage 4 Decisions & Stage 5
 
-Date: 2026-10-26 (Stage 3 close) / 2026-10-27 (Stage 4 decided) / 2026-10-30–31 (spec details + package resolved; code frozen; boundary-event bug fixed; fixed-only aperiodic model adopted; threshold calibration redesigned twice; extraction and simulation run on real/simulated data; Zenodo DOI registered; real-data peak-detection run completed)
+Date: 2026-10-26 (Stage 3 close) / 2026-10-27 (Stage 4 decided) / 2026-10-30–31 (spec details + package resolved; code frozen; boundary-event bug fixed; fixed-only aperiodic model adopted; threshold calibration redesigned twice; extraction and simulation run on real/simulated data; Zenodo DOI registered; real-data peak-detection run completed) / 2026-11-01 (Stage 5 begun: architecture, SOA premise corrected, task boundary fix, task ROI export, outcome-blind task extraction and diagnostics — §10)
 Commits: `d7176e8..30ed2ea` (pushed, Stage 3); pre-registration text: `47d8b8c`, `1d0b05c`, `36ab9e5`, `890ae1b`, `884d457`, `03f40b1` (not yet pushed); code: `be6f091` (superseded) → `bcbac0c` (superseded) → `4207162` (superseded) → `2923dc2` → `f73dcda` → `4e48a03` → `0d53db6` → `bd96a95c175ddcb04af225a2716b56a52e9f8087` tagged `S4-prereg-frozen` (annotated tag; Stage-4 code, not yet pushed to remote as of this writing — local branch `revision-v2` is ahead of `origin/revision-v2`; tag moved via `git tag -f` five times on 2026-10-30/31 — see §5, §6, §7). Zenodo deposit published 2026-10-31: DOI **10.5281/zenodo.23843194** (see §8). DOI logged in repo at commit `9c53d5f85bf0e171207b7eae396890cc2f5d2548` (one commit after the frozen tag, text-only per §5's own note); real-data peak-detection run at that same commit (working tree clean) — see §9.
 Repo: `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`. Decision log lives at `docs/decision_log.md` in that repo (not a `decision_log/` folder). The pre-registration file is saved alongside it at `docs/zenodo_preregistration_stage4.md`. Implementation files are at `revision/stage4/`.
 
@@ -234,7 +234,324 @@ Classification shifts by only 2–3 subjects across the threshold grid — the p
 - **Output files** (`Revision_Output\stage4\peak_detection\`): `run_meta.json` (full thresholds/half-thresholds/git state), `peaks_primary.csv` (per-subject primary result + p90/p95/p99 classification), `peaks_all_in_range.csv` (every detected Gaussian in [13,30] Hz, with alpha-harmonic and threshold-grid flags), `sensitivity_counts.csv`, `split_half.csv` (per-half detail), `split_half_summary.json` (agreement rate, ICC).
 - **Not yet done:** no methods decision has been revisited based on this result. Any future change to ROI/threshold/model after this point must be disclosed per §4 as a post hoc, exploratory departure — the primary analysis above stands as the pre-registered result regardless.
 
-## File locations (as of 2026-10-31)
+## 10. Stage 5 — Task-Based Exploratory Analysis (`S5-*`, 2026-11-01)
+
+Stage 5 is **exploratory** throughout: it extends the already-registered Stage-4 framework to the MSIT+
+task period and does not re-litigate an independent confirmatory claim. No second Zenodo deposit or DOI
+gate is required (Amirhossein's call, 2026-11-01), but the same discipline as Stage 4 applies in full:
+outcome-blind extraction first, freeze-then-run before any real 13–30 Hz task quantity is viewed, a
+data-leakage check at every decision, and every decision logged here at the §1–§9 level of detail.
+
+### 10a. Two-track architecture (`S5-architecture`)
+
+**Decision (Amirhossein, 2026-11-01):** Stage 5 splits into two tracks with genuinely different
+requirements, because the task is trial-structured while Stage 4's peak criterion needs long segments:
+
+| | Track A | Track B |
+|---|---|---|
+| Question | does band-average beta power differ across the 4 MSIT+ conditions? | is a discrete beta peak present during the task period overall (condition-collapsed)? |
+| Unit | one segment per trial, locked to the condition marker | 2 s non-overlapping pseudo-epochs from the start of each task block (not trial-locked) |
+| Needs fine frequency resolution | no (band average only) | yes (Stage-4 peak criterion) |
+| Second Zenodo deposit | no | no |
+
+- **ROI for both tracks: the same 7 Stage-4 channels** (C3, Cz, C4, FC1, FC2, CP1, CP2), **not** the
+  Fz/Cz/C4 of v1's `msit_beta_power_by_condition.m` / `msit_beta_erd_by_condition.m`. That v1 selection
+  was made from v1's own task result on this same dataset — exactly the circularity Stage 4's a-priori,
+  literature-based ROI (§2) was designed to avoid. Keeping the independent ROI also keeps rest and task
+  on the same decision unit.
+- **D12 unchanged** (Fz/Cz/C4, 150 µV peak-to-peak, subject excluded below 50 % kept): a project-wide
+  artifact rule, independent of the analysis ROI (§3, `S4-D12-rest` note).
+- **Rejected: a full per-condition discrete-peak criterion** (a per-condition parallel to Stage 4). Under
+  the trial structure it would require redesigning the whole Welch-window/frequency-resolution approach
+  from scratch, with a real risk of several iteration rounds like §7's three. Deferred as a possible
+  future extension, explicitly not part of the current manuscript revision.
+- **Data-leakage check:** this is an architecture decision taken before any task spectrum was computed;
+  no 13–30 Hz quantity, real or simulated, was involved.
+
+### 10b. SOA survey — a corrected premise and the Track-A segment length (`S5-soa`)
+
+**Found while pinning down the Track-A segment length over all 39 subjects instead of the single
+sub-01 sample the architecture had been drafted from (`revision/stage5/stage5_soa_survey.py`).**
+
+- **Symptom / corrected premise:** the architecture above was drafted on the understanding that the
+  stimulus-onset asynchrony (SOA) between consecutive MSIT+ condition markers is **870–1070 ms**, from a
+  sample of sub-01 — which is why a 2 s Welch window was described as not fitting inside a single trial.
+  The full survey of all 39 subjects gives, over the 15,024 within-block SOAs of 15,492 analysed trials:
+  **min 1733 ms**, p01 1733, p05 1734, median 2034, mean 2339, p95 4467, max 5433 ms. The minimum is
+  **exactly 1733 ms in every one of the 39 subjects** — a hard floor of the design, not a per-subject
+  property.
+- **Cause of the discrepancy:** the earlier figure was in **samples at 500 Hz**, not milliseconds
+  (870 samples = 1740 ms, 1070 samples = 2140 ms — consistent with this survey's floor of 1733 ms and
+  median of 2034 ms). A factor-of-2 unit error. No decision had yet depended on the number, and the
+  survey was run precisely because the brief asked for the minimum to be recomputed over the full
+  dataset before fixing the segment length.
+- **Consequence for the architecture:** Track B is **unaffected** (it is not trial-locked: it segments
+  continuous task blocks, so the SOA never constrained it). Track A is **less constrained** than assumed:
+  any segment up to ~1.1 s is unconditionally safe, where ~0.6–0.7 s had been expected.
+- **Decision (Claude, 2026-11-01): the Track-A segment is `[0, +1000) ms` from the condition marker**
+  (500 samples at 500 Hz).
+  - Rationale: (i) **zero** of the 15,492 within-block trials have a 1000 ms forward window that reaches
+    the next condition marker or leaves its clipped task block — the same holds at every duration up to
+    1100 ms; the first clipping appears at 1200 ms (1 trial) and the first overlap at 1800 ms (1,349
+    trials). (ii) It covers the stimulus→response interval for about 95 % of trials (response time, from
+    `events.tsv`, median 602 ms, p95 934 ms), i.e. the interval in which movement-related beta
+    desynchronization is expected (Pfurtscheller & Lopes da Silva, 1999). (iii) It is a round number
+    fixed before any task beta quantity was computed, with a 733 ms margin to the SOA floor.
+  - **Rejected: ~600–700 ms** (the brief's starting suggestion): its only justification was the mistaken
+    870 ms minimum, and at 600 ms the window would end before the response in roughly half the trials
+    (RT median 602 ms), measuring mostly pre-response anticipation rather than the movement-related
+    window the track is named for.
+  - **Rejected: ~1500 ms** ("the longest that still fits, with a margin"): it straddles the post-movement
+    beta rebound (ERS, typically beginning a few hundred ms after movement; RT p95 934 ms + rebound onset
+    lands inside such a window), mixing a desynchronization and a resynchronization period in one
+    average, which would dilute any condition difference in an uncontrolled way.
+  - **Rejected: a response-locked window:** a different design (and the usable-trial count would then
+    depend on the response itself); out of scope for this track.
+- **Open item requiring Amirhossein's sign-off (flagged 2026-11-01, not decided here):** Track A as
+  approved in 10a measures **absolute band power in a post-onset window**. It is therefore neither (i)
+  the baseline-normalized ERD of v1's `msit_beta_erd_by_condition.m` (baseline −0.2–0 s, post 0.2–0.6 s),
+  nor (ii) the **pre-stimulus** window that `revision_plan.md` steps 1–2 and audit items B/C are about.
+  The corrected SOA floor of 1733 ms means a pre-stimulus window (e.g. −500–0 ms) now fits comfortably
+  inside every trial alongside the post-onset window, which was not thought possible when 10a was
+  approved. Whether Track A should be extended to carry a pre-stimulus window (and the mini-block
+  first-vs-later split of `revision_plan.md` step 2) is a scope decision for the manuscript, not a
+  technical call, so it is left open here. Track B does not depend on it.
+- **Outputs** (`Revision_Output\stage5\`): `stage5_soa_per_subject.csv`, `stage5_soa_candidates.csv`,
+  `stage5_soa_summary.json`.
+- **Data-leakage check:** the survey reads only `*_task-msit_events.tsv` (small text files, freely
+  readable per the project's raw-data rule) and the Stage-3 block-clipping table. No EEG sample is read,
+  no spectrum is computed, and no 13–30 Hz quantity exists anywhere in this step.
+
+### 10c. Boundary-event fix and task ROI export (`S5-export-task`)
+
+**The §5 flag ("the leading-boundary pattern has not yet been checked in the MSIT/task bundles") is now
+resolved: the pattern is present there too.**
+
+- **Symptom:** every one of the 39 `P2.msit` bundles carries two `boundary` events at latency 0.5 and
+  1.0 at the very start of the recording — identical to `P2.rest` (§5), and an artefact of the same
+  Stage-3 cropping. Confirmed by reading `P2.msit.event` latencies directly. Because the first task
+  block's `task_b1_start` is at latency 1, pseudo-epoch 1 of block 1 would be reported "outside" by
+  `stage3_d12_trials` in every subject without a fix.
+- **Decision:** apply the **same fix as §5, in the same way** — in the new Stage-5 export script only,
+  on the helper's input copy, removing `boundary` events with `latency <= 1`. `stage3_d12_trials` and
+  its assert are untouched, as is the frozen `revision/stage4/stage4_export_roi.m`.
+  - Rejected (as in §5): loosening the assert, which would silently drop one pseudo-epoch per subject
+    for no real discontinuity; and fixing the shared Stage-3 helper, which is tested, committed code
+    used elsewhere.
+- **New script:** `revision/stage5/stage5_export_roi_task.m`, a Stage-5 copy of
+  `stage4_export_roi.m` with `cond='msit'`, `task_bK_start/_end` block markers, output
+  `<eegOutRoot>/stage5/roi/<sub>_msit_roi.mat` and the extra bookkeeping fields `cond`, `nBlocks`,
+  `runBlock`. Everything else — ROI, 2 s non-overlapping pseudo-epochs from each block start, the
+  incomplete block tail counted as "outside", D12 channels/threshold, the 50 % rule, the contiguous
+  kept-epoch run export — is unchanged, so rest and task PSDs are produced by the identical shared
+  Python pipeline.
+  - The frozen Stage-4 script is **copied, not parameterised**: `revision/stage4/` is deposited on Zenodo
+    (DOI 10.5281/zenodo.23843194) and must stay byte-identical to the frozen tag.
+- **Verification on sub-01** (as in §5): 12 task blocks, 526 pseudo-epochs, 513 kept, **12 "outside" —
+  exactly one per block, i.e. only the incomplete block tails**, so pseudo-epoch 1 is no longer outside
+  and the fix works; 1 epoch rejected by D12; `fracKept` 0.99805; not excluded; 12 contiguous runs
+  (44;44;42;40;44;45;45;41;39;40;45;44).
+- **Data-leakage check:** the export script computes no spectral quantity of any kind (it is the same
+  outcome-blind code as §5); only event latencies, epoch counts and time-domain peak-to-peak amplitudes
+  (the D12 artifact rule) are used.
+
+**Real-data export results (`stage5_export_roi_task.m`, all 39 subjects, post-fix):**
+
+| | Value |
+|---|---|
+| `<sub>_msit_roi.mat` files | 39/39, all read without error by `load_roi` (483 MB total) |
+| Task blocks per subject | 12 for 36 subjects; 9 (sub-21), 13 (sub-29), 14 (sub-23) |
+| Pseudo-epochs, total / kept | 20,170 / 19,449 |
+| `nKept` per subject | min 388 (sub-21), median 502, max 545 (sub-29) |
+| `fracKept` | mean 0.9873, min 0.9173 (sub-34), max 1.0000 |
+| Pseudo-epochs rejected by D12 | 253 total, across 25 subjects; highest sub-34 (42), sub-06 (40), sub-07 (40), sub-14 (38) |
+| Pseudo-epochs "outside" | 468 total; **`n_outside == n_blocks` in every one of the 39 subjects** — i.e. exactly the one incomplete tail of each block, and pseudo-epoch 1 was never outside: the boundary fix is verified on the whole sample, not just sub-01 |
+| Contiguous kept-epoch runs | min 9, median 13, max 45 per subject |
+| Subjects excluded by D12 (<50 % kept) | **0** |
+
+All 39 proceed to extraction. Compared with rest (§5: `fracKept` mean 0.9925, 87 epochs rejected across
+16 subjects), the task has somewhat more D12 rejection (253 across 25 subjects) — expected, since the
+task involves button presses and sustained posture, and D12's channels are Fz/Cz/C4.
+Consolidated manifest: `Revision_Output\stage5\manifest_roi_task_all39.tsv` (the per-subject manifests
+written by each run sit next to the `.mat` files, as in Stage 4).
+
+### 10d. Track B calibration plan and pre-specified decision rules (`S5-trackB-plan`)
+
+**Written before the task extraction was run, i.e. before any task spectral quantity existed** (CLAUDE.md
+rule 8: the decision rule of an analysis is recorded before the analysis). Nothing in this subsection was
+informed by a task PSD, fit statistic or 13–30 Hz value.
+
+**Calibration path — the frozen Stage-4 code is reused verbatim.** Inspecting the five Stage-4 scripts
+showed that only `stage4_peak_detection.py` hard-codes anything rest-specific (the `sub-*_rest_roi.mat`
+glob and the DOI gate). `stage4_core.py`, `stage4_calibrate_rough_sigma.py`,
+`stage4_simulate_threshold.py`, `stage4_per_subject_thresholds.py`, `stage4_simulate_half_threshold.py`
+and `diag_noise_floor_null.py` are all parameterised by `--extraction` / `--rough-sigma` / `--sim-dir` /
+`--out-dir`, and `stage4_core.load_roi` reads only variable names that the task export also writes. They
+are therefore run **unchanged** on the task tables, into new output directories.
+- Rationale: the statistically critical path (generator, Welch, fooof fit, percentiles, ICC) stays
+  byte-identical to the implementation deposited on Zenodo. Only three thin Stage-5 files are new:
+  `stage5_export_roi_task.m`, `stage5_extraction_only_task.py` (the rest-specific glob) and
+  `stage5_peak_detection_task.py` (the glob plus the freeze gate below).
+- Rejected: parameterising the Stage-4 scripts with a `--pattern`/`--seed` flag — `revision/stage4/` must
+  stay byte-identical to tag `S4-prereg-frozen` / the Zenodo deposit.
+- **Known, accepted consequence of reusing the scripts unchanged:** their seed constants (`SEED =
+  20261030` / `20261102` / `20261103`) are module-level, so the task runs draw from the same seed streams
+  as the rest runs. Because `simulate_runs` draws the roughness factors first and their count depends only
+  on `fs`, subject *i*'s roughness pattern is shared between its rest and task nulls (the white noise is
+  not: the run lengths differ). This makes each subject's rest and task thresholds paired rather than
+  independent. It does **not** affect the validity of either threshold — each is still the 95th percentile
+  of its own correctly-specified null — and for a rest-vs-task comparison pairing is if anything
+  favourable. Documented rather than fixed, because fixing it would mean editing frozen code.
+
+**Freeze gate (the Stage-5 substitute for Stage 4's DOI gate).** Stage 5 needs no second deposit, so
+`stage5_peak_detection_task.py` refuses to run unless (1) `--frozen-tag` names an existing git tag,
+(2) that tag's commit is HEAD, (3) `revision/stage5` and `revision/stage4` have no uncommitted changes,
+and (4) the tag name already appears in this decision log. The planned tag is **`S5-task-peak-frozen`**
+(named here so the gate can find it). This makes "freeze, document, then run" mechanical rather than a
+matter of good intentions.
+
+**Pre-specified decisions, settled now so that no branch is chosen after seeing a result:**
+1. **Aperiodic model: fixed-only, unconditionally.** The brief asked whether ΔBIC still prefers the knee
+   model for task data. §6's decision was *not* "knee loses on this dataset" — it was that a knee model
+   whose derived knee frequency lands inside the 13–30 Hz band of interest is not a credible description
+   of background for this analysis **regardless of cause**, and the knee branch was removed from the
+   pipeline entirely. That reasoning transfers to the task unchanged, so there is no model selection to
+   re-run and no branch to take. For **disclosure only**, a clearly-labelled Stage-5 diagnostic
+   (`stage5_diag_knee_task.py`) fits a knee model to the task ROI spectra outside the pipeline and reports
+   ΔBIC and the derived knee frequency per subject. Its numbers are **used in no decision** (the same
+   status as `BIC_fixed` in §3) and it cannot affect the pipeline, which has no knee code path.
+2. **Roughness σ_i: recalibrated from task data, unconditionally.** Task σ_i comes from
+   `stage4_calibrate_rough_sigma.py` on the task extraction, matched to each subject's own task
+   `noise_31_40Hz`. Rest's σ_i are **not** reused. `diag_noise_floor_null.py` is run on the task
+   extraction as well, but only to *document* the size of the real-vs-simulated roughness mismatch for
+   task (§7a reported median 2.92× for rest); it does not gate the calibration. Pre-specifying
+   unconditional recalibration avoids a post hoc "the mismatch looked small enough" judgement.
+3. **Threshold: per-subject p95, primary; pooled threshold reported for comparison only.** §7b's
+   single-outlier dominance is expected to recur; whether it does is reported, not re-litigated.
+   p90/p99 are the threshold-grid sensitivity, as in §3.5.2.
+4. **Split-half: the subject's own half-length p95** (§7c), unconditionally, from
+   `stage4_simulate_half_threshold.py` on the task extraction.
+5. **Rest-vs-task sensitivity rule (written before either power curve exists).** Task subjects have more
+   pseudo-epochs than rest subjects (sub-01: 513 kept vs ~300 at rest), so the task null is estimated
+   from more Welch windows, its p95 is lower, and task detection is *more* sensitive — which would
+   inflate task peak prevalence relative to rest for purely methodological reasons. **Rule:** compare the
+   two pooled detection-power curves (proportion detected per injected PW level, each signal against its
+   own subject's p95). *If* the task and rest curves differ by more than **0.05** at any injected level,
+   the rest-vs-task prevalence comparison is reported **only** alongside a length-matched secondary
+   analysis (each subject's task kept-epoch sequence truncated in time order, preserving run structure, to
+   that subject's rest `n_kept`, with thresholds recalibrated at those run lengths). *If* every level
+   differs by ≤ 0.05, the prevalence comparison is reported directly and the matched analysis is not run.
+6. **Primary Track B result and what it would mean.** The primary output is the per-subject task
+   classification (peak / no_peak / poor_fit at p95) and the paired rest × task 2 × 2 table over subjects
+   evaluable in both, with **McNemar's exact (binomial) test** on the discordant pairs.
+   - Task prevalence reliably **above** rest (McNemar p < .05, and the sensitivity rule above satisfied)
+     → a discrete beta peak is more often detectable during the task than at rest; the absence of a
+     resting peak in a large minority is then partly a state/arousal matter, not only a trait one.
+   - **No reliable difference** → no evidence that the task reveals a beta peak where rest does not; this
+     supports the manuscript's framing that the missing resting beta peak is not an artifact of the
+     resting condition itself.
+   - Task prevalence reliably **below** rest → reported as such, and the ERD-type power changes of
+     Track A become the natural explanation (band power moving without a discrete peak).
+   - In every case the **alpha-harmonic flag rate among task peaks** is reported next to the headline
+     figure, as §9 required for rest (19/24 = 79 % there). A task peak rate that is also dominated by
+     2 × IAF ± 2 Hz centres does not support "independent beta oscillation" any more than rest's did.
+7. **Reliability rule.** If split-half agreement is below 80 % or ICC(2,1) of peak PW below 0.75 (Koo &
+   Li, 2016: "poor" to "moderate"), the task peak measure is reported as unreliable and the prevalence
+   comparison in 6 is reported as exploratory only, whatever its p-value. (Rest achieved 97.4 % and
+   0.919, §9.)
+
+- **Data-leakage check:** every rule above was written from event timings, epoch counts, the Stage-4 rest
+  results already in §9, and the structure of the frozen code. No task spectrum, fit statistic or 13–30 Hz
+  quantity existed at the time of writing.
+
+### 10e. Task extraction-only and the aperiodic/noise picture (`S5-extract-task`)
+
+**Run before any peak code touched task data; every quantity below is aperiodic-only.** Output:
+`Revision_Output\stage5\stage5_extraction_task.csv` + `_meta.json` (39 rows, 0 excluded, no NaNs,
+exit code 0).
+
+**Task vs rest, aperiodic-only (rest figures from `stage4_extraction_fixedonly.csv`, §6):**
+
+| Quantity | Task (msit) | Rest |
+|---|---|---|
+| `R2_fixed` (aperiodic-only fit) | mean 0.8162 (0.6506–0.9657) | mean 0.8090 (0.6256–0.9654) |
+| `offset_fixed` | mean 0.8255 (−0.2826–1.4200) | mean 0.7287 (−0.2191–1.3803) |
+| `exponent_fixed` | mean 1.2920 (0.3007–1.6318) | mean 1.2718 (0.3466–1.5698) |
+| `noise_2_12Hz` | mean 0.2966 (0.0955–0.6037) | mean 0.3006 (0.0628–0.6633) |
+| `noise_31_40Hz` | median 0.0404, mean 0.0526 (0.0076–0.1645) | median 0.0549, mean 0.0652 (0.0122–0.2011) |
+| `n_pseudoepochs_kept` | min 388, median 502, max 545 | min ~291, ~300 typical (§5) |
+
+- The broadband offset is higher during the task and the spectral slope is essentially unchanged — the
+  expected direction for a condition with movement and sustained engagement.
+- **The task/rest ratio of kept epochs is 1.30–1.84 (median 1.68) and exceeds 1 in all 39 subjects.**
+  Task PSDs are therefore estimated from ~1.7× more Welch windows, which is visible directly in the
+  smoother residual (`noise_31_40Hz` median 0.0404 vs 0.0549). This is exactly the asymmetry §10d rule 5
+  was written for, so that rule is now live and will be evaluated once both power curves exist.
+
+**Knee-model disclosure (`stage5_diag_knee_task.py`, used in no decision, §10d rule 1):**
+39/39 knee fits converged. ΔBIC (fixed − knee) median **68.31**, range −2.67 to 173.73; **37 of 39**
+subjects would have selected the knee model under the superseded ΔBIC > 10 rule. The derived knee
+frequency (`knee^(1/exponent)`) has median **10.18 Hz** (range 1.66–25.17) and lands **inside the
+13–30 Hz band of interest in 13 subjects**. The rest pattern of §6 (38/39 selected, mean ΔBIC 56.02,
+8 subjects in-band) therefore recurs in the task, if anything more strongly. This is disclosure of the
+task behaviour, not a re-opened decision: the pipeline has no knee code path, and §6's reasoning (a knee
+whose frequency falls inside the band of primary interest is not a credible background description) holds
+a fortiori here. Output: `stage5_diag_knee_task.csv` + `_meta.json`.
+
+**Roughness mismatch (`diag_noise_floor_null.py`, run unchanged on the task extraction):** with the frozen
+σ = 0 generator, real task `noise_31_40Hz` is a median of **3.02×** the matched simulated null's residual
+SD (range 0.62–12.62) and exceeds the maximum of that subject's own 10 matched simulations in **33/39**
+subjects; `noise_2_12Hz` median ratio 21.01 (expected — the generator injects no alpha). §7a's rest
+figures were 2.92× and 31/39. The pattern recurs essentially unchanged, so the §10d rule-2 decision
+(recalibrate σ_i from the task's own `noise_31_40Hz`, do not reuse rest's) proceeds as pre-specified.
+Output: `stage5_diag_noise_floor_null_task.csv`.
+
+- **Data-leakage check:** extraction computed only the fixed aperiodic-only fit and the two noise floors
+  (the shared `stage4_core` functions the Stage-4 leakage rule permits before the freeze); the knee
+  diagnostic computed only aperiodic-only fits in both modes, the same class of quantity §6 inspected for
+  rest; the roughness diagnostic used simulated nulls plus real `noise_31_40Hz`. No full (periodic) fit,
+  no peak, no band power and no 13–30 Hz quantity, real or simulated, has been computed or viewed at any
+  point in Stage 5 so far.
+
+### 10f. Task roughness calibration σ_i (`S5-rough-sigma-task`)
+
+`stage4_calibrate_rough_sigma.py` run **unchanged** on `stage5_extraction_task.csv`, matching each
+subject's σ_i to that subject's own real task `noise_31_40Hz` (the §10d rule-2 decision, pre-specified
+and unconditional). Output: `Revision_Output\stage5\rough_sigma_task_per_subject.csv` (+ `_points.csv`).
+
+| | Task (msit) | Rest (§7a) |
+|---|---|---|
+| σ_i median | **0.15** | 0.21 |
+| σ_i range | 0.00 (sub-40) – 0.70 (sub-01) | 0.00 – 0.86 (sub-01) |
+| `floor=1` (real below the σ=0 simulated median) | **1** (sub-40) | 5 (sub-06, 16, 22, 23, 40) |
+| `extended=1` (needed the grid above 0.50) | **1** (sub-01, σ=0.70) | 6 (sub-01, 27, 19, 31, 39, 13) |
+| `ceiling=1` (unresolved at σ=1.00) | **0** | 0 |
+| Fit quality \|simulated median − real\| | median 0.00047, max 0.00562 | median ≈0.0004–0.0010, max 0.0010 |
+
+- Task σ_i are systematically a little lower than rest's, which is the expected consequence of the task's
+  ~1.68× greater epoch count: more Welch windows make the task PSD estimate smoother, so less injected
+  roughness is needed to match it. Only one subject hits the floor for task (five did for rest), i.e. the
+  generator now reaches nearly every subject's real roughness from below rather than from above.
+- The **subject ordering is stable across conditions** (Pearson r(σ_rest, σ_task) = **0.827**; sub-01 is
+  the roughest in both, sub-40 at the floor in both), which supports §7a's premise that spectral
+  roughness is largely a property of the subject rather than of the recording condition. Caveat: because
+  the seed constants are shared between the rest and task runs (§10d), the simulated medians entering the
+  two calibrations are drawn from correlated streams, so this correlation is an upper bound on the purely
+  physiological agreement. The calibration **targets** are, however, independent real measurements.
+- §7a's documented limitation carries over unchanged: σ_i is matched to a single noisy per-subject
+  estimate of `noise_31_40Hz`, matches only the size (SD) and not the frequency-correlation structure of
+  real deviations, and is assumed uniform across 2–40 Hz (unverifiable without looking at 13–30 Hz).
+- **Data-leakage check:** only real aperiodic-only `noise_31_40Hz` values and simulated-null aperiodic
+  statistics were used. No 13–30 Hz quantity, real or simulated, entered the calibration.
+
+**Next in the chain (running):** `stage4_simulate_threshold.py` on the task extraction + task σ_i, into
+`Revision_Output\stage5\sim_task\` — the full factorial 39 pairs × (1 null + 10 injected levels) × 1000
+reps = 429,000 simulations, resumable via `parts/`. The equivalent rest run took ≈7.4 h on this machine
+(2026-10-31, 10:42→18:05, 8 workers); the task run is expected to take ≈12 h because each simulated
+signal is ~1.7× longer. It is launched with no environment changes (no thread-count overrides), exactly
+as the rest run was, so the two are numerically comparable.
+
+## File locations (as of 2026-11-01)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
 - Implementation: `github/eeg-beta-project/revision/stage4/` — `stage4_export_roi.m`, `stage4_core.py`, `stage4_extraction_only.py`, `stage4_simulate_threshold.py`, `stage4_calibrate_rough_sigma.py`, `stage4_simulate_half_threshold.py`, `stage4_peak_detection.py`, `stage4_compare_half_full_thresholds.py`, plus the diagnostic scripts `diag_noise_floor_null.py` and `diag_calibrate_rough_sigma.py` (superseded design, provenance only).
@@ -244,6 +561,19 @@ Classification shifts by only 2–3 subjects across the threshold grid — the p
 - Zenodo deposit: DOI `10.5281/zenodo.23843194`, https://zenodo.org/records/23843194 — contains `stage4_frozen_code.zip` (= `revision/stage4/` at `bd96a95`) and `zenodo_preregistration_stage4.md`.
 - **Official Stage-4 peak-detection output (§9):** `Revision_Output\stage4\peak_detection\` — `run_meta.json`, `peaks_primary.csv`, `peaks_all_in_range.csv`, `sensitivity_counts.csv`, `split_half.csv`, `split_half_summary.json`.
 
+**Stage 5 (§10):**
+- Implementation: `github/eeg-beta-project/revision/stage5/` — `stage5_soa_survey.py`,
+  `stage5_export_roi_task.m`, `stage5_extraction_only_task.py`, `stage5_diag_knee_task.py`,
+  `stage5_peak_detection_task.py` (and, later, the Track-A script). The calibration path reuses
+  `revision/stage4/stage4_core.py`, `stage4_calibrate_rough_sigma.py`, `stage4_simulate_threshold.py`,
+  `stage4_per_subject_thresholds.py`, `stage4_simulate_half_threshold.py` and `diag_noise_floor_null.py`
+  **unchanged** (§10d).
+- Task ROI exports: `D:\Revision_EEG\stage5\roi\<sub>_msit_roi.mat` (39 files, 483 MB) + per-run manifests.
+- Stage-5 outputs: `Revision_Output\stage5\` — `stage5_soa_per_subject.csv`,
+  `stage5_soa_candidates.csv`, `stage5_soa_summary.json`, `manifest_roi_task_all39.tsv`,
+  `stage5_extraction_task.csv` (+ `_meta.json`), `stage5_diag_knee_task.csv` (+ `_meta.json`),
+  `stage5_diag_noise_floor_null_task.csv`, `rough_sigma_task_per_subject.csv` (+ `_points.csv`).
+
 ## Next steps
 1. ~~Rewrite `docs/zenodo_preregistration_stage4.md` §3.5, §3.5.2, §3.6, §3.8 to describe the §7 redesign.~~ Done.
 2. ~~Add `revision/stage4/__pycache__/` to `.gitignore`.~~ Done (2026-10-31, local commit).
@@ -252,5 +582,12 @@ Classification shifts by only 2–3 subjects across the threshold grid — the p
 5. ~~Sync decision log + pre-registration doc (with DOI) into the actual repo.~~ Done — commit `9c53d5f85bf0e171207b7eae396890cc2f5d2548`.
 6. ~~Run `stage4_peak_detection.py --doi 10.5281/zenodo.23843194` on real ROI data.~~ Done — results in §9.
 7. Sync this §9 entry into the actual repo's `docs/decision_log.md` — repo-ready file delivered alongside this one.
-8. Begin Stage 5 (task-based exploratory analysis): resolve the open boundary-event flag in MSIT/task bundles (§5, still unchecked as of this entry), define the task analysis window, and apply D12 for task.
+8. ~~Begin Stage 5 (task-based exploratory analysis): resolve the open boundary-event flag in MSIT/task bundles (§5, still unchecked as of this entry), define the task analysis window, and apply D12 for task.~~ Done — §10a–10e (boundary flag resolved and fixed; Track-A window fixed at 1000 ms; task D12 applied, 0 subjects excluded).
 9. For manuscript writing: the 79% alpha-harmonic rate among primary peaks (§9) needs explicit discussion alongside the 61.5% headline peak-detection rate — flagged here so it isn't lost before drafting results/discussion text.
+
+**Stage 5, open (as of 2026-11-01):**
+10. Calibrate the task thresholds: `stage4_calibrate_rough_sigma.py` → `stage4_simulate_threshold.py` → `stage4_per_subject_thresholds.py` → `stage4_simulate_half_threshold.py`, all on `stage5_extraction_task.csv` (§10d).
+11. Commit and tag `S5-task-peak-frozen`, then run `stage5_peak_detection_task.py` — the first look at any real 13–30 Hz task quantity.
+12. Evaluate §10d rule 5 (task vs rest detection-power curves) and, if it triggers, run the length-matched secondary analysis before reporting any rest-vs-task prevalence comparison.
+13. **Awaiting Amirhossein's sign-off (§10b):** whether Track A carries a pre-stimulus window (and the mini-block first-vs-later split of `revision_plan.md` step 2) in addition to the approved post-onset window. Track B does not depend on this.
+14. Build and run Track A (condition contrast) once 13 is answered.
