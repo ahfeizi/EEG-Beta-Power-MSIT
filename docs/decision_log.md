@@ -726,7 +726,113 @@ definition and is the worse estimator here, so the primary estimator is changed:
   No EEG sample was read into any spectral estimate, and no 13–30 Hz quantity, real or simulated, exists
   for Track A at this point.
 
-## File locations (as of 2026-11-01)
+### 10h. Task thresholds, and the §10d rule-5 sensitivity rule fires (`S5-threshold-task`)
+
+**Simulated data only.** Every 13–30 Hz quantity in this subsection comes from simulated null and
+injected signals, exactly as in §7 for rest. No real task 13–30 Hz quantity has been computed or viewed
+at any point in Stage 5.
+
+**Main simulation, complete.** `stage4_simulate_threshold.py` (frozen, unchanged) on the task extraction
+and task σ_i finished 2026-11-01 21:47:47, 10 h 32 m for the 407 cells remaining after the detached
+relaunch (§10f), i.e. 0.64 cells/min on 8 workers. Integrity: **429/429** part files, every one exactly
+1001 lines, no stale `.tmp`; `sim_null.csv` 39,000 rows and `sim_injected.csv` 390,000 rows, both exactly
+as expected; `test_run: false`. Fit failures: **1 of 39,000** nulls (2.6 × 10⁻⁵) and **0 of 390,000**
+injected — comparable to rest (§7b: 0/39,000 and 2/390,000).
+
+**Per-subject thresholds (the primary criterion, §10d rule 3):**
+
+| | Task (msit) | Rest (§7b) |
+|---|---|---|
+| p95, min | **0.0491** (sub-40) | 0.0619 (sub-22) |
+| p95, median | **0.1563** | 0.2174 |
+| p95, max | **0.7122** (sub-01) | 0.8710 (sub-01) |
+| pooled p95 (comparison only) | **0.3669** | 0.4545 |
+
+Task thresholds are lower than the same subject's rest threshold in **28 of 39** subjects, and the two
+orderings agree closely (r = 0.843) — the expected consequence of the task's ~1.68× greater epoch count
+(§10e) on top of a largely subject-specific roughness (§10f).
+
+**§7b's single-outlier dominance recurs, as §10d rule 3 anticipated.** Under the pooled task p95, of the
+1,950 null simulations at or above it, **sub-01 alone contributes 901 (46 %)**, with sub-27 (404, 21 %),
+sub-19 (248, 13 %) and sub-31 (230, 12 %) making up most of the rest — four subjects for 92 %. And
+**28 of 39 subjects' own nulls never reach the pooled threshold at all.** Rest's figures were 874/1950
+(45 %) from sub-01 and 28/39. The pattern is reported as recurring, not re-litigated: the per-subject
+threshold remains the primary criterion.
+
+**Detection-power curve** (all 390,000 injected signals, each against its own subject's p95): PW=0 (null)
+0.0500 by construction; 0.05: 0.2652; 0.10: 0.5222; 0.15: 0.6616; 0.20: 0.7656; 0.25: 0.8389; 0.30:
+0.8966; 0.35: 0.9305; 0.40: 0.9531; 0.45: 0.9695; 0.50: 0.9778. Logistic (converged): b0 = −1.1645,
+b1 = 11.0073 (rest: −1.2287, 9.0652 — the task curve is steeper).
+
+**§10d rule 5: TRIGGERED.**
+
+| injected PW | task power | rest power | difference | > 0.05? |
+|---|---|---|---|---|
+| 0.05 | 0.2652 | 0.2236 | +0.0415 | |
+| 0.10 | 0.5222 | 0.4454 | **+0.0768** | yes |
+| 0.15 | 0.6616 | 0.5822 | **+0.0795** | yes |
+| 0.20 | 0.7656 | 0.6784 | **+0.0873** | yes |
+| 0.25 | 0.8389 | 0.7588 | **+0.0801** | yes |
+| 0.30 | 0.8966 | 0.8192 | **+0.0774** | yes |
+| 0.35 | 0.9305 | 0.8683 | **+0.0622** | yes |
+| 0.40–0.50 | 0.9531–0.9778 | 0.9053–0.9526 | +0.0478 to +0.0251 | |
+
+Maximum absolute difference **0.0873**, exceeding the pre-specified 0.05 at six of the ten injected
+levels. The rule therefore fires exactly as written: **the rest-vs-task peak-prevalence comparison may be
+reported only alongside a length-matched secondary analysis.** Task detection is genuinely more sensitive
+than rest detection, by up to 8.7 percentage points, purely because the task gives more pseudo-epochs —
+so a raw comparison of task prevalence against rest's 24/39 (§9) would have attributed part of a
+methodological artefact to physiology. This is why the rule was written before either curve existed.
+
+**What the matched analysis requires, and its scope.** §10d rule 5 specifies the matched design as: each
+subject's task kept-epoch sequence truncated in time order, preserving its contiguous-run structure, to
+that subject's rest `n_kept`, **with thresholds recalibrated at those run lengths**. It specifies
+thresholds, not a second full power curve. The matched calibration therefore needs the **null** cells
+only (1 per subject rather than 11), which is ~1/11 of the compute of the run above. It will be produced
+by a thin Stage-5 driver that calls the frozen `stage4_simulate_threshold.run_cell` with the null
+condition on a matched extraction table (same `offset_fixed`, `exponent_fixed` and σ_i per subject, only
+`run_lengths_epochs` truncated), so the generator, estimator and percentile code stay the frozen ones.
+- Decision (Claude, 2026-11-02): produce the matched thresholds from null cells only, rather than
+  re-running the full factorial. Rejected: a second full 10 h factorial run — the injected grid would
+  only re-demonstrate a sensitivity match that the matched epoch counts already enforce by construction,
+  and §10d asked for thresholds. If a matched power curve turns out to be wanted for the manuscript, it
+  can be added later as a clearly-labelled addition.
+
+**Matched design, built and validated on run lengths alone (outcome-blind; `stage5_matched_length.py`).**
+The truncation was unit-tested (whole runs kept whole until the target, the last run cut to the remainder,
+`truncate_runs` producing exactly those sample counts) and then applied to the real tables:
+
+| | Matched task | Rest | Task, full |
+|---|---|---|---|
+| kept epochs per subject | **276–300** (= each subject's rest `n_kept` by construction) | 276–300 | 388–545 |
+| Welch windows per subject | **537–593** | 542–598 | 767–1076 |
+| contiguous runs | 7–23 | few (2 blocks) | 9–45 |
+
+Matching on epochs matches the **window** count to within **3.51 % (median 1.00 %)** — demonstrated, not
+assumed. The small residual exists because the truncated task subset is cut from 12-ish short blocks and
+so contains more runs than rest's 2 blocks, and each run loses one window to the 50 % overlap
+(`2k − 1` windows for a run of *k* epochs). Its **direction is conservative**: the matched task has fewer
+Welch windows than rest in **38 of 39** subjects (median −6 of ~560). So if the matched analysis still
+shows more task peaks than rest, that cannot be attributed to greater sensitivity — the matched task is
+if anything marginally *less* sensitive. The matched subset uses a median 40.6 % fewer epochs than the
+full task.
+- `stage5_peak_detection_task.py` was extended, **before the freeze**, with the optional matched pass
+  (`--matched-thresholds` + `--rest-extraction`), importing `truncate_runs` from the same module that
+  built the matched thresholds, so the thresholds and the classification cannot drift apart. All real
+  task 13–30 Hz computation therefore still happens in exactly one gated script.
+
+**Half-length thresholds (§10d rule 4), in progress.** `stage4_simulate_half_threshold.py` (frozen,
+unchanged) launched 2026-11-02 00:1x on the task extraction and task σ_i, detached (PID 27296, 8 workers,
+orphaned — not a descendant of any editor session), log `Revision_Output\stage5\sim_task_half_run.log`.
+The equivalent rest run took ≈1 h (2026-10-31, 19:20→20:21); the task halves hold ~250 single-window
+epochs each against rest's ~150, so a somewhat longer run is expected.
+
+- **Data-leakage check:** all of the above comes from simulated signals plus the real aperiodic/noise
+  statistics already logged in §10e–10f. No real task 13–30 Hz quantity exists yet; the first will be
+  produced by `stage5_peak_detection_task.py`, behind the freeze gate, once the half-length and matched
+  thresholds are in place.
+
+## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
 - Implementation: `github/eeg-beta-project/revision/stage4/` — `stage4_export_roi.m`, `stage4_core.py`, `stage4_extraction_only.py`, `stage4_simulate_threshold.py`, `stage4_calibrate_rough_sigma.py`, `stage4_simulate_half_threshold.py`, `stage4_peak_detection.py`, `stage4_compare_half_full_thresholds.py`, plus the diagnostic scripts `diag_noise_floor_null.py` and `diag_calibrate_rough_sigma.py` (superseded design, provenance only).
@@ -739,8 +845,8 @@ definition and is the worse estimator here, so the primary estimator is changed:
 **Stage 5 (§10):**
 - Implementation: `github/eeg-beta-project/revision/stage5/` — `stage5_soa_survey.py`,
   `stage5_export_roi_task.m`, `stage5_extraction_only_task.py`, `stage5_diag_knee_task.py`,
-  `stage5_peak_detection_task.py`, `stage5_window_overlap_check.py`, and the Track-A chain
-  `stage5_export_trials_task.m`, `stage5_erd_by_condition.py`, `stage5_erd_stats.py`. The calibration path reuses
+  `stage5_peak_detection_task.py`, `stage5_window_overlap_check.py`, `stage5_matched_length.py`, and the
+  Track-A chain `stage5_export_trials_task.m`, `stage5_erd_by_condition.py`, `stage5_erd_stats.py`. The calibration path reuses
   `revision/stage4/stage4_core.py`, `stage4_calibrate_rough_sigma.py`, `stage4_simulate_threshold.py`,
   `stage4_per_subject_thresholds.py`, `stage4_simulate_half_threshold.py` and `diag_noise_floor_null.py`
   **unchanged** (§10d).
@@ -756,7 +862,12 @@ definition and is the worse estimator here, so the primary estimator is changed:
   `erd\` (Track A: `stage5_erd_per_trial.csv`, `stage5_erd_per_subject_condition.csv`,
   `stage5_erd_meta.json`, `stage5_erd_stats_omnibus.csv`, `stage5_erd_stats_pairwise.csv`,
   `stage5_erd_stats_meta.json`),
-  `sim_task\` (threshold simulation, resumable in `parts_r1000\`), `sim_task_run.log`,
+  `sim_task\` (threshold simulation: `sim_null.csv`, `sim_injected.csv`, `thresholds.json` (pooled),
+  `thresholds_per_subject.json`, `power_curve_per_subject.csv`, `detection_per_subject.csv`,
+  `fpr_per_subject.csv`, `logistic_per_subject.json`, resumable in `parts_r1000\`),
+  `sim_task_run.log`, `sim_task_half_run.log`,
+  `sim_task_matched\` (length-matched nulls: `stage5_extraction_task_matched.csv`,
+  `sim_null_matched.csv`, `thresholds_per_subject_matched.json`, resumable in `parts_matched_r1000\`),
   `sim_task_run.cmd` / `.pid` (detached-run bookkeeping, §10f).
 
 ## Next steps
@@ -771,9 +882,9 @@ definition and is the worse estimator here, so the primary estimator is changed:
 9. For manuscript writing: the 79% alpha-harmonic rate among primary peaks (§9) needs explicit discussion alongside the 61.5% headline peak-detection rate — flagged here so it isn't lost before drafting results/discussion text.
 
 **Stage 5, open (as of 2026-11-01):**
-10. Calibrate the task thresholds: `stage4_calibrate_rough_sigma.py` → `stage4_simulate_threshold.py` → `stage4_per_subject_thresholds.py` → `stage4_simulate_half_threshold.py`, all on `stage5_extraction_task.csv` (§10d).
+10. ~~Calibrate the task thresholds~~ — σ_i done (§10f); main simulation and per-subject thresholds done (§10h); half-length thresholds running (§10h); matched-length null thresholds still to produce (§10h).
 11. Commit and tag `S5-task-peak-frozen`, then run `stage5_peak_detection_task.py` — the first look at any real 13–30 Hz task quantity.
-12. Evaluate §10d rule 5 (task vs rest detection-power curves) and, if it triggers, run the length-matched secondary analysis before reporting any rest-vs-task prevalence comparison.
+12. ~~Evaluate §10d rule 5~~ — **evaluated and TRIGGERED** (§10h: max difference 0.0873, above 0.05 at six of ten levels). The length-matched secondary analysis is therefore required before any rest-vs-task prevalence comparison is reported.
 13. ~~**Awaiting Amirhossein's sign-off (§10b):** whether Track A carries a pre-stimulus window ... in addition to the approved post-onset window.~~ Answered 2026-11-01: yes — baseline `[−500, 0)` ms added, ERD% is the primary metric, absolute post-onset power secondary (§10g). Windows verified empirically over all 39 subjects.
 14. Build and run Track A once the §10f simulation frees the cores. The three scripts are written, linted and smoke-tested (§10g): `stage5_export_trials_task.m` → `stage5_erd_by_condition.py` → `stage5_erd_stats.py`. Only the runs remain (39 MATLAB rebuilds, then two fast Python steps).
 15. Confirm the F/S/0 interference semantics of the four MSIT+ labels against Dzianok et al. 2022 before stating any ordered-trend hypothesis (§10g); the dataset's own `task-msit_events.json` does not define them.
