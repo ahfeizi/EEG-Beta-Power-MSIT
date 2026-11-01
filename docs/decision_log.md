@@ -546,10 +546,22 @@ and unconditional). Output: `Revision_Output\stage5\rough_sigma_task_per_subject
 
 **Next in the chain (running):** `stage4_simulate_threshold.py` on the task extraction + task σ_i, into
 `Revision_Output\stage5\sim_task\` — the full factorial 39 pairs × (1 null + 10 injected levels) × 1000
-reps = 429,000 simulations, resumable via `parts/`. The equivalent rest run took ≈7.4 h on this machine
-(2026-10-31, 10:42→18:05, 8 workers); the task run is expected to take ≈12 h because each simulated
-signal is ~1.7× longer. It is launched with no environment changes (no thread-count overrides), exactly
-as the rest run was, so the two are numerically comparable.
+reps = 429,000 simulations, resumable via `parts_r1000/`. The equivalent rest run took ≈7.4 h on this
+machine (2026-10-31, 10:42→18:05, 8 workers); measured task throughput is ≈0.50 cells/min with 8 workers,
+i.e. ≈14 h in total. It is launched with no environment changes (no thread-count overrides), exactly as
+the rest run was, so the two are numerically comparable.
+
+*Run provenance (operational, no scientific content):* the run was started 2026-11-01 10:29, stopped at
+**22 of 429 cells** complete (11:15, at a checkpoint boundary — no partially written part file existed)
+and relaunched detached at 11:15:58 so that it no longer depends on any editor/app session. The relaunch
+resumed from exactly those 22 completed cells (`22 of 429 cells already done`), recomputing nothing. The
+only difference in the relaunch command is `python -u` (unbuffered stdout, so the log updates live); it
+changes no computation. Log: `Revision_Output\stage5\sim_task_run.log`; the exact command is also kept as
+`Revision_Output\stage5\sim_task_run.cmd` for manual restarts. Checkpoint integrity was verified
+empirically against the real `write_csv`/resume code before the restart: a part file is written to
+`<part>.csv.tmp` and moved into place with `os.replace` (atomic on NTFS), the resume test is the
+existence of `<part>.csv`, so a stale `.tmp` is never counted as progress and is truncated on recompute;
+the assembly-time row-count assertions are a second net. No change was needed.
 
 ## File locations (as of 2026-11-01)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
