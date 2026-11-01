@@ -821,11 +821,38 @@ full task.
   built the matched thresholds, so the thresholds and the classification cannot drift apart. All real
   task 13–30 Hz computation therefore still happens in exactly one gated script.
 
-**Half-length thresholds (§10d rule 4), in progress.** `stage4_simulate_half_threshold.py` (frozen,
-unchanged) launched 2026-11-02 00:1x on the task extraction and task σ_i, detached (PID 27296, 8 workers,
-orphaned — not a descendant of any editor session), log `Revision_Output\stage5\sim_task_half_run.log`.
-The equivalent rest run took ≈1 h (2026-10-31, 19:20→20:21); the task halves hold ~250 single-window
-epochs each against rest's ~150, so a somewhat longer run is expected.
+**Half-length thresholds (§10d rule 4), complete.** `stage4_simulate_half_threshold.py` (frozen,
+unchanged) was run on the task extraction and task σ_i, detached (PID 27296, 8 workers, orphaned — not a
+descendant of any editor session), log `Revision_Output\stage5\sim_task_half_run.log`. It ran
+2026-11-02 00:33:43 → 02:08:50 (1 h 35 m) for **39 subjects / 54 (subject, half-size) cells**, the cell
+count exceeding 39 because a subject with an odd kept-epoch count has two halves of different lengths and
+each length is calibrated separately. Integrity, checked and not assumed: 54 of 54 part files present,
+every one exactly 1001 lines (header + 1000 null repetitions), **no stale `.tmp` file**,
+`sim_null_half.csv` 54,000 rows, and **0 fit failures of 54,000**.
+- Half lengths 194–273 epochs. Task half p95 min 0.0927, median 0.1893, max 0.8020 (`sub-01` again the
+  extreme, as in the full-length run — the outlier dominance recorded above recurs at half length).
+- Sanity check the simulation was *not* asked to confirm but which it does: the half-length p95 exceeds
+  the same subject's full-length p95 in **every** subject, ratio min 1.080, median 1.213, max 1.919. A
+  shorter record gives a noisier Welch spectrum and so a higher null max-PW; a ratio below 1 anywhere
+  would have indicated a length bookkeeping error. §10d rule 4 was adopted unconditionally for exactly
+  this reason, before any of these numbers existed.
+
+**Length-matched null run, launched 2026-11-02 02:10:54.** `stage5_matched_length.py` detached
+(**PID 15512**, 8 workers; its only live ancestor is an orphaned `nohup.exe`, so no live chain reaches the
+editor session, and the containing job object carries no `KILL_ON_JOB_CLOSE` — established in §10f), log
+`Revision_Output\stage5\sim_task_matched_run.log`, launcher recorded in `sim_task_matched_run.cmd`,
+outputs under `Revision_Output\stage5\sim_task_matched\`. Pre-flight, from run lengths only:
+`39 subjects matched; epochs 276-300` and `Welch windows: matched 537-593, rest 542-598; relative
+difference max 3.51 %, median 1.00 %` — reproducing the table above from the live inputs. 39 null cells,
+1000 repetitions each; the full-length run needed ~13 min per 8-cell wave at ~470 epochs, so ~45–65 min is
+expected at 276–300.
+- Fix made before the freeze (`stage5_matched_length.py`): the script wrote
+  `stage5_extraction_task_matched.csv` *before* the simulation and then refused to start if that file
+  existed, so a crash mid-run would have blocked the resume its own docstring promises. It now rebuilds
+  the matched table into a `.recheck` file, continues only if the two are byte-identical, and otherwise
+  refuses with an explicit message — because a changed input table would silently invalidate the cells
+  already sitting in `parts_matched_r1000/`. The "never overwrite" discipline is kept: nothing is
+  rewritten, the rebuild is compared and deleted.
 
 - **Data-leakage check:** all of the above comes from simulated signals plus the real aperiodic/noise
   statistics already logged in §10e–10f. No real task 13–30 Hz quantity exists yet; the first will be
@@ -882,7 +909,7 @@ epochs each against rest's ~150, so a somewhat longer run is expected.
 9. For manuscript writing: the 79% alpha-harmonic rate among primary peaks (§9) needs explicit discussion alongside the 61.5% headline peak-detection rate — flagged here so it isn't lost before drafting results/discussion text.
 
 **Stage 5, open (as of 2026-11-01):**
-10. ~~Calibrate the task thresholds~~ — σ_i done (§10f); main simulation and per-subject thresholds done (§10h); half-length thresholds running (§10h); matched-length null thresholds still to produce (§10h).
+10. ~~Calibrate the task thresholds~~ — σ_i done (§10f); main simulation and per-subject thresholds done (§10h); half-length thresholds done (§10h, 54/54 cells, 0 fit failures); matched-length null thresholds running (§10h, launched 2026-11-02 02:10).
 11. Commit and tag `S5-task-peak-frozen`, then run `stage5_peak_detection_task.py` — the first look at any real 13–30 Hz task quantity.
 12. ~~Evaluate §10d rule 5~~ — **evaluated and TRIGGERED** (§10h: max difference 0.0873, above 0.05 at six of ten levels). The length-matched secondary analysis is therefore required before any rest-vs-task prevalence comparison is reported.
 13. ~~**Awaiting Amirhossein's sign-off (§10b):** whether Track A carries a pre-stimulus window ... in addition to the approved post-onset window.~~ Answered 2026-11-01: yes — baseline `[−500, 0)` ms added, ERD% is the primary metric, absolute post-onset power secondary (§10g). Windows verified empirically over all 39 subjects.
