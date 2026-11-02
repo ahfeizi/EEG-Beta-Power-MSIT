@@ -1071,6 +1071,71 @@ rest calibration nor this confound.
   verdict applied here is the rule written in §10h at 03:05, before the simulation was launched at 03:08
   and before any real task 13–30 Hz quantity existed.
 
+### 10k. F/S/0 semantics confirmed, and an ordered-trend test for Track A (`S5-conflict-order`, 2026-11-02)
+
+Next-steps item 15, closed. The dataset's own `task-msit_events.json` gives only the marker mapping
+(`S  5` = F0, `S  6` = FS, `S  7` = 00, `S  8` = S0, plus `S 10` start of a break, `S 11` end of a
+mini-block, `S 12` beginning of the run) and never says what F, S and 0 denote, so nothing was guessed. The
+definitions come from the dataset paper, Dzianok et al., *GigaScience* 11:giac015 (2022),
+doi 10.1093/gigascience/giac015, Methods and its Table 3:
+
+> "The extended MSIT contains 4 conditions: 00 (no interference, non-conflict), S0 (Simon effect), F0
+> (Flanker effect)" and "FS (double-conflict, Simon and Flanker effects combined)."
+
+So **0 = that interference absent, S = Simon interference, F = Flanker interference**, and the four
+conditions carry **0, 1, 1 and 2** sources of conflict. The paper's stimulus sets corroborate it directly:
+00 uses (100, 020, 003), where the deviant digit's value equals its position (no Simon) among 0 distractors
+(no Flanker); S0 uses (010, 001, 200, 002, 300, 030), value ≠ position; F0 uses (122, 133, 121, 323, 113,
+223), digit distractors with value = position.
+
+**Three design facts from the same source, each confirming something this project had measured
+independently** — recorded because agreement between an external description and our own extraction is the
+only check available on the marker semantics:
+- Stimulus 900 ms, ISI 800–1,300 ms in 100 ms steps → a within-mini-block SOA of 1,700–2,200 ms. §10b
+  measured a minimum SOA of **1,733 ms in every one of the 39 subjects**, inside that interval. The
+  corrected premise in §10b is therefore right, and the original 870–1,070 ms figure was indeed samples.
+- "Three or 4 stimuli of the same condition were presented consecutively", inter-mini-block interval
+  2.5–4.4 s, and a 10 s rest every 30–40 stimuli. This is exactly the mini-block structure §10d and §10g
+  describe, and it explains §10g's asymmetry directly: a first-in-mini-block baseline falls in a 2.5–4.4 s
+  gap (measured median 2,940 ms after the previous response), a later one in an ISI (measured 864 ms).
+- Trials per condition, paper against our own count over the 39 retained subjects' `events.tsv`:
+
+| | 00 | S0 | F0 | FS | total |
+|---|---|---|---|---|---|
+| Paper (n = 42) | 102 (SD 7) | 105 (SD 7) | 94 (SD 9) | 98 (SD 9) | 399 (SD 6) |
+| **Ours (n = 39)** | **101.6 (SD 7.8)** | **104.8 (SD 9.1)** | **94.2 (SD 9.8)** | **97.5 (SD 9.9)** | 398.1 (SD 18.3) |
+
+  The means agree to the paper's rounding on all four conditions, which **confirms the marker mapping
+  independently**. Our SDs are larger because the 39 retained subjects include the clipped final blocks
+  recorded in §10c, which the paper's sample-level figures do not.
+
+**Decision (Claude, 2026-11-02): add Page's L to the Track A plan, on three ordered levels, not four.**
+The design licenses only a **partial** order — 00 (no conflict) < {F0, S0} (one conflict each) < FS (two)
+— because nothing in the paper or in the task ranks Flanker interference against Simon interference. The
+test therefore runs on the within-subject mean of F0 and S0 as a single middle level:
+**00 < mean(F0, S0) < FS**, with the hypothesis that ERD% increases with the number of conflict sources.
+`scipy.stats.page_trend_test` is used, exact where it can be and asymptotic otherwise, and the method it
+chose is reported per row.
+- Rejected: Page's L over all four conditions in a fixed order such as 00 < S0 < F0 < FS. It would need an
+  ordering of Flanker against Simon that no source supports, and a significant L could then be produced by
+  the arbitrary half of the ordering. Also rejected: dropping the trend test, which was §10g's position
+  only while the semantics were unconfirmed; a monotone conflict hypothesis is the natural form of the
+  question MSIT+ was built to ask, and leaving it to the six pairwise tests wastes the ordering.
+- The Friedman omnibus and the six Holm-corrected Wilcoxon pairs stay exactly as §10g pre-specified them.
+  Page's L is an **addition**, reported alongside and not instead, and it is run for every metric and every
+  mini-block class, as the rest of the plan already is.
+- **Decision rule, written before Track A runs.** On the primary metric (ERD%), a significant Page's L
+  (p < .05) together with a significant Friedman supports a graded conflict effect; a significant Friedman
+  with a non-significant L means the conditions differ without a monotone conflict ordering, and the text
+  must say so rather than describing the effect as graded; a non-significant Friedman ends the conflict
+  analysis regardless of L. The first-in-mini-block and later-trial classes are read separately throughout,
+  since §10g established their baselines are not comparable in magnitude.
+
+- **Data-leakage check:** nothing here touches real EEG. The condition semantics come from a published
+  paper, the trial counts from `events.tsv` marker labels (no 13–30 Hz quantity), and the SOA and
+  mini-block figures were already logged in §10b and §10g. Track A has not been run: this rule is in place
+  before any real ERD% value exists.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
@@ -1126,5 +1191,5 @@ rest calibration nor this confound.
 12. ~~Evaluate §10d rule 5~~ — **evaluated and TRIGGERED** (§10h: max difference 0.0873, above 0.05 at six of ten levels). The length-matched secondary analysis is therefore required before any rest-vs-task prevalence comparison is reported.
 13. ~~**Awaiting Amirhossein's sign-off (§10b):** whether Track A carries a pre-stimulus window ... in addition to the approved post-onset window.~~ Answered 2026-11-01: yes — baseline `[−500, 0)` ms added, ERD% is the primary metric, absolute post-onset power secondary (§10g). Windows verified empirically over all 39 subjects.
 14. Build and run Track A once the §10f simulation frees the cores. The three scripts are written, linted and smoke-tested (§10g): `stage5_export_trials_task.m` → `stage5_erd_by_condition.py` → `stage5_erd_stats.py`. Only the runs remain (39 MATLAB rebuilds, then two fast Python steps).
-15. Confirm the F/S/0 interference semantics of the four MSIT+ labels against Dzianok et al. 2022 before stating any ordered-trend hypothesis (§10g); the dataset's own `task-msit_events.json` does not define them.
+15. ~~Confirm the F/S/0 interference semantics of the four MSIT+ labels against Dzianok et al. 2022~~ — **done** 2026-11-02 (§10k): 0 = no interference, S = Simon, F = Flanker, FS = both. Page's L added to the Track A plan on the three ordered levels 00 < mean(F0, S0) < FS, with its decision rule written before the run.
 16. ~~Compare the matched-task power curve with the rest curve and apply the `S5-matched-power` decision rule~~ — **done** 2026-11-02 (§10j): max |matched − rest| = 0.0815, above 0.05 at six of ten levels, so the second branch applies. No rest-vs-task prevalence difference is reported as a physiological result; length matching removed almost none of the gap (0.0873 → 0.0815), which identifies it as a spectral-roughness effect.
