@@ -907,6 +907,79 @@ removes only the first of the two.
   produced by `stage5_peak_detection_task.py`, behind the freeze gate, once the half-length and matched
   thresholds are in place.
 
+### 10i. Track B real-data results — the first task 13–30 Hz quantities (`S5-task-results`, 2026-11-02)
+
+**Gate satisfied before the run.** `stage5_peak_detection_task.py` refused to start until the annotated tag
+`S5-task-peak-frozen` existed, dereferenced to **`bfc4365edb7b3fc692dceefe6fd0275d2617d6d7`**, equalled
+HEAD, left `revision/stage4` and `revision/stage5` with no uncommitted change, and already appeared in this
+log. All four conditions held; the commit is recorded in `peak_detection_taskun_meta.json` together with
+every per-subject threshold actually used. Three threshold sets were in place beforehand, all calibrated on
+simulated signals only: full-length, half-length (§10d rule 4) and length-matched (rule 5).
+
+**Primary result (per-subject p95, fixed-only, 39 subjects, 0 excluded by D12).**
+
+| | peak | no_peak | poor_fit | prevalence (evaluable) |
+|---|---|---|---|---|
+| **Task, full length** | **28** | 10 | 1 | **28/38 = 73.7 %**, 95 % CI [56.9, 86.6] |
+| Task, length-matched | 28 | 10 | 1 | 28/38 = 73.7 %, 95 % CI [56.9, 86.6] |
+| Rest (§9) | 24 | 14 | 1 | 24/38 = 63.2 %, 95 % CI [46.0, 78.2] |
+
+- The single poor fit is **`sub-34`** (R² = 0.6786), the same subject that was poor_fit at rest in §9.
+- Threshold grid, full length: p90 28, p95 28, p99 26 — the classification is not sitting on the
+  threshold choice. Matched: p90 29, p95 28, p99 27.
+- Task `n_kept` median 502 epochs (388–545); full-model R² median 0.9928, minimum 0.6786. Beta peaks in
+  range per subject: 0 in 1 subject, 1 in 18, 2 in 14, 3 in 5, 4 in 1.
+- Primary peaks (n = 28): CF median **18.66 Hz** (13.32–25.60), PW median 0.376 (0.169–0.617). Rest's
+  primary CF median was 20.17 Hz.
+
+**Length-matched secondary pass (§10d rule 5).** Identical counts to the full-length pass, with
+**37/39 agreement** and two discordant subjects, both marginal:
+- `sub-26` full-length no_peak (primary 18.95 Hz, PW 0.2097 against threshold 0.2761) → matched peak
+  (primary **13.07 Hz**, PW 0.3667 against 0.2778). The matched primary sits on the lower edge of the
+  13–30 Hz band, so this is an edge case, not a different physiological reading.
+- `sub-37` full-length peak (PW 0.2928 against 0.2698) → matched no_peak (PW 0.2640 against 0.2702); both
+  within 0.03 of the threshold.
+That the prevalence is unchanged after discarding a median 40.6 % of the task epochs is the strongest
+single piece of evidence that the task peak prevalence is not a data-quantity artefact.
+
+**Reliability (§10d rule 7).** Split-half on odd/even kept epochs against each subject's own half-length
+p95: **37 of 38 evaluable subjects agree, 97.4 %**; **ICC(2,1) on PW = 0.938** over the 26 subjects with a
+peak in both halves. Rule 7's unreliability condition (agreement < 80 % or ICC < 0.75) is **not** met, so
+the task peak measure is reported as reliable. Rest was 97.4 % and ICC 0.919 (§9) — the two are
+indistinguishable on reliability.
+
+**Rest vs task (§10d rule 6), paired over the 38 subjects evaluable in both.**
+
+| | both | rest only | task only | neither | McNemar exact |
+|---|---|---|---|---|---|
+| Task full length | 22 | 2 | 6 | 8 | **p = 0.2891** |
+| Task length-matched | 22 | 2 | 6 | 8 | **p = 0.2891** |
+
+**There is no significant rest-vs-task difference in beta-peak prevalence, at either task length.** The
+10.5-point prevalence gap (73.7 % vs 63.2 %) rests on 8 discordant subjects and does not survive a paired
+test.
+- Relation to the still-running `S5-matched-power` curve: its verdict governs whether a rest-vs-task
+  *difference* may be reported as physiological, and there is no significant difference to report either
+  way. The **direction** of the known bias is also informative: the measured sensitivity advantage favours
+  the task, so removing it could only lower the task count and move the table further toward equality. The
+  null therefore cannot be an artefact of the task being *less* sensitive. Whatever the curve returns, the
+  reported statement stays "no significant difference", with the sensitivity gap stated alongside it.
+
+**Alpha-harmonic diagnostic (§10d rule 6, exploratory).** The same 2 × IAF ± 2 Hz coincidence rule flags
+**12 of 28 task primary peaks, 42.9 %**, 95 % CI [24.5, 62.8] — against **19 of 24, 79.2 %** at rest (§9).
+The flag is a coincidence rule and attributes nothing, so this is a diagnostic and not a result. It is
+nevertheless the one number here that bears directly on the manuscript's central claim: the task beta
+peaks are far less often explainable as alpha harmonics than the resting peaks were, which is what a
+genuine task-related beta rhythm would look like and what an alpha-harmonic artefact would not.
+
+- **Data-leakage check.** These are the first real task 13–30 Hz quantities in the project. Every one was
+  produced after the code was committed (`bfc4365`), tagged and documented, by the gated script, against
+  thresholds calibrated from simulated signals alone. No rule above was written, relaxed or chosen after
+  seeing them, and the rules that remain open (`S5-matched-power`, Track A in §10g) were fixed in writing
+  before this run. Nothing downstream may now be selected by looking at these numbers: in particular the
+  ROI, the window, the aperiodic model and the ERD estimator for Track A are already fixed in §10a and
+  §10g and will not be revisited in the light of §10i.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
@@ -958,7 +1031,7 @@ removes only the first of the two.
 
 **Stage 5, open (as of 2026-11-01):**
 10. ~~Calibrate the task thresholds~~ — **done**: σ_i (§10f), full-length (§10h), half-length (§10h, 54/54 cells), matched-length (§10h, 39/39 cells), every run with 0 fit failures. All three threshold sets needed by `stage5_peak_detection_task.py` now exist.
-11. Commit and tag `S5-task-peak-frozen`, then run `stage5_peak_detection_task.py` — the first look at any real 13–30 Hz task quantity.
+11. ~~Commit and tag `S5-task-peak-frozen`, then run `stage5_peak_detection_task.py`~~ — **done** 2026-11-02: tag at `bfc4365`, results in §10i (28 peak / 10 no_peak / 1 poor_fit; matched pass identical; split-half 97.4 %, ICC 0.938; rest-vs-task McNemar exact p = 0.2891).
 12. ~~Evaluate §10d rule 5~~ — **evaluated and TRIGGERED** (§10h: max difference 0.0873, above 0.05 at six of ten levels). The length-matched secondary analysis is therefore required before any rest-vs-task prevalence comparison is reported.
 13. ~~**Awaiting Amirhossein's sign-off (§10b):** whether Track A carries a pre-stimulus window ... in addition to the approved post-onset window.~~ Answered 2026-11-01: yes — baseline `[−500, 0)` ms added, ERD% is the primary metric, absolute post-onset power secondary (§10g). Windows verified empirically over all 39 subjects.
 14. Build and run Track A once the §10f simulation frees the cores. The three scripts are written, linted and smoke-tested (§10g): `stage5_export_trials_task.m` → `stage5_erd_by_condition.py` → `stage5_erd_stats.py`. Only the runs remain (39 MATLAB rebuilds, then two fast Python steps).
