@@ -980,6 +980,97 @@ genuine task-related beta rhythm would look like and what an alpha-harmonic arte
   ROI, the window, the aperiodic model and the ERD estimator for Track A are already fixed in §10a and
   §10g and will not be revisited in the light of §10i.
 
+### 10j. The matched power curve, and the `S5-matched-power` verdict (2026-11-02)
+
+**Run and integrity.** The frozen `stage4_simulate_threshold.py`, unchanged, on the matched extraction and
+task σ_i: 2026-11-02 03:17:15 → 12:26:39 (9 h 09 m), PID 26576, detached. All **429 of 429** cells present,
+every part file exactly 1001 lines, **no stale `.tmp` file**, `sim_null.csv` 39,000 rows,
+`sim_injected.csv` 390,000 rows, and **0 fit failures in both** (null 0/39,000, injected 0/390,000).
+`stage4_per_subject_thresholds.py` (frozen) then produced the per-subject curve, which is the metric the
+primary classification uses.
+
+**Both consistency checks passed.**
+- The 39 null cells of this independent run are **byte-identical** to the 39 already in
+  `sim_task_matched\parts_matched_r1000\`, cell for cell. `stage5_matched_length.py`'s truncation is
+  therefore verified against the frozen implementation, not merely unit-tested against itself.
+- The per-subject thresholds recomputed here are **identical at p90, p95 and p99 for all 39 subjects** to
+  the ones that classified the real data in §10i. The §10i classification is reproducible from this run.
+- The null row of all three curves is exactly **0.0500**, i.e. each subject's own p95 delivers the intended
+  5 % false-positive rate in rest, full-length task and matched task alike.
+
+**Detection power at each injected level (per-subject p95).**
+
+| PW | rest | task, full | task, matched | full − rest | matched − rest |
+|---|---|---|---|---|---|
+| 0 (null) | 0.0500 | 0.0500 | 0.0500 | +0.0000 | +0.0000 |
+| 0.05 | 0.2236 | 0.2652 | 0.2210 | +0.0415 | −0.0026 |
+| 0.10 | 0.4454 | 0.5222 | 0.5004 | +0.0768 | **+0.0550** |
+| 0.15 | 0.5822 | 0.6616 | 0.6531 | +0.0795 | **+0.0709** |
+| 0.20 | 0.6784 | 0.7656 | 0.7585 | **+0.0873** | **+0.0802** |
+| 0.25 | 0.7588 | 0.8389 | 0.8403 | +0.0801 | **+0.0815** |
+| 0.30 | 0.8192 | 0.8966 | 0.8958 | +0.0774 | **+0.0766** |
+| 0.35 | 0.8683 | 0.9305 | 0.9314 | +0.0622 | **+0.0631** |
+| 0.40 | 0.9053 | 0.9531 | 0.9549 | +0.0478 | +0.0496 |
+| 0.45 | 0.9323 | 0.9695 | 0.9684 | +0.0372 | +0.0361 |
+| 0.50 | 0.9526 | 0.9778 | 0.9789 | +0.0251 | +0.0262 |
+
+**Verdict: the rule's second branch. Max |matched − rest| = 0.0815 (at PW 0.25), above 0.05 at six of the
+ten levels — the matched comparison is NOT sensitivity-equated.**
+
+**Length matching removed almost none of the gap: 0.0873 → 0.0815.** That is the substantive finding of
+this run, and it confirms the §10h correction empirically. With the run lengths matched, the gap can only
+come from the per-subject parameters the simulator takes from each condition — `offset_fixed`,
+`exponent_fixed` and σ_i — and those can be separated: the **exponents are effectively identical** (paired
+median difference +0.0155, task lower in 19 of 39 subjects, i.e. no systematic direction), the **offsets**
+differ by a vertical shift (+0.0941) which does not move a PW measured relative to the fitted aperiodic
+component, and **σ_i**, the one parameter that directly sets spurious beta-peak amplitude, is systematically
+lower in the task (median 0.1500 against 0.2100, lower in 26 of 39). By elimination among the simulator's
+own inputs, the sensitivity difference is a **spectral-roughness** effect, not a data-quantity effect, so
+§10d rule 5's remedy — designed for a data-quantity artefact — cannot repair it, and **no length-based
+matching can**. Had the matched curve not been run, the matched pass in §10i would have been presented as a
+sensitivity-controlled comparison when it is nothing of the kind. The earlier rationale for skipping it was
+wrong in exactly the way that mattered.
+
+**Consequences, exactly as pre-specified in §10h before this run.**
+1. **No rest-vs-task prevalence difference is reported as a physiological result.** Each condition's
+   prevalence is reported descriptively against its own calibrated threshold: task 28/38 = 73.7 %
+   [56.9, 86.6], rest 24/38 = 63.2 % [46.0, 78.2] (§9's headline figure is 24/39 = 61.5 %).
+2. The paired table and McNemar exact p = 0.2891 (§10i) may be reported **only descriptively**, each time
+   with the statement that detection sensitivity is not equated — up to 8.15 percentage points higher in
+   the task at matched length, 8.73 at full length — and that the gap is a roughness effect that length
+   matching does not remove.
+3. **No sensitivity-adjusted prevalence** is estimated, modelled or interpolated. The rule forbade it
+   before the numbers existed and it stays forbidden now.
+4. The bias runs **in favour of the task**, so the non-significant table cannot be an artefact of the task
+   being less sensitive; equally, the nominal 10.5-point task excess cannot be claimed as physiological,
+   because a bias of up to ~8 points points the same way. Both halves of that sentence must appear
+   together wherever this is reported.
+
+**A caveat the pre-specified rule does not cover, recorded rather than resolved.** The alpha-harmonic rate
+comparison in §10i (task 42.9 % against rest 79.2 %) is conditional on a peak being detected, and a
+sensitivity difference changes *which* peaks enter the denominator — the task admits marginal peaks that
+rest would miss. So that comparison is not sensitivity-controlled either. No rule for it was written in
+advance, and none will be invented now: it is reported as a within-condition descriptive figure with the
+comparison explicitly flagged as uncontrolled. Quantifying it properly would need a peak-height-matched
+analysis, which is listed as a possible addition, not run and not relied on.
+
+**What this does not touch.** The project's primary negative result is a rest-only statement — by the
+pre-registered simulation-calibrated method, 14 of 38 evaluable subjects have no resting beta peak (§9),
+alongside the legacy five-method agreement on the earlier 42-subject sample — and no part of it depends on
+the task comparison. The within-task Stage-5 results (prevalence, split-half 97.4 % / ICC 0.938,
+threshold-grid stability) are likewise unaffected, since each uses the task's own calibration throughout.
+Track A (§10g) compares conditions *within* the task against a within-task baseline and shares neither the
+rest calibration nor this confound.
+
+- Observation that no decision rests on, recorded for completeness and explicitly post hoc: the gap is
+  smallest at the extremes of the grid, and the observed task primary peaks have PW median 0.376, where the
+  gap is ≈0.05–0.06. This was computed after the real data were seen, it selects a level by reference to
+  them, and so it is **not** used to soften conclusion 2 or anywhere else.
+- **Data-leakage check:** every number in this entry comes from simulated signals. The two real-data
+  quantities quoted (the §10i prevalences, the σ_i medians) were already logged in §10f and §10i. The
+  verdict applied here is the rule written in §10h at 03:05, before the simulation was launched at 03:08
+  and before any real task 13–30 Hz quantity existed.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
@@ -1036,4 +1127,4 @@ genuine task-related beta rhythm would look like and what an alpha-harmonic arte
 13. ~~**Awaiting Amirhossein's sign-off (§10b):** whether Track A carries a pre-stimulus window ... in addition to the approved post-onset window.~~ Answered 2026-11-01: yes — baseline `[−500, 0)` ms added, ERD% is the primary metric, absolute post-onset power secondary (§10g). Windows verified empirically over all 39 subjects.
 14. Build and run Track A once the §10f simulation frees the cores. The three scripts are written, linted and smoke-tested (§10g): `stage5_export_trials_task.m` → `stage5_erd_by_condition.py` → `stage5_erd_stats.py`. Only the runs remain (39 MATLAB rebuilds, then two fast Python steps).
 15. Confirm the F/S/0 interference semantics of the four MSIT+ labels against Dzianok et al. 2022 before stating any ordered-trend hypothesis (§10g); the dataset's own `task-msit_events.json` does not define them.
-16. Compare the matched-task power curve with the rest curve and apply the `S5-matched-power` decision rule (§10h) — this decides whether any rest-vs-task prevalence *comparison* is reportable. Does not block the freeze or the first real look.
+16. ~~Compare the matched-task power curve with the rest curve and apply the `S5-matched-power` decision rule~~ — **done** 2026-11-02 (§10j): max |matched − rest| = 0.0815, above 0.05 at six of ten levels, so the second branch applies. No rest-vs-task prevalence difference is reported as a physiological result; length matching removed almost none of the gap (0.0873 → 0.0815), which identifies it as a spectral-roughness effect.
