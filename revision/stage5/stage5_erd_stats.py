@@ -13,6 +13,13 @@ Runs exactly the plan recorded in docs/decision_log.md §10g, with no data-depen
             legacy_v1/statistics/effect_size_rankbiserial.m, so the effect sizes are comparable with the
             ones already in the manuscript. The normal-approximation Z and r = Z / sqrt(N) are reported
             alongside for cross-checking, as that script also does.
+  trend     Page's L on the THREE ordered conflict levels the design licenses (§10k): no conflict (00) <
+            single conflict (the within-subject mean of F0 and S0) < double conflict (FS), predicted to
+            increase in that order. Dzianok et al. 2022 define 00 as non-conflict, S0 as Simon, F0 as
+            Flanker and FS as the two combined, so the four conditions carry only a PARTIAL order: the two
+            single-conflict conditions are not ordered against each other, and collapsing them is the only
+            monotone hypothesis the design supports. scipy's page_trend_test is used (exact where it can
+            be, asymptotic otherwise) and the method it chose is reported per row.
 
 Metrics, each analysed independently (§10g):
   erd_pct               PRIMARY: classic ERD% from the trial-averaged powers
@@ -25,8 +32,7 @@ established that the baseline sits a median of 2940 ms after the previous respon
 trials but only 864 ms for later ones, so ERD% magnitudes are not comparable between the classes.
 
 A subject contributes to a cell only if all four conditions have a value; the n used is reported per row.
-No ordered-trend test (Page's L) is run: §10g leaves it out until the F/S/0 interference semantics are
-confirmed against Dzianok et al. 2022. Never overwrites.
+Never overwrites.
 """
 import argparse
 import csv
@@ -35,12 +41,16 @@ import json
 import os
 
 import numpy as np
-from scipy.stats import friedmanchisquare, rankdata, wilcoxon
+from scipy.stats import friedmanchisquare, page_trend_test, rankdata, wilcoxon
 
 COND_ORDER = ('F0', 'FS', '00', 'S0')
 CLASSES = ('all', 'first', 'later')
 METRICS = ('erd_pct', 'active_power_mean', 'baseline_power_mean', 'erd_pct_trialwise')
 PRIMARY = 'erd_pct'
+# The ordered levels for Page's L (sec 10k): the two single-conflict conditions are averaged within
+# subject, because Dzianok et al. 2022's definitions order 00 < {F0, S0} < FS and leave F0 against S0
+# unordered. Written as the hypothesis direction: conflict increases left to right.
+TREND_LEVELS = (('00',), ('F0', 'S0'), ('FS',))
 
 
 def holm(pvals):
@@ -98,14 +108,15 @@ def main():
     ap.add_argument('--out-dir', required=True)
     args = ap.parse_args()
     names = {k: os.path.join(args.out_dir, k) for k in
-             ('stage5_erd_stats_omnibus.csv', 'stage5_erd_stats_pairwise.csv', 'stage5_erd_stats_meta.json')}
+             ('stage5_erd_stats_omnibus.csv', 'stage5_erd_stats_pairwise.csv',
+              'stage5_erd_stats_trend.csv', 'stage5_erd_stats_meta.json')}
     for p in names.values():
         if os.path.exists(p):
             raise SystemExit(f'output exists, not overwritten: {p}')
     cells, _ = read_cells(args.cells)
     os.makedirs(args.out_dir, exist_ok=True)
 
-    omni, pair_rows = [], []
+    omni, pair_rows, trend_rows = [], [], []
     for metric in METRICS:
         for cls in CLASSES:
             subs, m = cells[(metric, cls)]
@@ -148,8 +159,27 @@ def main():
                 r['p_holm'] = float(padj)
                 pair_rows.append(r)
 
+            # Page's L on the three ordered conflict levels (sec 10k). Columns are built in the
+            # hypothesised increasing order; the single-conflict level is the within-subject mean of the
+            # two unordered single-conflict conditions.
+            idx = {c: j for j, c in enumerate(COND_ORDER)}
+            lev = np.column_stack([m[:, [idx[c] for c in grp]].mean(axis=1) for grp in TREND_LEVELS])
+            trow = dict(metric=metric, miniblock_class=cls, primary=int(metric == PRIMARY), n_subjects=n,
+                        n_levels=lev.shape[1],
+                        levels='<'.join('+'.join(g) for g in TREND_LEVELS),
+                        **{f'median_level{j + 1}': float(np.median(lev[:, j]))
+                           for j in range(lev.shape[1])})
+            try:
+                res = page_trend_test(lev, ranked=False)
+                trow.update(page_L=float(res.statistic), page_p=float(res.pvalue),
+                            page_method=str(res.method), note='')
+            except Exception as exc:                     # too few subjects, or a degenerate cell
+                trow.update(page_L='', page_p='', page_method='', note=f'{type(exc).__name__}: {exc}')
+            trend_rows.append(trow)
+
     for key, rows in (('stage5_erd_stats_omnibus.csv', omni),
-                      ('stage5_erd_stats_pairwise.csv', pair_rows)):
+                      ('stage5_erd_stats_pairwise.csv', pair_rows),
+                      ('stage5_erd_stats_trend.csv', trend_rows)):
         with open(names[key], 'w', newline='') as fh:
             w = csv.DictWriter(fh, fieldnames=list(rows[0].keys()), restval='')
             w.writeheader()
@@ -161,7 +191,8 @@ def main():
                        post_hoc='Wilcoxon signed-rank, all 6 pairs, Holm-corrected over the 6 p-values',
                        effect_size='matched-pairs rank-biserial (Kerby 2014), as in '
                                    'legacy_v1/statistics/effect_size_rankbiserial.m',
-                       ordered_trend_test='not run - F/S/0 semantics unconfirmed (§10g)',
+                       ordered_trend_test="Page's L on 00 < mean(F0, S0) < FS "
+                                          '(sec 10k; F0 vs S0 unordered by design)',
                        cells_file=args.cells), fh, indent=2)
 
     print(f"{'metric':22s} {'class':6s} {'n':>3s} {'chi2':>8s} {'p':>10s} {'W':>6s}")
@@ -179,6 +210,16 @@ def main():
     for r in sig:
         print(f"  {r['metric']:22s} {r['miniblock_class']:6s} {r['pair']:12s} "
               f"p_holm {r['p_holm']:.4g}  r_rb {r['r_rankbiserial']:+.3f}")
+    print()
+    print("Page's L, 00 < mean(F0, S0) < FS:")
+    for r in trend_rows:
+        if r['page_p'] == '':
+            print(f"  {r['metric']:22s} {r['miniblock_class']:6s} {r['note']}")
+        else:
+            star = ' <- PRIMARY' if r['primary'] else ''
+            print(f"  {r['metric']:22s} {r['miniblock_class']:6s} n {r['n_subjects']:>3d} "
+                  f"L {r['page_L']:9.1f}  p {r['page_p']:9.3g} ({r['page_method']}){star}")
+
     print('\nwrote:', ', '.join(os.path.basename(p) for p in names.values()))
 
 
