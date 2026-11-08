@@ -1723,6 +1723,65 @@ and not band-average power.
   missing `os.makedirs` after a write failed, and making `psd_band` take the band as an argument with its
   default unchanged (checked: the default call is bit-identical to the explicit 13–30 Hz call).
 
+### 10q. The four-level conflict ordering: citation checked, and what may be done with it (`S5-conflict-order-2`, 2026-11-08)
+
+§10k adopted a **three-level** ordering for Page's L — 00 < mean(F0, S0) < FS — because Dzianok et al.
+2022 defines the four conditions but does not rank Flanker against Simon. The v1 manuscript text,
+however, asserts a four-level ordering: *"their established conflict ordering (00 < S0 < F0 < FS; Dzianok
+et al., 2022; Wojciechowski et al., 2024)"*. Amirhossein asked for that citation to be checked before
+anything was rerun.
+
+**What the check found.** The ordering **is** established in the literature, on the same paradigm and the
+same stimulus set — but not by either cited paper, and not as strongly as the v1 sentence implies.
+- **Palucha, Antonova, Nikadon, Dzianok, Jurewicz, Wojciechowski & Kublik (2025)**, *Common but
+  different: An ERP study of single- and multi-source interference processing in MSIT*, bioRxiv
+  10.1101/2025.03.05.641477, n = 41, reports reaction times of **535.86 ± 61.08 ms (00), 592.98 ± 54.52
+  (S0), 676.85 ± 68.82 (F0), 744.33 ± 83.56 (FS)**, F(1.72, 68.68) = 381.98, p < .001, with post-hoc
+  Bonferroni-corrected t-tests showing **differences between all task conditions, all p < .001**. That is
+  the four-level ordering, with every adjacent pair separated.
+- **But accuracy does not support it.** The same paper reports .98 (00), .97 (S0), .96 (F0), .88 (FS), and
+  states that accuracy in the Simon and flanker conditions was **"similar to each other (p = 0.80)"**. So
+  F0 > S0 is a **speed** ordering, not a difficulty ordering on accuracy. Any sentence that calls the
+  four-level order "established" must say on which measure.
+- **Wojciechowski et al. 2024 could not be verified** as a source for the ordering. Its full text is
+  paywalled (HTTP 403) and the open PDF exceeded what could be fetched; the ERP paper above cites it for
+  "a combination of both common and task specific processes", not for a conflict ordering. So the v1
+  sentence appears **misattributed**, and in any case Palucha et al. 2025 postdates the v1 draft.
+- Also worth recording from the same paper, because it bears on §10l: the two conflicts combine
+  **sub-linearly** — RTs for FS+00 against F0+S0 did not differ (p = .086) while accuracy did
+  (p < .001, .93 against .96), i.e. "Flanker and Simon interaction is sublinear".
+
+**Decision (Claude, 2026-11-08): §10k's three-level test stays the pre-specified primary ordering claim,
+and a four-level Page's L is added only as an explicitly post-hoc test.** The reason is a discipline
+constraint, not a statistical one:
+- The four-level ordering is **externally** justified — it comes from an independent paper's reaction
+  times, not from these data — which is the strongest justification available.
+- But the decision to run it is being taken **after §10l's condition medians are known**, and those
+  medians do not sit still under it: in the first-in-mini-block class the ERD% medians run
+  00 19.61 < **F0 26.71 < S0 28.13** < FS 31.99, i.e. **S0 above F0**, the reverse of the literature RT
+  order, while in the later and pooled classes F0 exceeds S0 as the literature has it. A four-level test
+  will therefore behave differently across classes, and that is already visible.
+- So the test cannot be presented as pre-specified. It is run for every metric and class, reported beside
+  the three-level result, and **never replaces it**. Any disagreement between them is reported as a
+  disagreement.
+
+**Decision rule, written before the run.** The three-level Page's L of §10k remains the ordering result
+reported in the Abstract and Results. The four-level test is reported in the same table with an explicit
+"post-hoc" label. If the four-level test agrees, the text says the graded effect also follows the
+behavioural RT order from an independent sample. If it disagrees in a class, the text says so and names
+the class, and the three-level conclusion stands unchanged. No correction is applied across the two,
+because the second is descriptive.
+
+**Consequence for the manuscript text.** The v1 sentence is not struck for being wrong about the order —
+it is wrong about the **source** and about the **strength**. Its replacement must cite Palucha et al. 2025
+for the RT ordering, state that accuracy does not separate Simon from flanker (p = .80), and present our
+own ordering claim as the three-level pre-specified one.
+
+- **Data-leakage check:** the ordering comes from an external publication's behavioural data, never from
+  these EEG data. The non-blindness is disclosed above rather than hidden: §10l's medians were already
+  known when this decision was taken, which is exactly why the four-level test is labelled post-hoc and
+  cannot change a reported verdict.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
@@ -1776,6 +1835,7 @@ and not band-average power.
 19. ~~Decision for Amirhossein (§10n): a uniform trial-level robustness rule~~ — **answered and done** 2026-11-08 (§10o-1, §10p-1): median and 20 % trimmed mean, applied uniformly; every §10l verdict holds, but the §10n equivalence verdict flips, so both are reported. Originally: whether to add a uniform trial-level robustness rule (per-cell median, trimmed mean, or an outlier-trial criterion) as a labelled sensitivity analysis beside the pre-specified trial-averaged estimator. One trial supplies 89 % of one cell mean and reverses the parametric TOST verdict; 4 of 156 first-class cells have a largest-trial share above 0.25.
 20. Decide the title and the framing (audit #17, CLAUDE.md step 5), now unblocked: §10p-2 replaced the +63–73 % figure with +40.0 %, showed three quarters of it is not pre-stimulus specific, and turned the control band from an unexcluded confound into a supported one.
 21. Estimate and then carry out the manuscript rewrite (`revision_plan.md` Stage 7). The scope estimate is in `stage5_reconciliation.md`.
+22. Run the post-hoc four-level Page's L of §10q and add it beside the three-level result; replace the v1 conflict-ordering sentence with the Palucha et al. 2025 citation and the accuracy caveat.
 
 **Stage 5, open (as of 2026-11-01):**
 10. ~~Calibrate the task thresholds~~ — **done**: σ_i (§10f), full-length (§10h), half-length (§10h, 54/54 cells), matched-length (§10h, 39/39 cells), every run with 0 fit failures. All three threshold sets needed by `stage5_peak_detection_task.py` now exist.
