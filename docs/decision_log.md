@@ -1227,6 +1227,139 @@ across conditions in `later` (χ² = 16.077, p = .0011, W = 0.137, Page's L p = 
   reached an ERD% value at all. Track A shares no threshold, calibration or classification with Track B, so
   the §10i–§10j sensitivity confound does not reach it.
 
+### 10m. The within-task control window, the equivalence bound and the BF₀₁ rule (`S5-control-window`, `S5-tost-bound`, 2026-11-08)
+
+Three decisions, all taken before the analyses they govern run, after the §10l results and the
+reconciliation pass (`stage5_reconciliation.md`, root commit `ddb1f41`) identified what was still missing:
+`revision_plan.md` Stage 5 (audit #5, #6) needs a within-task control window, and Stage 6 (audit #1, #13)
+needs BF₀₁ and TOST before the pre-stimulus conflict null may be called a null.
+
+**Amirhossein's decisions (2026-11-08), recorded as given.**
+1. The control window is a **late ITI** window, **not** a post-response window. His reason: the
+   post-response interval is the beta-rebound (ERS) period that §10g already identified as the
+   contaminator of the later-trial baselines, so using it as a "control" would measure a different
+   physiological state instead of the neutral within-task level that has to be compared with rest.
+2. Its length and position are to be established **empirically over all 39 subjects**, as the
+   pre-stimulus window was, not assumed. He noted specifically that with a 1,733 ms SOA floor a 500 ms
+   window placed immediately before the existing baseline would probably collide with the previous
+   trial's active window.
+3. The v1 ±10 % bound is **discarded** — not because the number is wrong but because it was unmotivated,
+   and its asymmetry in linear terms is a symptom of that. The replacement must be symmetric on a
+   ratio/log scale (bioequivalence style) or a standardised SESOI, and its justification must be logged
+   before TOST runs.
+
+---
+
+**The empirical survey (`stage5_iti_window_survey.py`, read-only, events.tsv and the block table only).**
+For a trial at onset *t* whose previous in-block trial is at *p*, the free interval between the previous
+**active** window and this trial's **baseline** window is `[p + 1000, t − 500)`, of length
+`(t − p) − 1500`. Over 15,024 consecutive in-block trial pairs:
+
+| gap length (ms) | n | min | median | p95 | max |
+|---|---|---|---|---|---|
+| first-in-mini-block pairs | 3,960 | **1,966** | 2,566 | 3,517 | 3,933 |
+| later-in-mini-block pairs | 11,064 | **233** | 533 | 734 | 767 |
+
+Amirhossein's prediction is confirmed and sharpened: in a typical within-mini-block ITI there is no room
+at all — a 500 ms window fits in only 5,559 of 11,064 later pairs, and the project's per-condition 50 %
+rule then **fails in 37 of 39 subjects** (minimum retained fraction 0.322, median 0.439). The long
+intervals are all at the mini-block boundaries, which the dataset paper gives as 2.5–4.4 s (§10k).
+
+Placement was then measured rather than argued, for a 500 ms window in the first-in-mini-block gaps
+(median clearances, ms):
+
+| placement | n fitting | from prev. active | from prev. response | to upcoming onset | prev. response inside |
+|---|---|---|---|---|---|
+| early (against the previous active window) | 3,960 | 0 | 410 | 2,566 | 99 |
+| **centred** | **3,960** | **1,033** | **1,424** | **1,533** | **2** |
+| late (against the baseline) | 3,960 | 2,066 | 2,440 | 500 | 0 |
+
+**Decision (`S5-control-window`): the control window is 500 ms, centred in the inter-mini-block interval,
+on first-in-mini-block trials only.** Measured properties of exactly that window over all 39 subjects: it
+fits in **3,960 of 3,960** such pairs; **0** fall outside their clipped task block; clearance from the
+previous active window min **733** / median 1,033 / max 1,716 ms; clearance from the previous response
+p05 **1,047** / median 1,424 ms over the 3,921 pairs with a recorded previous response; clearance to the
+upcoming onset min **1,233** / median 1,533 ms; and the previous response falls inside the window in
+**2 of 3,960** trials, which will be dropped. Every subject retains **100 %** of each condition's
+first-in-mini-block trials, so the 50 % rule is not even approached.
+- Rejected, **late** placement: it sits only 500 ms before the onset and immediately adjacent to the
+  baseline, so it is effectively a second pre-stimulus window and cannot distinguish a pre-stimulus
+  specific elevation from a general within-task level — which is the question audit #5 asks.
+- Rejected, **early** placement: zero clearance from the previous active window and the previous response
+  inside 99 windows.
+- Rejected, **later-in-mini-block trials**: the 50 % rule fails in 37 of 39 subjects, as above.
+- Rejected, **a shorter window (250–400 ms)** to keep all trials: it would break the identical-estimator
+  requirement that is the entire point of audit #5. 500 ms is the baseline's own length, giving 250
+  samples at 500 Hz, one Welch segment and 2.0 Hz bins, the settings §10l already verified.
+- Rejected, **the 10 s in-task breaks**, which would be the ideal neutral window: D3e splits task blocks
+  at S 10 / S 12 and at gaps > 10 s, so the breaks lie outside the cropped blocks and are not in the data.
+- Loose end closed: the figure **3,921** that appeared in earlier working notes is this — the number of
+  first-in-mini-block pairs with a measurable previous response — not a trial count. The
+  first-in-mini-block trial count is 4,428 (§10l).
+
+**Consequence for the export.** The current trial files hold only `[−500, 0)` and `[0, +1000)`, so this
+window needs a new MATLAB export pass. It must be an **added** output under a new filename, never an
+overwrite (project rule 4).
+
+---
+
+**Decision (`S5-tost-bound`): the equivalence bound is the ratio interval [0.900, 1.111] = [0.9, 1/0.9],
+i.e. |mean log₁₀ ratio| < 0.0457575, applied on the within-subject difference of log₁₀ band power.**
+Justification, in the order it carries weight:
+1. It is **symmetric on the scale the test is performed on**. That is precisely audit #10's complaint: the
+   v1 bound was symmetric in log₁₀ but described as ±10 %, which in linear terms is +10 % / −9.1 %.
+2. It is the **principled correction of the magnitude this project already proposed**, so the goalposts do
+   not move after the data are seen.
+3. It is **2.5× stricter** than the regulatory bioequivalence interval [0.80, 1.25] for which this
+   log-ratio TOST machinery was designed, so passing it is a strong statement rather than a formality.
+4. It is fixed **before any control-band or conflict log-ratio value exists**.
+5. One scale and one bound serve both bands and both kinds of comparison, which is what audit #11 asks for.
+
+**The guard that keeps the bound from driving the conclusion.** The **primary report is the bound-free
+90 % CI** of the mean log₁₀ ratio (the interval matching the 5 % one-sided TOST), from which equivalence at
+any bound can be read. When TOST fails at the pre-specified bound, the **attained bound** —
+max(|CI_low|, |CI_high|), the smallest symmetric bound that would pass — is reported in its place, and the
+claim is weakened to "no evidence of a difference; equivalence established only within ±X %".
+- Rejected: a **data-derived SESOI** (Cohen's d ≈ 0.2 times the between-subject SD of the same quantity).
+  The SD of the very quantity under test would then set its own bound, so a noisier measure would earn a
+  more lenient bound — the opposite of what an equivalence claim should require. The standardised effect
+  `dz` is reported alongside for context instead.
+- Also rejected: adopting [0.80, 1.25] unchanged. It was calibrated for drug exposure, not band power, and
+  is wide enough that passing it would say little.
+
+---
+
+**Decision rule for BF₀₁ (`stage5_equivalence.py`), written before its first run.** JZS default Bayes
+factor for the paired t-test — Cauchy(0, *r*) on the standardised effect, Jeffreys prior on the variance
+(Rouder, Speckman, Sun, Morey & Iverson, 2009, *Psychon Bull Rev* 16:225–237) — with **r = 0.707
+primary** and r = 0.5, 1.0 as a robustness check. BF₀₁ = 1 / BF₁₀.
+- Primary comparison: **FS vs 00** (the maximum conflict contrast, and the contrast the manuscript already
+  planned) on **`baseline_power_mean`**, pre-stimulus 13–30 Hz power, in the **first-in-mini-block** class.
+  All six pairs and all three classes are reported.
+- **Positive control, pre-specified:** the same machinery is run on `active_power_mean`, where §10l found a
+  large condition effect, so BF₁₀ there must come out large. A null-looking result on that metric would
+  indict the implementation rather than the data, and the run is to be stopped if it appears.
+- Interpretation (Jeffreys, as tabulated by Lee & Wagenmakers): BF₀₁ ≥ 10 strong evidence for the null,
+  3 ≤ BF₀₁ < 10 moderate, **1/3 < BF₀₁ < 3 inconclusive and must be reported as inconclusive**,
+  BF₀₁ ≤ 1/3 evidence against the null.
+- **Conjunction required before the manuscript may call the pre-stimulus conflict result a null:**
+  BF₀₁ ≥ 3 on the primary comparison **and** TOST equivalence at the pre-specified bound. If only one
+  holds, the text reports exactly what held and what did not, with the attained bound; §10l's
+  p = 0.223 on its own stays "a failure to reject".
+- Implementation verified before the first run, no real data involved: two mathematically distinct
+  routes — quadrature over the mixing variable *g*, and quadrature over the effect size against a
+  noncentral-t likelihood — agree to a relative **3.06e−11** over 54 (t, n, r) grid points, a Monte Carlo
+  over the inverse-gamma prior agrees to ~1e−3 at 400,000 draws, and BF₁₀(t = 0, n = 39) = 0.173, i.e.
+  BF₀₁ = 5.79, the expected moderate evidence for the null at this sample size. **Stated limitation:** no
+  third-party Bayes-factor implementation is installed here, so this verifies the implementation of the
+  cited formula, not the formula.
+
+- **Data-leakage check:** nothing in this entry was chosen in the light of a result it governs. The window
+  survey reads only event timings and block boundaries — no EEG sample, no spectral quantity — and the
+  window was selected on clearance geometry alone. The bound is fixed in advance and the primary report is
+  bound-free. The BF verification uses synthetic *t* values only. No control-band power, no log ratio and
+  no Bayes factor on real data existed when this entry was written.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
@@ -1275,6 +1408,8 @@ across conditions in `later` (χ² = 16.077, p = .0011, W = 0.137, Page's L p = 
 7. ~~Sync this §9 entry into the actual repo's `docs/decision_log.md`~~ — **stale**, struck 2026-11-08: since §9 every edit has been made directly in this repo file, so there is nothing left to sync.
 8. ~~Begin Stage 5 (task-based exploratory analysis): resolve the open boundary-event flag in MSIT/task bundles (§5, still unchecked as of this entry), define the task analysis window, and apply D12 for task.~~ Done — §10a–10e (boundary flag resolved and fixed; Track-A window fixed at 1000 ms; task D12 applied, 0 subjects excluded).
 9. For manuscript writing: the 79% alpha-harmonic rate among primary peaks (§9) needs explicit discussion alongside the 61.5% headline peak-detection rate — flagged here so it isn't lost before drafting results/discussion text.
+17. Run `stage5_equivalence.py` on the §10l cell table and apply the §10m conjunction rule (BF₀₁ ≥ 3 **and** TOST) to the pre-stimulus conflict result. Needs no new EEG processing.
+18. Add the §10m control window to the Track A export under a new filename (never an overwrite), then compute the control band 55–95 Hz from the existing trial files, re-estimate resting beta at the same 500 ms segment length, and run the matched-estimator rest-vs-task comparison (`revision_plan.md` Stage 5; audit #5, #6; CLAUDE.md step 1). This is what unblocks the title.
 
 **Stage 5, open (as of 2026-11-01):**
 10. ~~Calibrate the task thresholds~~ — **done**: σ_i (§10f), full-length (§10h), half-length (§10h, 54/54 cells), matched-length (§10h, 39/39 cells), every run with 0 fit failures. All three threshold sets needed by `stage5_peak_detection_task.py` now exist.
