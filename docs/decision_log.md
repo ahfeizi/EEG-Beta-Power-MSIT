@@ -1272,7 +1272,7 @@ across conditions in `later` (χ² = 16.077, p = .0011, W = 0.137, Page's L p = 
 4. ~~Log the DOI here.~~ Done (§8).
 5. ~~Sync decision log + pre-registration doc (with DOI) into the actual repo.~~ Done — commit `9c53d5f85bf0e171207b7eae396890cc2f5d2548`.
 6. ~~Run `stage4_peak_detection.py --doi 10.5281/zenodo.23843194` on real ROI data.~~ Done — results in §9.
-7. Sync this §9 entry into the actual repo's `docs/decision_log.md` — repo-ready file delivered alongside this one.
+7. ~~Sync this §9 entry into the actual repo's `docs/decision_log.md`~~ — **stale**, struck 2026-11-08: since §9 every edit has been made directly in this repo file, so there is nothing left to sync.
 8. ~~Begin Stage 5 (task-based exploratory analysis): resolve the open boundary-event flag in MSIT/task bundles (§5, still unchecked as of this entry), define the task analysis window, and apply D12 for task.~~ Done — §10a–10e (boundary flag resolved and fixed; Track-A window fixed at 1000 ms; task D12 applied, 0 subjects excluded).
 9. For manuscript writing: the 79% alpha-harmonic rate among primary peaks (§9) needs explicit discussion alongside the 61.5% headline peak-detection rate — flagged here so it isn't lost before drafting results/discussion text.
 
