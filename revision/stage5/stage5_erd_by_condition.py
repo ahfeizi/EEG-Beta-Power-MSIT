@@ -61,10 +61,12 @@ COND_ORDER = ('F0', 'FS', '00', 'S0')
 
 
 def psd_band(x, fs):
-    """x: (n_channels, n_trials, n_samples) in uV. Returns (n_trials,) band-average power in uV^2/Hz,
+    """x: (n_channels, n_samples, n_trials) in uV - the layout stage5_export_trials_task.m writes for
+    `base` (7 x 250 x n) and `act` (7 x 500 x n). Returns (n_trials,) band-average power in uV^2/Hz,
     ROI-averaged on linear power first, then averaged over the 13-30 Hz bins."""
-    nch, ntr, ns = x.shape
+    nch, ns, ntr = x.shape
     assert ns in N_SEG_EXPECTED, f'unexpected window length {ns}'
+    x = np.moveaxis(x, 2, 1)                                # -> (n_channels, n_trials, n_samples)
     f, p = welch(x.reshape(nch * ntr, ns), fs=fs, window='hann', nperseg=NPERSEG, noverlap=NOVERLAP,
                  nfft=NPERSEG, detrend='constant', scaling='density', average='mean', axis=-1)
     n_seg = (ns - NOVERLAP) // (NPERSEG - NOVERLAP)
