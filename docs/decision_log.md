@@ -1136,6 +1136,97 @@ chose is reported per row.
   mini-block figures were already logged in §10b and §10g. Track A has not been run: this rule is in place
   before any real ERD% value exists.
 
+### 10l. Track A real-data results — ERD% across the four MSIT+ conditions (`S5-trackA-results`, 2026-11-08)
+
+**Step 1, trial export.** `stage5_export_trials_task()` under `matlab -batch`, detached (PID 10216),
+2026-11-08 15:57 → 16:05 (8 min), log `Revision_Output\stage5\trackA_export_run.log`, launcher recorded
+in `trackA_export_run.cmd`. 39 of 39 subjects exported, manifest `manifest_trials_20261108T160444.tsv`.
+**0 subjects excluded** by the per-condition 50 % rule.
+- 15,492 in-block trials, **15,335 usable (98.99 %)**, 5 outside, 82 baseline-window D12 rejections, 119
+  active-window rejections, 49 trials failing **both** windows. The naive sum
+  `usable + outside + rej_base + rej_act` therefore exceeds the trial count in 12 subjects — that is the
+  double-counted overlap, not a bookkeeping error. The identity that does hold,
+  `n_trials = usable + |outside ∪ rej_base ∪ rej_act|`, is exact in all 39 subjects.
+- Integrity, checked per subject from the stored per-trial metadata rather than assumed — **12 checks × 39
+  subjects, 468 of 468 pass**: metadata row count equals the manifest's trial count; `sum(usable)` equals
+  the manifest and `base.shape[2]` and `act.shape[2]`; `base` is 7×250×n and `act` 7×500×n in `single`;
+  usable and the rejected-or-outside union are exact complements; every manifest count reproduces from the
+  flags; and the export index is a permutation of 1…n_usable, non-zero exactly on usable trials.
+- Two independent cross-checks against `events.tsv`, computed by different code on different days:
+  **15,492 in-block trials** and **4,428 first-in-mini-block trials** both match
+  `stage5_window_overlap_summary.json` exactly.
+
+**Bug found and fixed before any ERD% value was computed.** `stage5_erd_by_condition.py`'s `psd_band`
+documented and unpacked its input as `(n_channels, n_trials, n_samples)`, but the exporter writes
+`(n_channels, n_samples, n_trials)`. The first real run therefore stopped at
+`AssertionError: unexpected window length 405` — 405 being sub-01's trial count read as a window length.
+The earlier smoke test had passed because it fed synthetic arrays in the function's own documented layout,
+which no file ever has. Fixed by making `psd_band` take the exporter's layout and `np.moveaxis` internally,
+then verified by recomputing one trial's band power by hand — per-channel Welch, ROI mean on linear power,
+band mean — agreeing to a relative 1.4e-16. The window-length assert is what caught it, so it stays.
+No ERD% value had been produced before the fix.
+
+**Step 2, ERD% computation.** `stage5_erd_by_condition.py` on all 39 subjects. The script's own two gates
+passed: the Welch verification reproduces scipy by explicit manual segmentation to 2.8e-15 for the 250
+sample window (1 segment) and 2.4e-15 for the 500 sample window (3 segments), 2.0 Hz bins; and the hard
+refusal on the mini-block count found **4,428 == 4,428** against `events.tsv`. Outputs: 15,492 per-trial
+rows with a power value on exactly the 15,335 usable trials, and 468 subject × condition × class cells
+(39 × 4 × 3) with **no missing ERD%**. Trials per cell: median 99.5 (all), 28.0 (first), 71.0 (later).
+
+**Step 3, the pre-specified statistics.** Medians of the primary metric, ERD% (positive = desynchronization
+from the baseline to the post-onset window):
+
+| class | 00 | S0 | F0 | FS | Friedman χ² | p | Kendall W | Page's L | p |
+|---|---|---|---|---|---|---|---|---|---|
+| all | 23.65 | 30.10 | 35.97 | 38.13 | 56.169 | 3.87e−12 | **0.480** | 525 | 5.45e−11 |
+| **first** | 19.61 | 28.13 | 26.71 | 31.99 | 15.831 | 0.00123 | **0.135** | 499 | 2.24e−4 |
+| later | 24.86 | 31.28 | 39.15 | 41.26 | 52.692 | 2.13e−11 | **0.450** | 526 | 2.56e−11 |
+
+**The §10k decision rule is satisfied in all three classes: a significant Friedman together with a
+significant Page's L supports a graded conflict effect on post-onset beta ERD%.** All six Holm-corrected
+pairs are significant in `all` and `later`; in `first`, three are — F0 vs 00 (p = .031, r_rb = +0.482),
+FS vs 00 (p = .00024, +0.713) and 00 vs S0 (p = .0059, −0.579), i.e. every pair involving the non-conflict
+condition. ERD% is positive in 449 of the 468 cells, so beta desynchronizes after stimulus onset in every
+condition and the effect is a difference in how much.
+
+**Secondary metrics behave as a real effect requires.** Absolute post-onset power mirrors ERD% with the
+expected sign (FS lowest: median 0.157 against 00's 0.178 in `all`; FS vs 00 r_rb = −0.995), and the
+trial-wise diagnostic estimator agrees in every class at uniformly smaller magnitude, as the §10g amendment
+predicted (all: 9.03 to 23.61 against the trial-averaged 23.65 to 38.13).
+
+**The baseline is not flat, and that decides which number is the headline.** `baseline_power_mean` differs
+across conditions in `later` (χ² = 16.077, p = .0011, W = 0.137, Page's L p = 7.6e−4) but **not in `first`**
+(χ² = 4.385, **p = 0.223**, W = 0.037, L p = 0.129).
+- Within a mini-block the preceding trial is the **same condition**, so a later trial's baseline sits in
+  that condition's own post-response interval, a median 864 ms after the previous response (§10g).
+  **Carry-over from the preceding same-condition trial is at least as parsimonious as anticipation**, and
+  this design cannot separate the two. Since ERD% divides by that baseline, the `later` and pooled ERD%
+  are partly contaminated by it.
+- The `first` class is the clean estimate: the condition is unpredictable there, its baseline sits a median
+  2,940 ms after the previous response, and it does **not** differ across conditions — yet the graded ERD%
+  effect survives. So the conflict effect is in the **post-onset response**, not inherited from a
+  pre-stimulus difference.
+- Therefore **W = 0.135 (first-in-mini-block) is the effect size to report as the conflict effect**, not
+  0.450 or 0.480. Honest counterweight, recorded rather than resolved: `first` cells hold a median 28
+  trials against `later`'s 71, so noisier cell means attenuate Kendall's W, and this analysis cannot say
+  how much of the drop from 0.450 to 0.135 is a smaller true effect and how much is attenuation.
+
+**Two things this does NOT establish, stated before any text is drafted.**
+1. The window is **post-onset `[0, +1000)` ms**. This says nothing about the v1 manuscript's *pre-stimulus*
+   conflict claim and neither revives nor refutes it. Any sentence built on §10l must name the window.
+2. The ordering F0 > S0 (Flanker interference producing more ERD% than Simon) is significant in `all` and
+   `later` but **not in `first`**, where that pair does not survive Holm, so it rests on the two classes the
+   baseline contaminates and **will not be claimed**. §10k's three-level collapse, which never ranks F0
+   against S0, remains the only ordering asserted.
+
+- **Data-leakage check.** Every analytic choice was fixed and committed before these numbers existed: the
+  ROI and windows in §10a/§10b, the ERD estimator and the mini-block split in §10g with its amendment, and
+  Page's L with its decision rule in §10k (commits `eb559b0`, `b58ddf8`, 2026-11-02, six days before this
+  run). The only code change made during the run was the axis bug above, a layout fix with no degrees of
+  freedom: it could not be tuned toward a result, and the run that produced these numbers is the first that
+  reached an ERD% value at all. Track A shares no threshold, calibration or classification with Track B, so
+  the §10i–§10j sensitivity confound does not reach it.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
@@ -1190,6 +1281,6 @@ chose is reported per row.
 11. ~~Commit and tag `S5-task-peak-frozen`, then run `stage5_peak_detection_task.py`~~ — **done** 2026-11-02: tag at `bfc4365`, results in §10i (28 peak / 10 no_peak / 1 poor_fit; matched pass identical; split-half 97.4 %, ICC 0.938; rest-vs-task McNemar exact p = 0.2891).
 12. ~~Evaluate §10d rule 5~~ — **evaluated and TRIGGERED** (§10h: max difference 0.0873, above 0.05 at six of ten levels). The length-matched secondary analysis is therefore required before any rest-vs-task prevalence comparison is reported.
 13. ~~**Awaiting Amirhossein's sign-off (§10b):** whether Track A carries a pre-stimulus window ... in addition to the approved post-onset window.~~ Answered 2026-11-01: yes — baseline `[−500, 0)` ms added, ERD% is the primary metric, absolute post-onset power secondary (§10g). Windows verified empirically over all 39 subjects.
-14. Build and run Track A once the §10f simulation frees the cores. The three scripts are written, linted and smoke-tested (§10g): `stage5_export_trials_task.m` → `stage5_erd_by_condition.py` → `stage5_erd_stats.py`. Only the runs remain (39 MATLAB rebuilds, then two fast Python steps).
+14. ~~Build and run Track A~~ — **done** 2026-11-08 (§10l): 39/39 exported, 15,335 of 15,492 trials usable, 0 subjects excluded; a graded conflict effect on post-onset ERD% with the §10k rule satisfied in all three mini-block classes. One axis bug in `stage5_erd_by_condition.py` found and fixed before any ERD% value existed. The headline effect size is the first-in-mini-block W = 0.135.
 15. ~~Confirm the F/S/0 interference semantics of the four MSIT+ labels against Dzianok et al. 2022~~ — **done** 2026-11-02 (§10k): 0 = no interference, S = Simon, F = Flanker, FS = both. Page's L added to the Track A plan on the three ordered levels 00 < mean(F0, S0) < FS, with its decision rule written before the run.
 16. ~~Compare the matched-task power curve with the rest curve and apply the `S5-matched-power` decision rule~~ — **done** 2026-11-02 (§10j): max |matched − rest| = 0.0815, above 0.05 at six of ten levels, so the second branch applies. No rest-vs-task prevalence difference is reported as a physiological result; length matching removed almost none of the gap (0.0873 → 0.0815), which identifies it as a spectral-roughness effect.
