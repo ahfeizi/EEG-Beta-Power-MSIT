@@ -1598,6 +1598,131 @@ one scale, one framework, both bands.
   the title and for the control-band wording, so no result can choose its own interpretation. No band
   power has yet been computed on the control windows and no rest 500 ms segment has been estimated.
 
+### 10p. Results of the two §10o analyses — the robust sensitivity, and the matched rest-vs-task comparison (2026-11-08)
+
+Both run under the rules committed in §10o (`b264abf`) before either script was first executed.
+
+---
+
+#### 10p-1. Trial-level robustness (§10o-1, `stage5_robust_sensitivity.py`)
+
+Hard check first: the mean-based cells rebuilt from the per-trial table reproduce the committed
+`stage5_erd_per_subject_condition.csv` over **1,404 values to a relative 1.67e−14**, so the three
+estimators differ by nothing except the trial aggregation.
+
+**ERD%, the Track A primary metric — every verdict holds, and the robust estimators are slightly
+stronger.**
+
+| class | mean (pre-specified) | median (sens.) | trim20 (sens.) |
+|---|---|---|---|
+| all | p 3.9e−12, W 0.480, L p 5.4e−11 | p 8.0e−13, W 0.507, L p 1.1e−12 | p 4.7e−13, W 0.517, L p 2.1e−13 |
+| **first** | p 0.00123, **W 0.135**, L p 2.2e−4 | p 1.8e−4, **W 0.170**, L p 2.2e−4 | p 2.3e−4, **W 0.166**, L p 9.3e−5 |
+| later | p 2.1e−11, W 0.450, L p 2.6e−11 | p 1.0e−11, W 0.464, L p 2.5e−12 | p 2.3e−13, W 0.529, L p 1.1e−12 |
+
+So §10l's graded conflict effect is **not** an artefact of the trial-averaged estimator; if anything the
+pre-specified estimator understates it (W 0.135 against 0.170 in the clean class).
+
+**Pre-stimulus power omnibus — also unchanged in every class:** the first-in-mini-block class stays
+non-significant under all three (p 0.223 / 0.214 / 0.134) and the later and pooled classes stay
+significant. No verdict moves.
+
+**But the §10n primary equivalence comparison DOES move, and this is the finding of 10p-1.**
+
+| estimator | ratio | 90 % CI | attained bound | BF₀₁ | p_TOST | equivalent |
+|---|---|---|---|---|---|---|
+| **mean (pre-specified)** | 1.0886 | [0.9790, 1.2104] | **±21.0 %** | **2.509** | 0.3733 | **no** |
+| median (sensitivity) | 1.0017 | [0.9628, 1.0420] | **±4.2 %** | **5.780** | 0.0000 | **yes** |
+| trim20 (sensitivity) | 1.0058 | [0.9699, 1.0431] | ±4.3 % | 5.599 | 0.0000 | yes |
+
+Under the robust estimators the §10m conjunction **passes** — BF₀₁ ≈ 5.8 with equivalence inside ±4.2 % —
+while under the pre-specified mean it **fails**. §10o-1 pre-specified what to do with exactly this
+disagreement, so:
+- **The pre-specified verdict stands as the reported one.** §10n is unchanged: the pre-stimulus conflict
+  result may not be called a null on the pre-registered analysis.
+- **The manuscript must report both**, with the disclosure that the estimator which supports the null was
+  adopted **after** the `sub-06` outlier was found, and that it changes the estimand (§10o-1).
+- The honest one-sentence form: *whether the pre-stimulus conflict null can be asserted depends on a
+  single trial in one subject* — which is itself the most informative thing this analysis produced, and
+  which no amount of further testing on these data can resolve.
+- Nothing was excluded, in any version.
+
+---
+
+#### 10p-2. The matched-estimator rest-vs-task comparison (§10o-2, `stage5_rest_vs_task_matched.py`)
+
+One 500 ms Welch estimator on both sides (2.0 Hz bins), rest segments being the Stage-4 kept 2 s epochs
+subdivided × 4. Windows per subject: rest 1,104–1,200 (median 1,196), task pre-stimulus 305–426
+(median 396), control 78–112 (median 102). Holm across the three comparisons within each band.
+
+**13–30 Hz, pre-specified mean aggregation:**
+
+| comparison | ratio | geometric % change | 90 % CI | p_Holm | r_rb |
+|---|---|---|---|---|---|
+| **A** task pre-stimulus vs rest | 1.4002 | **+40.0 %** | [+30.3, +50.5] | 2.8e−09 | +0.954 |
+| **B** control window vs rest | 1.2891 | **+28.9 %** | [+19.7, +38.9] | 8.1e−07 | +0.844 |
+| **C** task pre-stimulus vs control | 1.0862 | **+8.6 %** | [+4.3, +13.2] | 0.00155 | +0.567 |
+
+**Rule 1 is satisfied: the pre-stimulus elevation survives a matched estimator — but it is +40 %, not
++63–73 %.** The v1 figure was inflated by roughly 23–33 percentage points, which is audit #5's predicted
+leakage, now measured: v1 estimated rest with 2 s windows (0.5 Hz bins) and the task pre-stimulus window
+with one 200 ms window (5 Hz true resolution on 1.95 Hz zero-padded bins). **+40.0 % [30.3, 50.5] replaces
++63–73 % as the reported figure.**
+
+**Rule 3, and the number that matters most here.** C is significant, so by the letter of §10o-2 the
+elevation is "pre-stimulus specific" and the word "anticipation" is not automatically struck. But the
+decomposition is additive in log units, A = B + C exactly, and it says the opposite of what a binary
+verdict suggests:
+
+| aggregation | general within-task share (B/A) | pre-stimulus-specific share (C/A) |
+|---|---|---|
+| mean (pre-specified) | **75.4 %** | **24.6 %** |
+| median (sensitivity) | 84.5 % | 15.5 % |
+| trim20 (sensitivity) | 84.2 % | 15.8 % |
+
+**Three quarters of the rest-to-task beta increase is already present in a late-ITI window that is a
+median 1,032 ms after the previous active window, 1,425 ms after the previous response and 1,534 ms before
+the next stimulus.** Only about a quarter — a sixth under robust aggregation — is specific to the
+pre-stimulus moment. The pre-specified rule was binary and is honoured as written; the decomposition is
+reported as the substantive result, and any sentence that reads the +40 % as anticipation is wrong by a
+factor of four.
+
+**55–95 Hz, the EMG control band — and §10o-2 rule 5 fires.**
+
+| comparison | ratio | geometric % change | 90 % CI | p_Holm | BF₀₁ | p_TOST |
+|---|---|---|---|---|---|---|
+| A control band, task pre-stimulus vs rest | 1.3676 | **+36.8 %** | [+17.5, +59.2] | 0.00267 | 0.040 | 0.9867 |
+| B control band, control window vs rest | 1.2077 | +20.8 % | [+4.9, +39.1] | 0.0322 | 0.614 | 0.8369 |
+| C control band, pre-stimulus vs control | 1.1324 | +13.2 % | [+5.6, +21.4] | 0.00383 | 0.124 | 0.6759 |
+
+**The control band rises by +36.8 %, against beta's +40.0 % — 93 % of the beta effect in log units.**
+§10o-2 rule 5, written before this ran, says exactly what that means: *"If a 55–95 Hz increase is itself
+significant and comparable to the 13–30 Hz one, the EMG explanation is supported, not excluded, and that
+is reported as such."* It is significant and it is comparable. **The EMG account of the rest-to-task beta
+increase is now positively supported, not merely unexcluded.**
+- No equivalence is available anywhere in the control band: TOST p 0.68–0.99 and BF₀₁ 0.04–0.61 on A, B
+  and C. The §10m conjunction fails on every one.
+- So audit #10's recommended replacement wording — "no evidence of a parallel increase; equivalence not
+  established" — is **itself no longer accurate**: there **is** evidence of a parallel increase. The
+  words "dissociate", "argue against", "support a genuine neurophysiological origin" and "rule out
+  directly" cannot appear in any form.
+- Under the robust aggregators the control band rises **+15.8 % (median) / +18.2 % (trim20)**, i.e.
+  **49–54 %** of the beta effect in log units rather than 93 %, while beta itself barely moves
+  (+35.3 % / +36.4 %). So the control-band mean is the quantity inflated by extreme windows, which is what
+  broadband muscle artefact looks like. Both readings must be reported: on the pre-registered analysis the
+  two bands rise together; on the robust one beta rises about twice as much as the control band. **Neither
+  reading supports a dissociation.**
+
+**What this does not touch.** Both bands and all three comparisons are task-vs-rest *power* contrasts; they
+are independent of §10j's peak-*prevalence* sensitivity confound, which concerns discrete peak detection
+and not band-average power.
+
+- **Data-leakage check:** every rule applied — the estimator, the rest segmentation, the three
+  comparisons, the Holm scheme, the bound, and what each outcome means for the title and the control-band
+  wording — was committed in §10o before either script ran. Both verdicts went against the manuscript's
+  existing claims and are reported as they came out. The only code change during the run was adding a
+  missing `os.makedirs` after a write failed, and making `psd_band` take the band as an argument with its
+  default unchanged (checked: the default call is bit-identical to the explicit 13–30 Hz call).
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
@@ -1647,8 +1772,10 @@ one scale, one framework, both bands.
 8. ~~Begin Stage 5 (task-based exploratory analysis): resolve the open boundary-event flag in MSIT/task bundles (§5, still unchecked as of this entry), define the task analysis window, and apply D12 for task.~~ Done — §10a–10e (boundary flag resolved and fixed; Track-A window fixed at 1000 ms; task D12 applied, 0 subjects excluded).
 9. For manuscript writing: the 79% alpha-harmonic rate among primary peaks (§9) needs explicit discussion alongside the 61.5% headline peak-detection rate — flagged here so it isn't lost before drafting results/discussion text.
 17. ~~Run `stage5_equivalence.py` and apply the §10m conjunction rule~~ — **done** 2026-11-08 (§10n): the conjunction **FAILS** (BF₀₁ = 2.51, inconclusive; TOST p = 0.373, equivalence only within ±21 %), so the pre-stimulus conflict result may not be called a null.
-18. Add the §10m control window to the Track A export under a new filename (never an overwrite), then compute the control band 55–95 Hz from the existing trial files, re-estimate resting beta at the same 500 ms segment length, and run the matched-estimator rest-vs-task comparison (`revision_plan.md` Stage 5; audit #5, #6; CLAUDE.md step 1). This is what unblocks the title.
-19. **Decision for Amirhossein (§10n):** whether to add a uniform trial-level robustness rule (per-cell median, trimmed mean, or an outlier-trial criterion) as a labelled sensitivity analysis beside the pre-specified trial-averaged estimator. One trial supplies 89 % of one cell mean and reverses the parametric TOST verdict; 4 of 156 first-class cells have a largest-trial share above 0.25.
+18. ~~Add the §10m control window and run the matched-estimator comparison~~ — **done** 2026-11-08 (§10p-2): +40.0 % beta elevation, of which 75 % is a general within-task level; the 55–95 Hz control band rises +36.8 %, so the EMG account is supported, not excluded. Originally: add the §10m control window to the Track A export under a new filename (never an overwrite), then compute the control band 55–95 Hz from the existing trial files, re-estimate resting beta at the same 500 ms segment length, and run the matched-estimator rest-vs-task comparison (`revision_plan.md` Stage 5; audit #5, #6; CLAUDE.md step 1). This is what unblocks the title.
+19. ~~Decision for Amirhossein (§10n): a uniform trial-level robustness rule~~ — **answered and done** 2026-11-08 (§10o-1, §10p-1): median and 20 % trimmed mean, applied uniformly; every §10l verdict holds, but the §10n equivalence verdict flips, so both are reported. Originally: whether to add a uniform trial-level robustness rule (per-cell median, trimmed mean, or an outlier-trial criterion) as a labelled sensitivity analysis beside the pre-specified trial-averaged estimator. One trial supplies 89 % of one cell mean and reverses the parametric TOST verdict; 4 of 156 first-class cells have a largest-trial share above 0.25.
+20. Decide the title and the framing (audit #17, CLAUDE.md step 5), now unblocked: §10p-2 replaced the +63–73 % figure with +40.0 %, showed three quarters of it is not pre-stimulus specific, and turned the control band from an unexcluded confound into a supported one.
+21. Estimate and then carry out the manuscript rewrite (`revision_plan.md` Stage 7). The scope estimate is in `stage5_reconciliation.md`.
 
 **Stage 5, open (as of 2026-11-01):**
 10. ~~Calibrate the task thresholds~~ — **done**: σ_i (§10f), full-length (§10h), half-length (§10h, 54/54 cells), matched-length (§10h, 39/39 cells), every run with 0 fit failures. All three threshold sets needed by `stage5_peak_detection_task.py` now exist.

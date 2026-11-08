@@ -60,10 +60,12 @@ N_SEG_EXPECTED = {250: 1, 500: 3}  # samples in the window -> Welch segments
 COND_ORDER = ('F0', 'FS', '00', 'S0')
 
 
-def psd_band(x, fs):
+def psd_band(x, fs, band=BETA):
     """x: (n_channels, n_samples, n_trials) in uV - the layout stage5_export_trials_task.m writes for
     `base` (7 x 250 x n) and `act` (7 x 500 x n). Returns (n_trials,) band-average power in uV^2/Hz,
-    ROI-averaged on linear power first, then averaged over the 13-30 Hz bins."""
+    ROI-averaged on linear power first, then averaged over the bins of `band` (13-30 Hz by default; the
+    55-95 Hz control band of sec 10o-2 is passed explicitly, and nothing else about the estimator
+    changes)."""
     nch, ns, ntr = x.shape
     assert ns in N_SEG_EXPECTED, f'unexpected window length {ns}'
     x = np.moveaxis(x, 2, 1)                                # -> (n_channels, n_trials, n_samples)
@@ -72,7 +74,7 @@ def psd_band(x, fs):
     n_seg = (ns - NOVERLAP) // (NPERSEG - NOVERLAP)
     assert n_seg == N_SEG_EXPECTED[ns], f'{ns} samples gave {n_seg} segments'
     p = p.reshape(nch, ntr, f.size).mean(axis=0)            # ROI mean on linear power
-    m = (f >= BETA[0]) & (f <= BETA[1])
+    m = (f >= band[0]) & (f <= band[1])
     return p[:, m].mean(axis=1), f, m
 
 
