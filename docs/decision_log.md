@@ -1360,6 +1360,244 @@ primary** and r = 0.5, 1.0 as a robustness check. BF₀₁ = 1 / BF₁₀.
   bound-free. The BF verification uses synthetic *t* values only. No control-band power, no log ratio and
   no Bayes factor on real data existed when this entry was written.
 
+### 10n. BF₀₁ and TOST on the pre-stimulus conflict result — the conjunction FAILS (`S5-equivalence-results`, 2026-11-08)
+
+Run of `stage5_equivalence.py` on the §10l cell table, under the rules committed in §10m (`2b2f06d`)
+before the script was first run. The implementation check reported in the output: the two quadrature
+routes agree to **3.06e−11** over 54 (t, n, r) grid points.
+
+**The pre-specified positive control passes first.** On `active_power_mean`, where §10l found a large
+condition effect, FS vs 00 gives BF₁₀ = **5.71e+07** in the later class and 1.23e+07 pooled (and 4.88 in
+the first class, p = .0082). The machinery detects the effect it must detect, so a null-looking result on
+the pre-stimulus metric is about the data, not the code.
+
+**Primary comparison: `baseline_power_mean`, FS vs 00, first-in-mini-block class, n = 39.**
+
+| quantity | value |
+|---|---|
+| ratio (10^mean log₁₀) | 1.0886 |
+| **90 % CI, the bound-free primary report** | **[0.9790, 1.2104]** |
+| attained bound | **±21.0 %** |
+| **BF₀₁ (r = 0.707)** | **2.509** (r = 0.5: 1.942; r = 1.0: 3.358) |
+| p_TOST at [0.900, 1.111] | **0.3733** — not equivalent |
+| two-sided p | 0.1853 |
+| dz | +0.216 |
+
+**Verdict under the §10m conjunction rule: it FAILS on both arms.** BF₀₁ = 2.51 falls in the
+1/3 – 3 band, which §10m defines as **inconclusive**, and the prior sensitivity (1.94 to 3.36 across
+r = 0.5 – 1.0) straddles the threshold, which confirms rather than weakens that reading. TOST does not
+establish equivalence at the pre-specified bound; equivalence holds only within **±21 %**.
+
+**So the manuscript may NOT call the pre-stimulus conflict result a null.** §10l's p = 0.223 stays "a
+failure to reject". What may be said is exactly this: the omnibus does not reject, the maximum conflict
+contrast is inconclusive by Bayes factor, and equivalence is established only within ±21 % — i.e. **the
+study cannot resolve a difference of the size it observed**.
+
+**And the direction is consistent across classes, which argues against absence.** The FS/00 pre-stimulus
+ratio is 1.0886 (first), 1.0841 (later) and 1.1030 (pooled). The first-class non-significance therefore
+looks like insufficient resolution in the class with the fewest trials per cell (median 28 against 71),
+not like a different physiological state. **This corrects the reading in
+`stage5_reconciliation.md` §1.2**, which called it "a clean null" on the strength of the Friedman p alone;
+that document is amended in the same commit.
+
+**All six pairs, first-in-mini-block class** (eq = TOST equivalent at [0.900, 1.111]):
+
+| pair | ratio | 90 % CI | attained | BF₀₁ | p_TOST | eq |
+|---|---|---|---|---|---|---|
+| F0 vs FS | 0.9605 | [0.8717, 1.0584] | ±14.7 % | 4.608 | 0.1327 | 0 |
+| F0 vs 00 | 1.0456 | [0.9994, 1.0939] | ±9.4 % | 1.646 | 0.0146 | 1 |
+| F0 vs S0 | 0.9620 | [0.9032, 1.0246] | ±10.7 % | **3.523** | 0.0414 | **1** |
+| **FS vs 00** | **1.0886** | **[0.9790, 1.2104]** | **±21.0 %** | **2.509** | **0.3733** | **0** |
+| FS vs S0 | 1.0016 | [0.9468, 1.0595] | ±5.9 % | **5.788** | 0.0017 | **1** |
+| 00 vs S0 | 0.9201 | [0.8561, 0.9889] | ±16.8 % | 1.054 | 0.3046 | 0 |
+
+Two pairs pass **both** arms and are the only equivalence claims this analysis supports: **FS vs S0**
+(BF₀₁ = 5.79, equivalent within ±5.9 %) and **F0 vs S0** (BF₀₁ = 3.52, within ±10.7 %). One passes TOST
+with an inconclusive BF (F0 vs 00), one passes BF with a failing TOST (F0 vs FS), and two pass neither —
+including the primary contrast. Each must be reported as it came out, not pooled into a verdict.
+
+---
+
+**The parametric and distribution-free TOST disagree, and the cause is one trial.** On the primary pair
+the t-based TOST fails (p = 0.3733) while the two-one-sided-Wilcoxon robustness check passes
+(p = 0.0022). That is not a reason to prefer either: §10m made the t-based test the pre-specified one and
+the Wilcoxon version a check, so the disagreement is reported and diagnosed.
+- The log₁₀ ratios have **mean +0.0369 but median +0.0038** (ratio 1.0886 against 1.0088), SD 0.1706,
+  IQR [−0.0246, +0.0524], **skew +4.78, excess kurtosis +24.77**. The median sits 10.4 % of the way from
+  zero to the mean.
+- One subject accounts for it: **`sub-06`, log₁₀ ratio +1.0025, i.e. an FS/00 pre-stimulus power ratio of
+  10.06**. The next most extreme are +0.1825 (`sub-07`) and −0.1476 (`sub-14`).
+- Tracing it to the trial level: **89.4 % of `sub-06`'s FS cell mean comes from a single trial**, whose
+  baseline power is 27.66 against that cell's median of 0.126 — a factor of 220 — while its 00 cell is
+  unremarkable (largest-trial share 0.066, mean 0.1184, median 0.1200). The 10× ratio is that one trial.
+- **D12 did not catch it.** The rule is a 150 µV time-domain peak-to-peak test on Fz/Cz/C4, which does not
+  bound a large beta-band burst in the ROI channels.
+- Scope, measured over all 156 first-class cells: the largest trial contributes a median of **0.088** of a
+  cell mean (uniform expectation at n ≈ 27 is 0.037), p90 0.145, p99 0.498, max 0.894. **Four cells exceed
+  0.25**: `sub-06` FS (0.894), `sub-06` S0 (0.704), `sub-17` F0 (0.330), `sub-17` FS (0.325). So the
+  problem is rare but decisive where it occurs.
+- Reassurance that bounds the damage: §10l's statistics are **rank-based** (Friedman, Wilcoxon, Page's L),
+  so such a cell can move a result by at most one rank; the unbounded sensitivity is specific to the
+  parametric TOST and to any mean-based summary.
+
+**Nothing was excluded.** No subject and no trial was dropped. Removing `sub-06` after seeing that it
+reverses the TOST verdict would be exactly the data-dependent choice this project's discipline exists to
+prevent, and the trial-averaged estimator is what §10g pre-specified. This is recorded as a **decision for
+Amirhossein** (next-steps item 19): whether to add a trial-level robustness rule — a per-cell median, a
+trimmed mean, or an outlier-trial criterion applied **uniformly to every cell** — as a clearly labelled
+**sensitivity analysis reported alongside** the pre-specified primary, never replacing it. If it is added,
+the text must say that it was adopted after the outlier was found.
+
+**The §10m control window is exported, and it reproduces the survey on real data.**
+`stage5_export_control_task.m` under `matlab -batch`, detached, 2026-11-08 17:57 (sub-01, the verification
+run) and 18:0x → 20:52 (the other 38), log `Revision_Output\stage5	rackA_control_run.log`, output
+`<eegOutRoot>\stage5\control\`. The §10l trial export was not touched: the control windows go to their
+own directory under their own filenames (rule 4). Because the verification run had already written
+`sub-01`, and the script never overwrites, the remaining 38 subjects were passed explicitly rather than
+deleting anything in `Revision_EEG`; the result is **two manifests whose union is the 39 subjects**, which
+is why both are kept.
+- 39 of 39 subjects, **0 excluded** by the per-condition 50 % rule. **3,960 eligible** windows, **3,943
+  usable (99.6 %)**, 0 outside, 15 D12 rejections, 2 trials rejected for a response inside the window.
+- Integrity, checked per subject from the stored per-trial metadata: **8 checks × 39 subjects, 312 of 312
+  pass** — counts agree with the manifest and with `ctrl.shape[2]`, `ctrl` is 7×250×n `single`, usable is
+  the exact complement of outside-or-rejected-or-response-inside, the export index is a permutation of
+  1…n_usable, and **every** window clears both the previous active window and the upcoming onset.
+- **The independent confirmation that matters.** The survey ran in Python on the 1000 Hz `events.tsv`
+  grid; the export ran in MATLAB on the 500 Hz pipeline grid through the rebuilt bundles. Every figure
+  agrees to the 1–2 ms the grid note predicted:
+
+| | survey (1000 Hz) | export (500 Hz) |
+|---|---|---|
+| eligible windows | 3,960 | **3,960** |
+| outside their block | 0 | **0** |
+| previous response inside | 2 | **2** |
+| clearance from prev. active, min / median / max | 733 / 1,033 / 1,716 | **732 / 1,032 / 1,716** |
+| clearance from prev. response, n / p05 / median | 3,921 / 1,047 / 1,424 | **3,921 / 1,046 / 1,425** |
+| clearance to next onset, min / median / max | 1,233 / 1,533 / 2,217 | **1,234 / 1,534 / 2,218** |
+
+  Nothing was tuned to make these match: the window definition was fixed in §10m before the MATLAB script
+  existed.
+- Still to come on this window (next-steps item 18): the 13–30 Hz and 55–95 Hz band powers, resting beta
+  re-estimated at the same 500 ms segment length, and the matched-estimator rest-vs-task comparison. **No
+  band power has been computed on these files yet.**
+
+- **Data-leakage check:** every rule applied here — the bound, the primary comparison, the BF thresholds,
+  the conjunction, the positive control — was committed in §10m before this script first ran, and the
+  verdict is reported as it came out, against the reading the reconciliation pass had hoped for. The
+  outlier diagnosis is a post-hoc diagnostic, labelled as one, and it changes no reported number: the
+  primary verdict above stands on the pre-specified test.
+
+### 10o. Two decision rules, written before the analyses they govern (`S5-robust-estimator`, `S5-matched-rest-task`, 2026-11-08)
+
+Amirhossein instructed both analyses on 2026-11-08 after §10n. Neither has been run; no band power on the
+control windows and no robust-estimator value exists at the time this entry is written.
+
+---
+
+#### 10o-1. The trial-level robustness sensitivity analysis (next-steps item 19)
+
+**Full disclosure, first.** This analysis was **added after** §10n found that one trial supplies 89.4 % of
+`sub-06`'s FS cell mean and that removing it would reverse the parametric TOST verdict. It was **not**
+pre-specified. Every number it produces is therefore a **labelled sensitivity analysis**, reported beside
+the pre-specified mean-based result of §10l and §10n, never in place of it. The manuscript must say that it
+was adopted after the outlier was found.
+
+**Decision: the cell MEDIAN is the sensitivity estimator, with the 20 % trimmed mean reported alongside.**
+Amirhossein left the choice between the two to a documented preference. The median comes first because:
+1. **It has no tuning constant.** A trim fraction is a new free parameter that would be chosen after
+   seeing the outlier, which is exactly the degree of freedom this exercise is meant to remove.
+2. **It speaks in the units the manuscript already uses.** §9 through §10l report medians throughout, so
+   the sensitivity analysis needs no new vocabulary.
+3. **Its breakdown point is the highest available** (50 %), and with a median of 28 trials per cell in the
+   first-in-mini-block class and one trial at 220× the cell median, that matters; a 20 % trimmed mean
+   breaks down at 20 %.
+The 20 % trimmed mean is reported with it because it is far more efficient — it uses the central 60 % of
+the ordered values rather than one — so agreement between the two shows the conclusion does not rest on an
+inefficient estimator.
+
+**Applied uniformly.** Both estimators replace the trial average in **every** cell of §10l and §10n — all
+39 subjects × 4 conditions × 3 mini-block classes, both windows — not only the cells whose verdict they
+change. The full §10l statistics (Friedman, Kendall's W, the six Holm-corrected Wilcoxon pairs with
+rank-biserial r, Page's L on the §10k levels) and the full §10n machinery (BF₀₁ and TOST at the §10m
+bound) are rerun on them, by importing the same functions from `stage5_erd_stats.py` and
+`stage5_equivalence.py` so no definition can drift.
+
+**A limitation that must travel with the result, not be buried.** The median and the trimmed mean of trial
+power are **not** estimates of the mean of trial power: they change the **estimand**, not just the
+estimator, and the classic ERD definition §10g adopted (Pfurtscheller & Lopes da Silva, 1999) averages
+power across trials. So agreement between the estimators supports the robustness of the **conclusion**, not
+of the number, and the pre-specified mean-based values stay the reported ones.
+
+**Decision rule, written before the run.**
+- The mean-based cells are recomputed from the per-trial table first and must reproduce
+  `stage5_erd_per_subject_condition.csv` exactly; the run stops if they do not.
+- If the robust estimators **agree** with the pre-specified result on every verdict that §10l and §10n
+  report (the Friedman and Page's L significance per class, the §10m conjunction on the primary pair),
+  the text says the conclusions are robust to the trial-level outliers and keeps the pre-specified numbers.
+- If they **disagree** anywhere, the disagreement is reported in full at that point, with both numbers and
+  with the statement that the robust version was adopted after the outlier was found. No verdict is
+  replaced by the robust one, and no subject or trial is excluded in any version.
+
+---
+
+#### 10o-2. The matched-estimator rest-vs-task comparison (next-steps item 18)
+
+This is `revision_plan.md` Stage 5, audit items #5 and #6, CLAUDE.md step 1, and the control-band half of
+audit #10. It is the item that unblocks the title.
+
+**One estimator everywhere, which is the whole point.** Every window on both sides is 500 ms = 250 samples
+at 500 Hz, through one Welch call with `nperseg = 250`, `noverlap = 125`, `nfft = 250`, Hann,
+`detrend='constant'`, `scaling='density'` — exactly one Hann-tapered periodogram with 2.0 Hz bins per
+window, the settings §10l already verified against a manual segmentation to 2.8e−15. Audit #5's objection
+was that rest used 2 s windows and the task 200 ms; after this there is no difference left to object to.
+
+**Where the rest segments come from.** The Stage-4 rest ROI exports hold exactly the **kept** 2 s
+pseudo-epochs as contiguous runs (verified: `sub-01` has runs of 150 + 150 epochs for `nKept` = 300). Each
+kept 2 s epoch is subdivided into **four non-overlapping 500 ms segments**, so Stage-4's D12 decisions are
+inherited unchanged and **no new artifact rule is introduced on the rest side**. At `n_kept` 276–300
+(§10h) that gives 1,104–1,200 rest segments per subject.
+
+**The three comparisons, per band, on the within-subject difference of log₁₀ power:**
+- **A: task pre-stimulus vs rest.** The manuscript's +63–73 % claim, recomputed honestly.
+- **B: within-task control window vs rest.** The §10m window.
+- **C: task pre-stimulus vs the control window.** Whether any elevation is specific to the pre-stimulus
+  moment or is the general within-task level.
+
+**Bands:** 13–30 Hz (the beta claim) and 55–95 Hz (audit #10's EMG control). Both lie clear of the 50 and
+100 Hz line-noise removal (D5) and inside the band the pipeline preserves (D4: no low-pass).
+
+**Statistics.** Exact Wilcoxon signed-rank on the log₁₀ ratio with matched-pairs rank-biserial r (the
+project's standing choice), **Holm-corrected across the three comparisons within each band**; the
+geometric-mean percent change 10^mean − 1 with its 90 % CI; and the §10m equivalence machinery — the
+bound-free 90 % CI, TOST at [0.900, 1.111], BF₀₁ with r = 0.707 primary. The three comparisons are not
+multiplicity-corrected **against each other across bands**, because each band answers a different
+pre-registered question; every p-value is reported either way. Audit #11 is satisfied by construction:
+one scale, one framework, both bands.
+
+**Decision rule, written before the run.**
+1. **A significant in 13–30 Hz, task above rest** → the pre-stimulus elevation survives a matched
+   estimator. Report the ratio and the geometric-mean % change, replacing the +63–73 % figure, and state
+   that the v1 number came from a mismatched estimator.
+2. **A not significant in 13–30 Hz** → the reported elevation does not survive, the engagement /
+   anticipation reading loses its empirical basis, and the manuscript says so plainly.
+3. **Specificity, only if A is significant.** If **C is also significant in the same direction**, the
+   elevation is pre-stimulus specific. If **C is not significant** (or B ≈ A), it is a general within-task
+   level, and by CLAUDE.md step 1's own rule **the word "anticipation" leaves the title**.
+4. **Control band 55–95 Hz.** The §10m conjunction governs: BF₀₁ ≥ 3 **and** TOST equivalence are both
+   required before the manuscript may claim the control band shows no parallel increase. If the
+   conjunction fails, the text reads "no evidence of a parallel increase; equivalence established only
+   within ±X %" with the attained bound, which is audit #10's own recommended wording, and the words
+   "dissociate" and "rule out directly" do not return.
+5. If a 55–95 Hz increase is itself significant and comparable to the 13–30 Hz one, the EMG explanation is
+   **supported**, not excluded, and that is reported as such.
+6. Every comparison is additionally reported with the §10o-1 robust estimators, labelled as the sensitivity
+   analysis it is.
+
+- **Data-leakage check:** both rules above are fixed before either analysis runs. The robust estimators are
+  disclosed as post-outlier additions. The rest-vs-task rule names, in advance, what each outcome means for
+  the title and for the control-band wording, so no result can choose its own interpretation. No band
+  power has yet been computed on the control windows and no rest 500 ms segment has been estimated.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
@@ -1408,8 +1646,9 @@ primary** and r = 0.5, 1.0 as a robustness check. BF₀₁ = 1 / BF₁₀.
 7. ~~Sync this §9 entry into the actual repo's `docs/decision_log.md`~~ — **stale**, struck 2026-11-08: since §9 every edit has been made directly in this repo file, so there is nothing left to sync.
 8. ~~Begin Stage 5 (task-based exploratory analysis): resolve the open boundary-event flag in MSIT/task bundles (§5, still unchecked as of this entry), define the task analysis window, and apply D12 for task.~~ Done — §10a–10e (boundary flag resolved and fixed; Track-A window fixed at 1000 ms; task D12 applied, 0 subjects excluded).
 9. For manuscript writing: the 79% alpha-harmonic rate among primary peaks (§9) needs explicit discussion alongside the 61.5% headline peak-detection rate — flagged here so it isn't lost before drafting results/discussion text.
-17. Run `stage5_equivalence.py` on the §10l cell table and apply the §10m conjunction rule (BF₀₁ ≥ 3 **and** TOST) to the pre-stimulus conflict result. Needs no new EEG processing.
+17. ~~Run `stage5_equivalence.py` and apply the §10m conjunction rule~~ — **done** 2026-11-08 (§10n): the conjunction **FAILS** (BF₀₁ = 2.51, inconclusive; TOST p = 0.373, equivalence only within ±21 %), so the pre-stimulus conflict result may not be called a null.
 18. Add the §10m control window to the Track A export under a new filename (never an overwrite), then compute the control band 55–95 Hz from the existing trial files, re-estimate resting beta at the same 500 ms segment length, and run the matched-estimator rest-vs-task comparison (`revision_plan.md` Stage 5; audit #5, #6; CLAUDE.md step 1). This is what unblocks the title.
+19. **Decision for Amirhossein (§10n):** whether to add a uniform trial-level robustness rule (per-cell median, trimmed mean, or an outlier-trial criterion) as a labelled sensitivity analysis beside the pre-specified trial-averaged estimator. One trial supplies 89 % of one cell mean and reverses the parametric TOST verdict; 4 of 156 first-class cells have a largest-trial share above 0.25.
 
 **Stage 5, open (as of 2026-11-01):**
 10. ~~Calibrate the task thresholds~~ — **done**: σ_i (§10f), full-length (§10h), half-length (§10h, 54/54 cells), matched-length (§10h, 39/39 cells), every run with 0 fit failures. All three threshold sets needed by `stage5_peak_detection_task.py` now exist.
