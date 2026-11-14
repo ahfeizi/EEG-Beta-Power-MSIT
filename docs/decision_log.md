@@ -1782,6 +1782,10 @@ own ordering claim as the three-level pre-specified one.
   known when this decision was taken, which is exactly why the four-level test is labelled post-hoc and
   cannot change a reported verdict.
 
+**Superseded in part (2026-11-15, §11f–§11g):** the premise that Palucha et al. (2025) are an independent
+sample is false (their data are ds004621). The four-level order is now justified by this sample's own
+reaction times (§11e); the test stays post-hoc. The record above is left as it was written.
+
 ### 10r. Stage 7 release: a mis-targeted release, and the DOIs that ended up in the manuscript (2026-11-14)
 
 Recorded because it is a process failure with a public artefact, and because the project's rule is that
@@ -2180,6 +2184,49 @@ Palucha et al. "an independent sample"; §10q called the four-level ordering "ex
 independent paper's reaction times". Both rest on independence that the paper itself contradicts. The ordering
 is still external to **our EEG analysis** (it comes from behaviour, analysed by others), but not from an
 independent group of people, and our own RTs (§11e) now give the same ordering from the same 39 participants.
+
+### 11g. Two manuscript corrections that follow from §11e–§11f (`R1-text-palucha`, 2026-11-15)
+
+Decided by Amirhossein, 2026-11-15, after §11f. Written here before `Paper/draft.md` is edited; the manuscript
+diff is shown to Amirhossein before it is committed.
+
+**1. "An independent sample" is withdrawn.** §11f established from Palucha et al.'s own text that their sample is
+drawn from ds004621, the dataset analysed here (at least 38 of our 39 participants are in it, if their 41 are a
+subset of its 42). Every passage that calls it independent is changed to say so plainly. `draft.md` has **three**
+such passages, not two: line 125 (Results) and line 186 (Discussion), as identified in §11e, and also line 71
+(Methods, "in an independent sample (Palucha et al., 2025)"), found when the passages were re-read. All three
+are changed.
+
+**2. §10q's justification for the post-hoc four-level ordering is replaced by this sample's own behaviour.**
+§10q justified the order 00 < S0 < F0 < FS as "externally justified — it comes from an independent paper's
+reaction times". That premise is false (§11f). The replacement is stronger and does not depend on it: §11e shows
+the same order in the participant-mean RTs of the **same 39 participants whose EEG is analysed** —
+536.4 (SD 59.5), 592.1 (52.5), 675.9 (68.8) and 745.1 (85.2) ms; accuracy 98.9, 97.3, 96.7 and 90.8 %
+(`Revision_Output\review1\behaviour_next_stimulus\r1_behaviour_group.csv`, sample `inblock_39`, class `all`).
+Palucha et al.'s matching order (all adjacent pairs p < .001 on RT; Simon and flanker accuracy p = .80) is kept
+as **convergent confirmation from the published analysis of the same dataset**, not as replication.
+
+**What does not change, recorded so the upgrade is not over-read.**
+- The four-level test stays **post-hoc**. The decision to run it followed inspection of the §10l condition
+  medians (§10q), and our own RTs were extracted on 2026-11-15, after the test had been run on 2026-11-08. A
+  better justification for the order does not make the test pre-specified; the three-level test remains the
+  primary ordering claim, and the manuscript says so.
+- **Our RT ordering is descriptive.** §11a pre-specified no inferential test on RT, and none has been run. The
+  manuscript therefore states our condition means and does not claim that our adjacent pairs differ
+  significantly; the inferential separation it reports is Palucha et al.'s, attributed to them and labelled as
+  coming from overlapping participants. If an inferential statement about our own RTs is wanted, its rule must
+  be written here first (it would belong with Phase 2).
+- Accuracy separates S0 from F0 only weakly in our data too (97.3 against 96.7 %), as in Palucha et al. (p = .80):
+  the four-level order is a **speed** order, as §10q already required the text to say.
+- The Methods gain one sentence describing how RT and accuracy were obtained (Presentation logs matched to the
+  EEG events, next-stimulus window, target-digit correctness, correct-trial RT with < 150 ms excluded,
+  participant means), because the manuscript now reports these numbers and every number must trace to a stated
+  method and an output file.
+- Not changed: the Discussion sentence that a single-trial RT analysis "is outside the present scope" (line 186).
+  It is Phase 2's to revise.
+
+- **Data-leakage check:** no analysis is run. The change replaces a citation-based justification with
+  behavioural numbers already computed in §11e and re-labels an external result as non-independent.
 
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
