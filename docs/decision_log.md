@@ -2124,6 +2124,63 @@ reopened.**
 **Pending:** Item 2 (running detached via `Revision_Output\review1\r1_chain_run.cmd`, launched through
 `Win32_Process.Create`, parent `WmiPrvSE`; resumable) and Item 3B (queued after Item 2 in the same launcher).
 
+### 11f. Is Palucha et al. (2025) an independent sample? The check of the published paper (`R1-palucha-overlap`, 2026-11-15)
+
+Prompted by §11e (our participant-mean RTs match theirs to within 1 ms). Requested by Amirhossein before any
+manuscript passage or §10q's reasoning is touched; **neither has been changed**. Source read directly: the
+bioRxiv full text, doi 10.1101/2025.03.05.641477 v1 (read in the browser; quotations checked against the page
+text, not a summary).
+
+**What the paper states.**
+- §2.1 Participants: *"41 healthy adults (22 females, 19 males, mean age 24.63, SD = 4.17 years) participated in
+  the study."* Inclusion: right-handed, 20–35 years. *"The EEG session was a part of the larger project which
+  included fMRI and psychological testing sessions (Wojciechowski et al., 2024)."* Ethics: *"approved by the
+  local ethics committee"*; the Acknowledgments name *"the ethical committee of the University of Nicolaus
+  Copernicus in Toruń, Poland"*. **No approval number, no recruitment description, no participant-ID scheme.**
+- §2.4 EEG data acquisition: actiCHamp, 128 actiCAP electrodes, 1000 Hz, CapTrak positions, then *"EEG/ERP
+  dataset (Dzianok et al., 2024) and its description (Dzianok et al., 2022) are freely available on-line."*
+  Reference 21: *Dzianok, Antonova, Wojciechowski, Dreszer & Kublik (2024). The Nencki-Symfonia EEG/ERP dataset
+  [Dataset]. OpenNeuro. doi:10.18112/OPENNEURO.DS004621.V1.0.2*; a footnote links
+  `openneuro.org/datasets/ds004621/versions/1.0.1`. **That is the dataset this project analyses.**
+- §2.2: four runs of ≈ 100 stimuli, mini-blocks followed by a 2500–4400 ms blank — the design of §10k.
+- Funding: National Science Centre, Poland, *UMO-2016/20/W/NZ4/00354* and 2019/34/E/HS6/00257.
+- §4.4, on their own fMRI paper: *"using the same task and on the same participants"* (Wojciechowski et al., 2024)
+  — the authors treat the EEG and fMRI papers as one participant pool.
+- §2.3 behaviour (relevant to §11e's comparison): RT and response from the Presentation logs; *"Trials with no
+  responses, multiple responses, incorrect responses, with RT shorter than 200 ms or longer than 1700 ms were
+  classified as errors. Only correct trials were included in the analysis of RTs. Mean reaction time and
+  accuracy … were computed for each subject and task condition."* So the per-participant value is a **mean**,
+  and their window (200–1700 ms) and error definition (multiple responses count as errors) differ from ours.
+
+**What the dataset states (ds004621 `dataset_description.json`, read locally; Europe PMC record of Dzianok et al.
+2022 — the publisher and PMC pages were behind browser challenges and were not bypassed).** 42 healthy young
+adults; funding *NCN 2016/20/W/NZ4/00354* (the same grant); ethics *"Research Ethics Committee, Faculty of
+Humanities, Nicolaus Copernicus University in Torun, Poland (No. 6/2018)"* — the same university; Palucha et al.
+give no number to compare.
+
+**Conclusion — narrowed, not confirmed at the participant level.**
+- Palucha et al. name ds004621 as their EEG/ERP dataset, share its authors, grant, institution, equipment, task
+  and run structure, and report n = 41 against the dataset's 42. Their sample is therefore, on the paper's own
+  statements, **drawn from the Nencki-Symfonia participants**, not an independent sample. The §11e RT agreement
+  (≤ 0.92 ms, SD ≤ 2.1 ms) is what this predicts.
+- **If** their 41 are a subset of the 42 in ds004621 (implied by §2.4 but not stated as such), then by counting
+  alone at least 39 + 41 − 42 = **38 of our 39 participants are in their sample**. Which participant they
+  excluded is not reported, and no participant IDs are published, so the exact overlap cannot be established
+  from the paper.
+- Not checked: Wojciechowski et al. (2024), whose full text has not been read (§10q, item 24); it would not
+  change the conclusion above.
+- Possible further narrowing (not done; needs Amirhossein's approval, since `participants.tsv` is not on
+  CLAUDE.md's freely-readable list): their 22 F / 19 M and age 24.63 ± 4.17 could be compared with each
+  leave-one-out subset of the dataset's 42 rows, which might identify the excluded participant. **Disclosure:**
+  during the §11a source search on 2026-11-15, the header and first four rows of `participants.tsv` were printed
+  once (`head -5`); nothing from them was used or recorded.
+
+**Consequences, to be decided with Amirhossein (nothing changed yet):** `Paper/draft.md` lines 125 and 186 call
+Palucha et al. "an independent sample"; §10q called the four-level ordering "externally justified … an
+independent paper's reaction times". Both rest on independence that the paper itself contradicts. The ordering
+is still external to **our EEG analysis** (it comes from behaviour, analysed by others), but not from an
+independent group of people, and our own RTs (§11e) now give the same ordering from the same 39 participants.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
