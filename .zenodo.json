@@ -1,0 +1,51 @@
+{
+  "upload_type": "software",
+  "title": "Absent resting beta peaks and graded conflict-related beta desynchronization in a mini-blocked interference task — analysis code",
+  "version": "v1.1.0",
+  "access_right": "open",
+  "license": "MIT",
+  "creators": [
+    {
+      "name": "Feizi, Amir Hossein",
+      "orcid": "0000-0001-8929-0910"
+    },
+    {
+      "name": "Motie Nasrabadi, Ali",
+      "orcid": "0000-0002-3702-8547"
+    }
+  ],
+  "description": "<p>Analysis code for the revised study of resting and task beta-band activity in the Nencki-Symfonia EEG dataset (OpenNeuro <a href=\"https://openneuro.org/datasets/ds004621\">ds004621</a>, v1.0.3).</p><p>This release supersedes v1.0.0. The pipeline was rebuilt end to end: one harmonized preprocessing pipeline applied identically to the resting-state and MSIT+ recordings; a pre-registered beta-peak criterion with per-participant detection thresholds calibrated by simulation (pre-registration: <a href=\"https://doi.org/10.5281/zenodo.23843194\">10.5281/zenodo.23843194</a>); a single 500 ms spectral estimator used on both sides of every rest-versus-task comparison; and event-related desynchronization analysed separately for trials in which the upcoming condition was and was not predictable, as the mini-blocked design requires.</p><p><strong>docs/decision_log.md</strong> is part of the archive and records every analytic decision with its rationale, its rejected alternatives, and the date it was fixed relative to the analysis it governs, including the decisions that overturned conclusions drawn in v1.0.0.</p><p>The repository contains code only; no EEG data are included. Local paths are supplied through a gitignored config file, documented in the README.</p>",
+  "keywords": [
+    "EEG",
+    "beta oscillations",
+    "event-related desynchronization",
+    "cognitive control",
+    "Multi-Source Interference Task",
+    "spectral parameterization",
+    "pre-registration",
+    "Nencki-Symfonia",
+    "EEGLAB",
+    "MATLAB",
+    "Python"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "10.5281/zenodo.23843194",
+      "relation": "isSupplementedBy",
+      "resource_type": "publication-other",
+      "scheme": "doi"
+    },
+    {
+      "identifier": "10.18112/openneuro.ds004621.v1.0.3",
+      "relation": "references",
+      "resource_type": "dataset",
+      "scheme": "doi"
+    },
+    {
+      "identifier": "10.1093/gigascience/giac015",
+      "relation": "references",
+      "resource_type": "publication-article",
+      "scheme": "doi"
+    }
+  ]
+}

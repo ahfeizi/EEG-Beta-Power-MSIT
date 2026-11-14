@@ -1,7 +1,18 @@
-# Pre-Stimulus Beta Power During Task Anticipation — Analysis Code
+# Absent resting beta peaks and graded conflict-related beta desynchronization in a mini-blocked interference task — analysis code
 
-Analysis code accompanying the manuscript (title under revision) on pre-stimulus beta
-power increases during task anticipation, using the Nencki-Symfonia EEG dataset.
+Analysis code accompanying the manuscript on resting and task beta-band activity
+in the Nencki-Symfonia EEG dataset.
+
+**v1.1.0 supersedes v1.0.0 and changes several of its conclusions.** The pipeline
+was rebuilt end to end: one harmonized preprocessing pipeline applied identically
+to rest and task, a pre-registered beta-peak criterion with per-participant
+thresholds calibrated by simulation ([pre-registration DOI
+10.5281/zenodo.23843194](https://doi.org/10.5281/zenodo.23843194)), one 500 ms
+spectral estimator on both sides of every rest-versus-task comparison, and
+event-related desynchronization analysed separately for trials in which the
+upcoming condition was and was not predictable. `docs/decision_log.md` records
+every analytic decision, its rationale and its rejected alternatives, including
+the ones that overturned v1.0.0 conclusions.
 
 This repository contains the EEG preprocessing, feature-extraction, statistical, and
 figure-generation code used in the manuscript. It does **not** contain raw EEG data.

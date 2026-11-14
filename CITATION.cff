@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: "Pre-Stimulus Beta Power During Task Anticipation — Analysis Code"
+title: "Absent resting beta peaks and graded conflict-related beta desynchronization in a mini-blocked interference task — analysis code"
 type: software
 authors:
   - family-names: "Feizi"
@@ -11,14 +11,24 @@ authors:
     orcid: "https://orcid.org/0000-0002-3702-8547"
 repository-code: "https://github.com/ahfeizi/EEG-Beta-Power-MSIT"
 license: MIT
-version: 1.0.0
-date-released: "2026-09-01"
+version: 1.1.0
+date-released: "2026-11-14"
 keywords:
   - EEG
   - beta oscillations
   - cognitive control
-  - task anticipation
+  - event-related desynchronization
+  - spectral parameterization
+  - pre-registration
   - MSIT
   - Nencki-Symfonia
   - EEGLAB
   - MATLAB
+  - Python
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.22232799"
+    description: "Concept DOI for the analysis-code archive (all versions)"
+  - type: doi
+    value: "10.5281/zenodo.23843194"
+    description: "Pre-registration of the beta-peak detection criterion"
