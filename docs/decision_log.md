@@ -1857,6 +1857,162 @@ lists the v1.1.0 version DOI, the concept DOI and the pre-registration DOI, each
 - **Data-leakage check:** nothing in this entry touches EEG data or any analysis. It records a release
   mistake, its cause, its correction and the resulting identifiers.
 
+## 11. Review round 1, Phase 1 — behaviour, FPR robustness, detection sensitivity (`R1-*`, 2026-11-15)
+
+Opened in response to an independent peer/supervisor review. The same outcome-blind discipline as Stages 4–5
+applies: every rule below is written **before** the script it governs exists. All options were laid out and
+decided by Amirhossein on 2026-11-15 (D1–D4 and scope below). Phase 2 (the trial-level mixed-effects model)
+gets its own written rule and review before it is run; nothing here pre-commits it.
+
+Code: `revision/review1/`. Outputs: `Revision_Output\review1\` (new folder, nothing overwritten). The Stage-4
+code is imported **unchanged** (`revision/stage4/stage4_core.py`, `stage4_simulate_threshold.py`), so the
+generator, Welch, fooof fit and peak criterion are byte-identical to the Zenodo deposit. Every run writes the
+SHA-256 of this decision-log file and of each script into its `_meta.json`, so the rule that governed a run
+can be checked against the version on disk at run time.
+
+### 11a. Item 1 — RT and accuracy for the 39-participant sample (`R1-behaviour`)
+
+**Why.** The manuscript cites reaction times from Palucha et al. (2025, n = 41), an independent sample; the
+39 participants analysed here never had their own behaviour extracted. This closes that gap and builds the
+trial table Phase 2 needs.
+
+**Sources (D1, Amirhossein 2026-11-15).** `*_task-msit_events.tsv` records only the condition marker and the
+button pressed, not the stimulus, so **accuracy cannot be computed from it**. The Presentation logfiles
+`sourcedata/sub-XX/logfiles/sub-XX_task-msit_log_{1..4}.log` (E: copy of ds004621; absent from the
+`D:\Revision_Raw` copy) carry the stimulus code. Read-only access approved; `.log` is added to CLAUDE.md's
+freely-readable list.
+
+**Logfile facts established before this rule was written (schema only, no RT or accuracy computed):**
+- Columns: `Subject, Trial, Event Type, Code, Time, TTime, …, ReqDur, Stim Type, Pair Index`; `Time` in
+  units of 0.1 ms. Stimulus pictures have a three-digit `Code` with leading zeros dropped (`20` = 020);
+  `ITI`, `break`, `777`, `666` are non-stimulus pictures. `ReqDur` = 9000 (900 ms response window).
+- Mapping code → condition from Dzianok et al. (2022) Table 3 and §10k: 00 = {100, 020, 003}; S0 = {010,
+  001, 200, 002, 300, 030}; F0 = {122, 133, 121, 323, 113, 223}; FS = the 12 remaining codes (311, 131, 322,
+  232, 212, 221, 331, 313, 211, 112, 332, 233). Counts over the 42 logs reproduce the paper's per-condition
+  trial means (101.9 / 105.3 / 93.7 / 98.3).
+- **Correct button = the value of the digit that differs from the other two** (the target digit of MSIT).
+- Presentation's own `Stim Type` takes only `hit` / `miss` (never `incorrect`), so it lumps errors with
+  omissions and is used here only as a cross-check.
+- **Log ↔ EEG alignment** (condition sequence + onset timing, tolerance 20 ms): 39 of 42 subjects match
+  stimulus for stimulus, maximum within-run clock drift 2.6–7.1 ms. Three do not, all three in the sample:
+  **sub-21** — log run 1 (103 stimuli) has no EEG (the recording starts at run 2); **sub-23** — 42 EEG
+  stimuli (1018.9–1164.2 s) have no log (a restarted run whose log was overwritten); **sub-29** — 24 EEG
+  stimuli (28.0–88.5 s) have no log (an aborted start). Track A therefore contains EEG trials that have no
+  behavioural record; they are counted under their own rejection reason, not dropped silently.
+
+**Rules (D2, Amirhossein 2026-11-15).**
+1. **Unit:** the 15,492 in-block trials of Track A (`stage5_erd_per_trial.csv`), joined in time order to the
+   `events.tsv` in-block stimuli (block table `d4e_d5a3/d4e_block_clipping.csv`, as in §10g) and from there to
+   the log. The join must reproduce, per subject, the Track A trial count, the condition sequence and the
+   within-block inter-trial intervals (Track A `trialLatency` at 500 Hz against `events.tsv` onsets, tolerance
+   4 ms); the script stops otherwise. A log run is accepted only if ≥ 95 % of its stimuli match.
+2. **Response:** the first `Response` row after the stimulus picture and before the next stimulus picture.
+   RT = its `Time` − the stimulus `Time`.
+3. **Trial outcome**, mutually exclusive, first match wins: `no_log` (no log match) → `omission` (no response
+   before the next stimulus) → `late` (first response > 900 ms, the task's own `ReqDur`) → `error` (first
+   response ≠ target digit) → `correct`. `multiple_responses` (more than one response inside the 900 ms window)
+   and `anticipatory` (first response < 150 ms) are **flags**, counted separately and not outcomes.
+4. **Accuracy** = correct / (trials with a log match), per subject × condition (× mini-block class).
+   Omissions and late responses count as not correct.
+5. **RT set** = correct ∧ not anticipatory. Per subject × condition (× class): **median and mean RT** both.
+6. **Retained for Phase 2** = in-block ∧ Track A `usable` ∧ in the RT set. Counts reported per condition ×
+   class (all / first-in-mini-block / later) at every stage, with rejection counts **by reason**: EEG
+   (`outside`, D12 baseline only, D12 active only, D12 both — from Track A's flags) and behaviour (each outcome
+   and flag above), cross-tabulated against Track A `usable`.
+7. **Group summary:** mean ± SD across the 39 participants of (a) the participant means and (b) the
+   participant medians, per condition. **Flagged in the text:** Palucha et al. (2025) report mean ± SD per
+   condition without stating whether the per-participant value is a mean or a median, so neither (a) nor (b)
+   is claimed to be the like-for-like comparison.
+8. Secondary, for comparability with a published sample that used all trials: the same summary over **all
+   logged trials** of the 39 participants, regardless of EEG blocks.
+9. Cross-check (reported, not gating): agreement between rule 3's `correct` and Presentation's `hit`.
+
+**No inferential test is pre-specified for Item 1.** The condition effect on RT/accuracy is descriptive here
+(it reproduces a known behavioural effect); its use as a covariate is Phase 2's to specify.
+
+### 11b. Item 2 — FPR robustness of the per-subject p95 threshold (`R1-fpr-perturb`)
+
+**Question.** §7b's per-subject threshold is the p95 of 1,000 nulls simulated at the subject's own point
+estimate (offset, exponent, σ_i, run lengths). Its FPR is 5 % **by construction at that point**. If the
+subject's true parameters lie anywhere inside the estimation uncertainty of that point, does the same
+threshold still give ≈ 5 %? (Scope, Amirhossein 2026-11-15: rest only.)
+
+**Why not the whole sample range.** Testing each subject's threshold over the sample's full parameter range is
+not informative: §7b already showed that a rough subject's threshold applied to a smooth null gives FPR ≈ 0,
+and the reverse up to 87 %. The meaningful perturbation is the subject's own estimation uncertainty.
+
+**Method (D3 option a, Amirhossein 2026-11-15) — parametric bootstrap at each subject's own point.**
+- **Step A, estimator uncertainty:** 1,000 nulls at the point, each through `welch_runs → aperiodic_only →
+  noise_floor` (the extraction path); keep (offset̂, exponent̂, noise_31_40̂). σ̂ is obtained by inverting
+  the subject's own σ → median `noise_31_40Hz` curve from `rough_sigma_per_subject_points.csv` (monotone
+  linear interpolation; σ̂ = 0 below the σ = 0 point, the §7a floor convention; above the last grid point,
+  linear extrapolation from the last two points, flagged). Bootstrap draw b: θ_b = θ̂_point + (θ̂_b − mean θ̂),
+  i.e. the estimator's spread centred on the point (σ truncated at 0).
+- **Step B, joint perturbation (primary):** one null at each of the 1,000 θ_b; FPR_joint = proportion with
+  max beta PW ≥ the subject's **original** p95 (`thresholds_per_subject.json`, unchanged).
+- **Step C, one-at-a-time (driver):** each of offset, exponent, σ alone at its bootstrap 2.5th and 97.5th
+  percentile, the other two at the point; 500 nulls per setting (6 settings per subject).
+- **Step D, fresh-seed control:** 1,000 nulls at the exact point with a new seed. This is the independent
+  re-estimate of the at-point FPR that §7b noted was missing, and it separates the threshold's own
+  Monte-Carlo error from the effect of perturbation. All beta-range peaks (CF, PW, BW) of these nulls are
+  stored, for Item 3's CF-matched false-hit baseline.
+- Seeds: `SEED = 20261115`, `SeedSequence(SEED, spawn_key=(subject_index, step, setting))`, distinct from
+  every seed in §4–§10. `fit_failed` handled as in §4 (counted, a non-detection).
+
+**Decision rule (Bradley, 1978, liberal criterion: FPR ∈ [0.025, 0.075]).**
+- **R1 (sample level):** pooled joint-perturbation FPR (39 × 1,000) inside [0.025, 0.075] → the per-subject
+  calibration is robust to realistic parameter misspecification. Outside → not robust; reported as a
+  limitation, with its direction.
+- **R2 (subject level):** a subject fails *liberally* if the Clopper–Pearson 95 % CI of its FPR_joint lies
+  wholly above 0.075, *conservatively* if wholly below 0.025.
+- **What a failure would mean, fixed now because the two directions threaten different claims:** a liberal
+  failure inflates false peaks, so it bears on that subject's `peak` call (24 subjects); a conservative
+  failure raises the bar for a real peak, so it bears on that subject's `no_peak` call (14 subjects, the
+  paper's headline). Each failing subject is reported with its p95 class. Neither kind of failure changes
+  the pre-registered classification (§9 stands under the §4 deviation policy); it changes what the text may
+  claim about it.
+- Step C is descriptive: the **driver** is the parameter whose 2.5–97.5 % range moves FPR the most (pooled
+  range of FPR). Step D is descriptive: its pooled FPR is reported beside R1.
+
+### 11c. Item 3 — detection sensitivity by frequency, width and height (`R1-sensitivity`)
+
+**Question.** What size and shape of real resting beta peak could the frozen criterion plausibly miss?
+
+**3A — re-stratification of the existing 390,000 injected simulations (D4, all 39 subjects).**
+`sim_rough/sim_injected.csv` (§7b: CF ~ U[13, 30], BW ~ U[1, 8], PW 0.05–0.50, seed 20261030) is read,
+never rewritten. Detection = `max_beta_pw` ≥ the subject's p95 — the pipeline's own rule, which counts **any**
+qualifying beta peak, whether or not near the injected CF (§4 Q7). Strata: CF bins 14 ± 1, 18 ± 1, 22 ± 1,
+26 ± 1, 29 ± 1 Hz (the last is [28, 30]); BW bins [1, 3), [3, 5), [5, 8]; the ten PW levels. Reported pooled
+over all 39 and over the 14 `no_peak` subjects, with Clopper–Pearson 95 % CIs. 3A cannot give a CF-matched
+rate: the file stores only the maximum beta PW, not where it was found.
+
+**3B — new CF-matched simulations (D4, the 14 `no_peak` subjects only).** CF ∈ {14, 18, 22, 26, 29} Hz × BW ∈
+{2, 4, 6, 8} Hz × the same ten PW levels (0.05–0.50) × **200 repetitions**, each subject at its own point
+(offset, exponent, σ_i, run lengths) — 560,000 simulations. Seed `SeedSequence(20261116, spawn_key=(subject_index,
+cf_index, bw_index, pw_index))`. Every beta-range peak (CF, PW, BW) of every fit is stored, so the criterion
+can be recomputed without re-simulating.
+- **Primary hit (CF-matched):** a qualifying beta peak (CF ∈ [13, 30], BW ∈ [1, 8]) with PW ≥ the subject's
+  p95 **and** |CF_detected − CF_injected| ≤ 2 Hz (Claude's call, 2026-11-15, logged here before the run:
+  2 Hz = 4 Welch bins at the 0.5 Hz resolution, and the same tolerance the alpha-harmonic rule uses).
+  Sensitivity: ±1 Hz and ±3 Hz, reported in the same table. Also reported: the any-peak hit (comparable
+  with 3A), and the CF-matched false-hit rate in Item 2 Step D's nulls at each target CF (the chance level).
+- **Summary quantity, fixed now:** for each CF × BW, the **minimum detectable PW** = the smallest PW level at
+  which pooled CF-matched detection over the 14 subjects is ≥ 0.80 ("not reached" if none). PW is also given
+  as a percentage above the aperiodic fit, 100 × (10^PW − 1), and as an SNR = PW / the subject's
+  `noise_31_40Hz`.
+- **Stated limitation, not a bug (D4):** at 29 Hz with a wide BW, part of the Gaussian lies above 30 Hz and
+  fooof may centre the fitted peak outside [13, 30]; such a fit is a miss by the criterion as registered.
+  The 29 Hz row is reported as a property of the criterion's band edge.
+
+**Interpretation, fixed now.** Item 3 is descriptive and changes no classification. It bounds the headline:
+the text may say the 14 `no_peak` participants have no resting beta peak **at or above** the minimum
+detectable height for the given CF and width, and must name that height; it may not say they have no beta
+peak at all.
+
+- **Data-leakage check (all of §11):** Items 2 and 3 use only simulated data and the already-published
+  Stage-4 aperiodic/threshold/classification outputs; no new real 13–30 Hz quantity is computed. Item 1 reads
+  behavioural logs and event files only; no EEG sample is read. Phase 2's model has not been specified.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
@@ -1922,3 +2078,4 @@ lists the v1.1.0 version DOI, the concept DOI and the pre-registration DOI, each
 14. ~~Build and run Track A~~ — **done** 2026-11-08 (§10l): 39/39 exported, 15,335 of 15,492 trials usable, 0 subjects excluded; a graded conflict effect on post-onset ERD% with the §10k rule satisfied in all three mini-block classes. One axis bug in `stage5_erd_by_condition.py` found and fixed before any ERD% value existed. The headline effect size is the first-in-mini-block W = 0.135.
 15. ~~Confirm the F/S/0 interference semantics of the four MSIT+ labels against Dzianok et al. 2022~~ — **done** 2026-11-02 (§10k): 0 = no interference, S = Simon, F = Flanker, FS = both. Page's L added to the Track A plan on the three ordered levels 00 < mean(F0, S0) < FS, with its decision rule written before the run.
 16. ~~Compare the matched-task power curve with the rest curve and apply the `S5-matched-power` decision rule~~ — **done** 2026-11-02 (§10j): max |matched − rest| = 0.0815, above 0.05 at six of ten levels, so the second branch applies. No rest-vs-task prevalence difference is reported as a physiological result; length matching removed almost none of the gap (0.0873 → 0.0815), which identifies it as a spectral-roughness effect.
+25. Review round 1, Phase 1 (§11): Items 1–3 — in progress 2026-11-15. Phase 2 (trial-level mixed-effects model) needs its own written decision rule, reviewed by Amirhossein, before it is run.
