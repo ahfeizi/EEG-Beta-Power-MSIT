@@ -1782,6 +1782,81 @@ own ordering claim as the three-level pre-specified one.
   known when this decision was taken, which is exactly why the four-level test is labelled post-hoc and
   cannot change a reported verdict.
 
+### 10r. Stage 7 release: a mis-targeted release, and the DOIs that ended up in the manuscript (2026-11-14)
+
+Recorded because it is a process failure with a public artefact, and because the project's rule is that
+what went wrong is logged with the same care as what went right.
+
+**What happened.** The 53 commits of the revision were pushed to `revision-v2`, which is not the
+repository's default branch; `main` still stood at `b2ccba2`, the v1.0.0 commit. The GitHub release for
+v1.1.0 was then drafted in the usual way, and GitHub targeted the default branch, so the tag `v1.1.0` was
+created at **exactly the same commit as `v1.0.0`**. Zenodo archived that tree faithfully: a published,
+citable record labelled v1.1.0 whose zip was the v1.0.0 source, 211.2 kB, carrying the old title
+"Pre-Stimulus Beta Power During Task Anticipation — Analysis Code" because that tree has neither the new
+`CITATION.cff` nor a `.zenodo.json` at all.
+
+**Cause, stated plainly.** The hand-over instructions written for Amirhossein listed the Zenodo steps but
+never said that the release's **Target** must be set to the branch carrying the work. That omission was
+Claude's. Zenodo and GitHub both behaved correctly on the input they were given.
+
+**How it was caught.** The published record was inspected before its DOI was accepted, and the old title
+was visible on it. The tags were then compared: `v1.0.0` and `v1.1.0` resolved to the same commit, which
+settled it. Nothing had yet been written into the manuscript, because the DOI bracket in
+`Data and Code Availability` was still open.
+
+**The fix (Amirhossein's decisions).**
+1. `main` was fast-forwarded to `revision-v2` — a plain fast-forward, 139 commits, no merge commit and no
+   possible conflict, since `main` was an ancestor. The public default branch now shows the code the
+   manuscript reports rather than the superseded version.
+2. The GitHub release was deleted by Amirhossein, then the stale tag was deleted from the remote and
+   recreated as an annotated tag at `9fe6039`, the tip of `main`, and pushed.
+3. The release was published again from that tag. The new record carries the correct title, the
+   `v1.1.0` zip at 1.8 MB rather than 211 kB, and all three related identifiers from `.zenodo.json`, so
+   that file was read as intended.
+
+**The mis-targeted record was deleted, and a standing assumption of this project turned out to be
+wrong.** Claude stated twice, as settled fact, that a published Zenodo record cannot be removed and that
+the project would therefore have to live with two records labelled v1.1.0. **That is no longer true.**
+Zenodo's own dialog states the current policy: *"You can delete your records within 30 days of
+publishing"*, with the file removed, the DOI never reusable, and the DOI resolving thereafter to a
+tombstone page carrying the record's citation. The assumption came from Claude's memory of Zenodo's older
+behaviour and was not checked against the service; Amirhossein found the button and asked about it.
+
+Amirhossein deleted the record on 2026-11-14, choosing the reason *"Duplicate of another record"*. The
+tombstone at **10.5281/zenodo.24225623** records the removal, the policy, the date, and the citation as it
+stood — which means the superseded title, *"Pre-Stimulus Beta Power During Task Anticipation — Analysis
+Code (Version v1.1.0)"*, remains visible there permanently. Editing the title before deleting would have
+made that trace self-explanatory; it was offered and not taken, and the cost is cosmetic, since no
+published work cites that DOI.
+
+The surviving record was re-checked afterwards and is unaffected: correct title, Version v1.1.0, DOI
+10.5281/zenodo.24225846, the 1.8 MB archive, and no "newer version" banner. Only one record labelled
+v1.1.0 now exists.
+
+**DOIs, and which one the manuscript cites.** Zenodo issues a version DOI and a concept DOI, and they are
+easy to confuse: the concept DOI is numerically one below the first version's.
+
+| | DOI |
+|---|---|
+| Code, **version** v1.1.0 — what the manuscript cites | **10.5281/zenodo.24225846** |
+| Code, concept (all versions, resolves to the latest) | 10.5281/zenodo.22232798 |
+| Code, version v1.0.0 (superseded) | 10.5281/zenodo.22232799 |
+| Pre-registration of the peak criterion | 10.5281/zenodo.23843194 |
+| The mis-targeted release, deleted 2026-11-14 (tombstone) | 10.5281/zenodo.24225623 |
+
+The DOI first supplied for the manuscript was the **concept** DOI. It was checked against the Zenodo
+record before being written in, and the record's own Details panel gave the version DOI instead, so the
+version DOI is what the manuscript carries: a `Data and Code Availability` statement must point at the
+exact archived tree that produced the reported numbers, not at a pointer that will move when a later
+version is released. The concept DOI is cited beside it, labelled "all versions".
+
+A related error of Claude's was corrected at the same time: `CITATION.cff` had described
+10.5281/zenodo.22232799 as the concept DOI. It is not; it is the v1.0.0 **version** DOI. The file now
+lists the v1.1.0 version DOI, the concept DOI and the pre-registration DOI, each labelled for what it is.
+
+- **Data-leakage check:** nothing in this entry touches EEG data or any analysis. It records a release
+  mistake, its cause, its correction and the resulting identifiers.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
@@ -1834,7 +1909,7 @@ own ordering claim as the three-level pre-specified one.
 18. ~~Add the §10m control window and run the matched-estimator comparison~~ — **done** 2026-11-08 (§10p-2): +40.0 % beta elevation, of which 75 % is a general within-task level; the 55–95 Hz control band rises +36.8 %, so the EMG account is supported, not excluded. Originally: add the §10m control window to the Track A export under a new filename (never an overwrite), then compute the control band 55–95 Hz from the existing trial files, re-estimate resting beta at the same 500 ms segment length, and run the matched-estimator rest-vs-task comparison (`revision_plan.md` Stage 5; audit #5, #6; CLAUDE.md step 1). This is what unblocks the title.
 19. ~~Decision for Amirhossein (§10n): a uniform trial-level robustness rule~~ — **answered and done** 2026-11-08 (§10o-1, §10p-1): median and 20 % trimmed mean, applied uniformly; every §10l verdict holds, but the §10n equivalence verdict flips, so both are reported. Originally: whether to add a uniform trial-level robustness rule (per-cell median, trimmed mean, or an outlier-trial criterion) as a labelled sensitivity analysis beside the pre-specified trial-averaged estimator. One trial supplies 89 % of one cell mean and reverses the parametric TOST verdict; 4 of 156 first-class cells have a largest-trial share above 0.25.
 20. ~~Decide the title and the framing (audit #17, CLAUDE.md step 5)~~ — **decided by Amirhossein 2026-11-14**: *"Absent resting beta peaks and graded conflict-related beta desynchronization in a mini-blocked interference task"*, sentence case, the shorter of the two candidates. It carries the two findings that survived or newly emerged and leaves the electromyographic result to the Abstract; "during task performance" was deliberately not restored, being redundant beside the trailing "in a mini-blocked interference task". Both earlier candidates in CLAUDE.md are superseded: each said "half" of the sample, which §9 replaced with 14/38 = 36.8 %, and each asserted a rest-to-task framing that §10p-2 withdrew.
-21. Estimate and then carry out the manuscript rewrite (`revision_plan.md` Stage 7). The scope estimate is in `stage5_reconciliation.md`.
+21. Carry out `revision_plan.md` Stage 7. **Mostly done 2026-11-14**: the manuscript is rewritten (scope estimate in `stage5_reconciliation.md`), the public repository is synced, `main` carries the revision, the v1.1.0 release is published and its version DOI is in the manuscript (§10r). The mis-targeted record was deleted rather than annotated (§10r), so only one v1.1.0 record exists. **Still open:** the author, affiliation, funding, conflict-of-interest and author-contribution sections, which the manuscript does not yet have and which Claude has no information to write.
 22. ~~Run the post-hoc four-level Page's L of §10q~~ — **done** 2026-11-08: it agrees with the three-level test at α = .05 in all twelve metric × class cells (primary metric L4 = 1110 / 1038 / 1105 against L3 = 525 / 499 / 526). The conflict-ordering sentence still has to be replaced in the manuscript text.
 23. ~~Produce a preprocessing QC summary for the 39-participant run~~ — **done** 2026-11-14: `revision/stage3/stage3_p2_qc_summary39.py` writes `stage3_p2_qc_summary39.csv`/`.json` from the 39 hash-verified part-2 bundles, and the bracketed gap in the manuscript's preprocessing paragraph is filled from it (median 4 interpolated channels, 121 good channels, 25 removed components, 15 muscle-classified at p ≥ 0.8). The v1 `full_qc_summary.csv` was not quoted.
 24. ~~Verify five bibliographic entries against their original sources before freeze~~ — **done** 2026-11-14, all five confirmed and their flags cleared: Kerby (2014) *Comprehensive Psychology* 3, Article 1, doi 10.2466/11.IT.3.1 (that journal numbers articles rather than pages, so the entry gives the article number and DOI and invents no page range); Koo & Li (2016) *J Chiropr Med* 15(2), 155–163, doi 10.1016/j.jcm.2016.02.012; Pfurtscheller & Lopes da Silva (1999) *Clin Neurophysiol* 110(11), 1842–1857; Rouder et al. (2009) *Psychon Bull Rev* 16(2), 225–237, doi 10.3758/PBR.16.2.225; Schuirmann (1987) *J Pharmacokinet Biopharm* 15(6), 657–680, doi 10.1007/BF01068419, with the publisher's own record confirming "bioavailability" rather than the "bioequivalence" variant some secondary sources print. A DOI was added to each. The three entries that no longer support any claim — Laufs (2003), Rogala et al. (2020) and Wojciechowski et al. (2024) — were removed on 2026-11-14 rather than rehomed, and Wojciechowski et al. was not re-cited for its shared-versus-specific framing because its full text has still not been read.

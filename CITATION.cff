@@ -27,8 +27,11 @@ keywords:
   - Python
 identifiers:
   - type: doi
-    value: "10.5281/zenodo.22232799"
-    description: "Concept DOI for the analysis-code archive (all versions)"
+    value: "10.5281/zenodo.24225846"
+    description: "Version DOI for release v1.1.0, the code archive for this manuscript"
+  - type: doi
+    value: "10.5281/zenodo.22232798"
+    description: "Concept DOI for the analysis-code archive (resolves to the latest version)"
   - type: doi
     value: "10.5281/zenodo.23843194"
     description: "Pre-registration of the beta-peak detection criterion"
