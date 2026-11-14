@@ -2013,6 +2013,57 @@ peak at all.
   Stage-4 aperiodic/threshold/classification outputs; no new real 13–30 Hz quantity is computed. Item 1 reads
   behavioural logs and event files only; no EEG sample is read. Phase 2's model has not been specified.
 
+### 11d. Item 1 amendments and a §10l sensitivity check (`R1-behaviour-amend1`, `R1-erd-flag17`, 2026-11-15)
+
+**Disclosure of timing.** These three decisions (Amirhossein, 2026-11-15) were taken **after** Item 1's first
+run had produced counts and condition means under §11a. They are definitional corrections motivated by what that
+run exposed, not by any EEG result. The first run's output (`Revision_Output\review1\behaviour\`) is kept as
+provenance and is superseded; nothing is overwritten.
+
+**1. Response window.** §11a rule 3 used the task's `ReqDur` (900 ms). That first run found 992 `late` trials,
+917 of them with the correct button (median first-response latency 998 ms; FS 543), so the 900 ms window counts
+most slow correct responses as failures and truncates the RT distribution, worst in FS.
+- **Primary (and Phase 2): the next-stimulus window.** The response is the first `Response` row after the
+  stimulus picture and before the next stimulus picture. Outcomes, first match wins: `no_log` → `omission` (no
+  response before the next stimulus) → `error` (first response ≠ target digit) → `correct`. Flags:
+  `anticipatory` (< 150 ms), `multiple_responses` (> 1 response inside the window), `after_900ms` (first
+  response > 900 ms, carried so the two versions can be compared trial by trial). RT set and Phase-2 retention as
+  in §11a rules 5–6.
+- **Comparison: the 900 ms window** (§11a as written), recomputed by the same script.
+- **Labelling, recorded because the request had it the other way round:** the next-stimulus window is the
+  convention of `revision/stage5/stage5_soa_survey.py` (its RT definition: "first events.tsv response row after
+  a stimulus and before the next stimulus") and of `stage5_window_overlap_check.py`. The 900 ms window is the
+  task's own `ReqDur`, i.e. Presentation's response window. The outputs are labelled by what the code does.
+
+**2. Mini-block class for Phase 2: the design flag.** Track A's flag (`stage5_export_trials_task.m`) marks the
+first trial of every clipped block as first-in-mini-block. In 17 trials (sub-05, 07, 09, 13, 17, 22, 23, 25, 26,
+29, 30, 35, 36, 37, 38 ×2, 40), all the first trial of a block whose start D4e clipped, the trial's mini-block
+began before the clip, so its condition was predictable: by design it is a later trial. The design flag (S0-3 on
+the full `events.tsv`: first stimulus, or an S 10/11/12 marker since the previous stimulus) is used for Phase 2
+and for Item 1's class summaries; the 17 trials therefore count as `later`. First-in-mini-block total: 4,411 by
+the design flag, 4,428 by Track A's.
+- Why §10l's cross-check "4,428 == 4,428" did not catch it: `stage5_window_overlap_check.py` computes its count
+  over the clipped blocks with the same first-of-block convention, so the two counts agreed by construction on
+  exactly these 17 trials.
+
+**3. §10l sensitivity without the 17 trials.** The per-trial table `stage5_erd_per_trial.csv` is read, never
+rewritten. Script `revision/review1/r1_erd_sensitivity_flag17.py`:
+- **Gate:** rebuilding the subject × condition × class cells from the per-trial table by the §10g/§10l rule
+  (usable trials; ratio of trial-averaged powers) **without** removing anything must reproduce
+  `stage5_erd_per_subject_condition.csv` to 1e-9 relative, else the script stops.
+- Then the 17 trials are removed (not reclassified, as requested) and the cells rebuilt; `stage5_erd_stats.py`
+  is run **unchanged** on the new cells file. Only the `all` and `first` classes can change.
+- **Negligible, fixed now** (the thresholds are Claude's call, logged before the run): (a) for all three metrics
+  and all three classes, every Friedman and three-level Page's L verdict at α = .05 is unchanged; (b) the set of
+  Holm-significant pairs is unchanged in every metric × class; (c) Kendall's W of the primary metric (ERD%)
+  changes by less than 0.01 in absolute value in every class. All three hold → recorded here, §10l stands as
+  published and is not reopened. Any one fails → reported to Amirhossein and §10l is reopened.
+- Not rerun: the post-hoc four-level Page's L (§10q, `stage5_trend_fourlevel.py`) and the §10o/§10p robustness
+  analyses; they are named here so their omission is visible.
+
+- **Data-leakage check:** items 1–2 touch behaviour and event files only. Item 3 recomputes statistics on
+  ERD% values already computed and published in §10l; its outcome rule is written before the rerun.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).

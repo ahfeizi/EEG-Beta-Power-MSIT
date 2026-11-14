@@ -8,7 +8,10 @@ class, from their own behavioural logs (decision log §11a).
 Reads only text files and the Track A trial-metadata variables (trialLatency/trialCond/trialBlock); no EEG
 sample is read. Join: Track A trial i <-> the i-th in-block events.tsv stimulus (block table, §10g) <-> its log
 stimulus (condition sequence + onset timing). Every join is verified and the script stops on any mismatch.
-Outcome per trial, first match wins: no_log -> omission -> late (> 900 ms) -> error -> correct.
+Outcome per trial, first match wins: no_log -> omission -> late (> window) -> error -> correct.
+--window next_stimulus (primary, §11d-1): the response window runs to the next stimulus, so 'late' cannot
+occur; this is the stage5_soa_survey.py RT convention. --window reqdur900: the task's 900 ms ReqDur (§11a).
+Mini-block class in every summary = the design flag (§11d-2); Track A's flag is carried per trial.
 Flags: multiple_responses (> 1 response within 900 ms), anticipatory (first response < 150 ms).
 RT set = correct and not anticipatory. Retained for Phase 2 = Track A usable and in the RT set.
 """
@@ -32,7 +35,9 @@ CODES = {'00': ('100', '020', '003'), 'S0': ('010', '001', '200', '002', '300', 
          'FS': ('311', '131', '322', '232', '212', '221', '331', '313', '211', '112', '332', '233')}
 CODE2COND = {c: k for k, v in CODES.items() for c in v}
 NONSTIM = ('ITI', 'break', '777', '666')
-WINDOW_MS = 900.0           # the task's own ReqDur (9000 x 0.1 ms)
+REQDUR_MS = 900.0           # the task's own ReqDur (9000 x 0.1 ms)
+WINDOWS = {'next_stimulus': float('inf'), 'reqdur900': REQDUR_MS}   # §11d-1; set in main()
+WINDOW_MS = None
 ANTICIP_MS = 150.0
 MATCH_TOL_S = 0.020         # log <-> events.tsv onset tolerance
 LAT_TOL_S = 0.004           # Track A trialLatency <-> events.tsv within-block interval tolerance
@@ -116,7 +121,10 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     for a in ('--raw', '--logs', '--block-table', '--trackA-trials', '--trackA-mat', '--out-dir'):
         ap.add_argument(a, required=True)
+    ap.add_argument('--window', required=True, choices=sorted(WINDOWS))
     args = ap.parse_args()
+    global WINDOW_MS
+    WINDOW_MS = WINDOWS[args.window]
     outs = {k: os.path.join(args.out_dir, k) for k in
             ('r1_behaviour_trials.csv', 'r1_behaviour_subject_condition.csv', 'r1_behaviour_group.csv',
              'r1_behaviour_counts.csv', 'r1_behaviour_crosstab.csv', 'r1_behaviour_alignment.csv',
@@ -206,7 +214,7 @@ def main():
             if i not in ev2log:
                 out.update(log_run='', log_trial='', stim_code='', target='', first_button='', rt_ms='',
                            n_resp_in_window=0, pres_stim_type='', outcome='no_log',
-                           multiple_responses=0, anticipatory=0)
+                           multiple_responses=0, anticipatory=0, after_900ms=0)
             else:
                 li, t = ev2log[i]
                 inwin = [x for x in t['resp'] if x[1] <= WINDOW_MS]
@@ -217,7 +225,8 @@ def main():
                            first_button=fb, rt_ms='' if frt is None else round(frt, 1),
                            n_resp_in_window=len(inwin), pres_stim_type=t['pres'], outcome=outcome,
                            multiple_responses=int(len(inwin) > 1),
-                           anticipatory=int(frt is not None and frt < ANTICIP_MS))
+                           anticipatory=int(frt is not None and frt < ANTICIP_MS),
+                           after_900ms=int(frt is not None and frt > REQDUR_MS))
             out['in_rt_set'] = int(out['outcome'] == 'correct' and not out['anticipatory'])
             out['retained_phase2'] = int(out['in_rt_set'] and out['eeg_usable'])
             trials_out.append(out)
@@ -225,7 +234,7 @@ def main():
     rc.write_csv(outs['r1_behaviour_alignment.csv'], align_rows)
 
     def cls_ok(t, c):
-        return c == 'all' or (c == 'first') == bool(t['first_in_miniblock'])
+        return c == 'all' or (c == 'first') == bool(t['first_in_miniblock_design'])
 
     # subject x condition x class
     sc = []
@@ -284,6 +293,8 @@ def main():
                 d[f'beh_{k}'] = sum(t['outcome'] == k for t in T)
             d['flag_multiple_responses'] = sum(t['multiple_responses'] for t in T)
             d['flag_anticipatory'] = sum(t['anticipatory'] for t in T)
+            d['flag_after_900ms'] = sum(t['after_900ms'] for t in T)
+            d['correct_after_900ms'] = sum(t['after_900ms'] and t['outcome'] == 'correct' for t in T)
             d['anticipatory_among_correct'] = sum(t['anticipatory'] and t['outcome'] == 'correct' for t in T)
             d['n_rt_set'] = sum(t['in_rt_set'] for t in T)
             d['n_retained_phase2'] = sum(t['retained_phase2'] for t in T)
@@ -303,7 +314,10 @@ def main():
     agree = Counter((t['outcome'] == 'correct', t['pres_stim_type'] == 'hit') for t in L)
     rts = [float(t['rt_ms']) for t in L if t['rt_ms'] != '']
     summary = dict(
-        rule='decision log §11a', n_subjects=len(subjects), n_inblock=len(trials_out),
+        rule='decision log §11a, amended §11d', window=args.window, window_ms=WINDOW_MS,
+        window_label=('next stimulus: the stage5_soa_survey.py RT convention' if args.window == 'next_stimulus'
+                      else 'task ReqDur 900 ms (Presentation response window)'),
+        n_after_900ms=sum(t['after_900ms'] for t in trials_out), n_subjects=len(subjects), n_inblock=len(trials_out),
         n_with_log=len(L), n_no_log=len(trials_out) - len(L),
         no_log_by_subject=dict(Counter(t['subject'] for t in trials_out if t['outcome'] == 'no_log')),
         log_runs_not_accepted=[(r['subject'], r['log_run'], r['n_matched'], r['n_log_stimuli'])
@@ -311,7 +325,7 @@ def main():
         presentation_hit_agreement={f'ours_correct={a}, pres_hit={b}': n for (a, b), n in sorted(agree.items())},
         first_response_rt_ms_range=[min(rts), max(rts)],
         n_retained_phase2=sum(t['retained_phase2'] for t in trials_out),
-        class_flag_used='first_in_miniblock = Track A flag (as in §10l); first_in_miniblock_design carried per trial',
+        class_flag_used='first_in_miniblock_design (§11d-2); Track A flag carried as first_in_miniblock',
         n_flag_differences=len(flag_diff), flag_differences=flag_diff,
         palucha_note=('Palucha et al. (2025) report mean +/- SD per condition without stating whether the '
                       'per-participant value is a mean or a median; both are given here and neither is claimed '
