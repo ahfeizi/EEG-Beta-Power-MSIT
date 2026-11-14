@@ -912,7 +912,7 @@ removes only the first of the two.
 **Gate satisfied before the run.** `stage5_peak_detection_task.py` refused to start until the annotated tag
 `S5-task-peak-frozen` existed, dereferenced to **`bfc4365edb7b3fc692dceefe6fd0275d2617d6d7`**, equalled
 HEAD, left `revision/stage4` and `revision/stage5` with no uncommitted change, and already appeared in this
-log. All four conditions held; the commit is recorded in `peak_detection_taskun_meta.json` together with
+log. All four conditions held; the commit is recorded in `peak_detection_task\run_meta.json` together with
 every per-subject threshold actually used. Three threshold sets were in place beforehand, all calibrated on
 simulated signals only: full-length, half-length (§10d rule 4) and length-matched (rule 5).
 
