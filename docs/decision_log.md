@@ -2064,6 +2064,66 @@ rewritten. Script `revision/review1/r1_erd_sensitivity_flag17.py`:
 - **Data-leakage check:** items 1–2 touch behaviour and event files only. Item 3 recomputes statistics on
   ERD% values already computed and published in §10l; its outcome rule is written before the rerun.
 
+### 11e. Phase 1 results so far — Item 1, Item 3A, the §10l flag check (2026-11-15)
+
+**Item 1, primary (next-stimulus window, design flag; `r1_behaviour.py --window next_stimulus`,
+`Revision_Output\review1\behaviour_next_stimulus\`).** Join verified for all 39: Track A trial count, condition
+sequence, block index and within-block `trialLatency` (≤ 4 ms against `events.tsv`). 15,492 in-block trials,
+15,434 with a log (no_log 58: sub-23 37, sub-29 21, the restarted runs of §11a); sub-21 log run 1 (103 stimuli)
+has no EEG and is not accepted (5 of 103 matched by chance).
+
+| | 00 | S0 | F0 | FS |
+|---|---|---|---|---|
+| RT, mean ± SD of participant means (ms) | 536.4 ± 59.5 | 592.1 ± 52.5 | 675.9 ± 68.8 | 745.1 ± 85.2 |
+| RT, mean ± SD of participant medians (ms) | 524.8 ± 54.0 | 573.5 ± 47.1 | 655.8 ± 62.7 | 724.0 ± 81.1 |
+| Accuracy, mean ± SD | 0.989 ± 0.034 | 0.973 ± 0.033 | 0.967 ± 0.050 | 0.908 ± 0.086 |
+
+- Trial counts: correct 14,814; error 449; omission 171; no_log 58; flags anticipatory 4, multiple responses
+  86; correct with first response after 900 ms 917. RT set 14,812. **Retained for Phase 2: 14,671**
+  (first-in-mini-block 4,093, later 10,578). EEG reasons (from Track A): outside 5, D12 baseline only 33, D12
+  active only 70, D12 both 49. Per condition × class: `r1_behaviour_counts.csv`.
+- First-in-mini-block trials are slower and less accurate than later ones in every condition (e.g. FS
+  801.2 against 725.0 ms; accuracy 0.863 against 0.926).
+- The all-logged-trials secondary (§11a rule 8) differs from the in-block figures by ≤ 0.6 ms.
+- Presentation's `hit` is not an accuracy measure: it marks a response inside its window regardless of the
+  button (377 of our errors are `hit`; 897 of our correct trials, all with a first response at or after 900 ms, are `miss`).
+
+**Item 1, comparison (900 ms `ReqDur` window; `behaviour_reqdur900\`).** RT means 530.0 / 581.6 / 650.3 /
+694.5 ms; accuracy 0.978 / 0.952 / 0.899 / 0.762; 992 `late`; retained 13,767. The first run under §11a
+(`behaviour\`, Track A flag) differs from this only in the class split; it is superseded.
+
+**A finding about the comparison sample, recorded for the manuscript and not acted on here.** Under the
+next-stimulus window our participant-mean RTs match Palucha et al. (2025) — 535.86 / 592.98 / 676.85 / 744.33 ms,
+SD 61.08 / 54.52 / 68.82 / 83.56 — to within 1 ms in every condition (largest difference 0.92 ms), with SDs within 2.1 ms, and our accuracy
+(0.989 / 0.973 / 0.967 / 0.908) is close to theirs (.98 / .97 / .96 / .88). Palucha et al. are the dataset's own
+authors and report n = 41. This agreement is far closer than two independent samples would give and is
+**consistent with their data being largely the same Nencki-Symfonia participants**, analysed with a
+next-stimulus window and participant means. It is not proven here (their participant list was not checked).
+Consequences to resolve in the manuscript: (i) the text calls Palucha et al. "an independent sample" twice
+(`Paper/draft.md` lines 125 and 186); (ii) §10q justified the post-hoc four-level Page's L as "externally
+justified … an independent paper's reaction times", which does not hold if the samples overlap; (iii) the
+mean-of-means/medians ambiguity flagged in §11a is resolved in favour of participant means *if* the samples
+are the same, which this agreement suggests but does not establish.
+
+**Item 3A (`r1_sensitivity_restratify.py`, `Revision_Output\review1\sens_restrat\`).** The unstratified pooled
+curve reproduces §7b exactly (0.2236 … 0.9526). Detection (any qualifying beta peak ≥ own p95) pooled over all
+39: ≥ 0.80 from PW ≈ 0.30 (≈ +100 % above the aperiodic fit). **Pooled over the 14 `no_peak` subjects it is
+markedly lower**: 0.225 at PW 0.10, 0.402 at 0.20, 0.510 at 0.25, 0.609 at 0.30, 0.779 at 0.40, 0.838 at 0.45,
+0.886 at 0.50 — i.e. 80 % detection is reached only between PW 0.40 and 0.45 (+151 to +182 %). CF matters
+little (the 14 and 29 Hz strata a few points lower); wider BW is slightly easier. 3A counts any beta peak, so its
+rates include the ≈ 5 % false-alarm floor; the CF-matched figures come from 3B.
+
+**§10l without the 17 mislabelled trials (`r1_erd_sensitivity_flag17.py`, `Revision_Output\review1\erd_flag17\`).**
+Gate passed (rebuilt cells reproduce the published ones, maximum relative difference 0.0). 17 trials removed, 13
+of them usable. **Negligible by the §11d-3 rule: (a), (b) and (c) hold in every metric × class.** For the primary
+ERD% the Friedman p, Kendall's W (all 0.4801, first 0.1353) and Page's L are unchanged to the printed precision,
+because the rank-based statistics see no change in any participant's ordering of the four conditions; secondary
+metrics move slightly (largest |ΔW| 0.016, active power, `all`), no verdict changes. **§10l stands and is not
+reopened.**
+
+**Pending:** Item 2 (running detached via `Revision_Output\review1\r1_chain_run.cmd`, launched through
+`Win32_Process.Create`, parent `WmiPrvSE`; resumable) and Item 3B (queued after Item 2 in the same launcher).
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
@@ -2129,4 +2189,4 @@ rewritten. Script `revision/review1/r1_erd_sensitivity_flag17.py`:
 14. ~~Build and run Track A~~ — **done** 2026-11-08 (§10l): 39/39 exported, 15,335 of 15,492 trials usable, 0 subjects excluded; a graded conflict effect on post-onset ERD% with the §10k rule satisfied in all three mini-block classes. One axis bug in `stage5_erd_by_condition.py` found and fixed before any ERD% value existed. The headline effect size is the first-in-mini-block W = 0.135.
 15. ~~Confirm the F/S/0 interference semantics of the four MSIT+ labels against Dzianok et al. 2022~~ — **done** 2026-11-02 (§10k): 0 = no interference, S = Simon, F = Flanker, FS = both. Page's L added to the Track A plan on the three ordered levels 00 < mean(F0, S0) < FS, with its decision rule written before the run.
 16. ~~Compare the matched-task power curve with the rest curve and apply the `S5-matched-power` decision rule~~ — **done** 2026-11-02 (§10j): max |matched − rest| = 0.0815, above 0.05 at six of ten levels, so the second branch applies. No rest-vs-task prevalence difference is reported as a physiological result; length matching removed almost none of the gap (0.0873 → 0.0815), which identifies it as a spectral-roughness effect.
-25. Review round 1, Phase 1 (§11): Items 1–3 — in progress 2026-11-15. Phase 2 (trial-level mixed-effects model) needs its own written decision rule, reviewed by Amirhossein, before it is run.
+25. Review round 1, Phase 1 (§11): Item 1, Item 3A and the §10l flag check done 2026-11-15 (§11e); Items 2 and 3B running detached. Phase 2 (trial-level mixed-effects model) needs its own written decision rule, reviewed by Amirhossein, before it is run.
