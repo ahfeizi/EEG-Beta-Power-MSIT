@@ -2323,6 +2323,72 @@ Minimum detectable PW (pooled CF-matched detection ≥ 0.80, ±2 Hz), with 100 �
    σ uncertainty, which, if it applies, would make detection in 3B easier rather than harder; no rule links the
    two results, and none is applied here.
 
+### 11i. Is the Figure 1 caption's "rises or falls monotonically" true of the 14 `no_peak` spectra? (`R1-fig1-check`, 2026-11-15)
+
+Requested by Amirhossein before the bounded-absence wording (§11h) is placed beside that caption. Rule written
+before the check is run.
+
+**The claim.** `Paper/draft.md`, Figure 1 caption: the 14 participants without a detected peak have a spectrum
+that *"rises or falls monotonically through the shaded region rather than showing a local maximum"*.
+
+**What Figure 1 plots (read from `plot_all_subjects_spectrum_grid.m`, project root).** The v1 pipeline, not the
+Stage-4 one: each of the 42 v1 `Rest_Output\sub-XX\sub-XX_rest_clean.set` files, Welch (2 s Hann, 50 % overlap)
+averaged over **all channels**, log10 power over 2–40 Hz detrended by a **linear log-log fit with 7–13 Hz
+masked**, displayed over 5–40 Hz with 13–30 Hz shaded. The 14 participants are defined by the Stage-4 criterion
+on a different spectrum (seven-channel ROI, Stage-3 preprocessing, fooof fixed aperiodic fit).
+
+**Check.** `revision/review1/r1_fig1_curves.m` reproduces the plotting script's computation exactly and writes
+the curves (no figure, nothing overwritten); `r1_fig1_check.py` counts, on the 0.5 Hz bins with 13 ≤ f ≤ 30 Hz,
+the **interior strict local maxima** (a bin greater than both neighbours; neighbours may lie just outside the
+band) and the **sign changes of the first difference**.
+- **Primary — the curves Figure 1 actually shows**, for the 14.
+- **Secondary — the spectrum the criterion classified:** the Stage-4 ROI Welch PSD's residual from the fooof
+  fixed aperiodic-only fit (`stage4_core.aperiodic_only`), same counts, for the 14.
+- Context, both spectra: the same counts for the 24 `peak` participants, so it is visible whether "no local
+  maximum" separates the two groups at all.
+
+**Decision rule.** The caption is correct as written only if **every one of the 14** has **zero** interior
+local maxima in 13–30 Hz in the primary curves. Otherwise it is wrong as written, and the replacement describes
+what the figure does show without a monotonicity claim; the secondary count decides only whether the
+replacement may say anything about the classified spectrum. No threshold for a "small" maximum is introduced: the
+caption makes a categorical claim and is tested as one.
+
+### 11j. §11i result, and the manuscript text changes that follow from §11h–§11i (2026-11-15)
+
+**§11i result — the Figure 1 caption is wrong as written** (`Revision_Output\review1\fig1_check\
+r1_fig1_check.csv`, `r1_fig1_check_summary.json`; curves from `r1_fig1_curves.m`, 42 of 42 v1 files read,
+MATLAB exit 0). Interior strict local maxima in 13–30 Hz:
+- **Primary (the curves Figure 1 plots): every one of the 14 `no_peak` participants has some — 3 to 7
+  (median 5).** By the §11i rule the caption's "rises or falls monotonically … rather than showing a local
+  maximum" is false for all 14.
+- Secondary (the Stage-4 spectrum the criterion classified): 3 to 9 (median 5) for the 14.
+- Context: the 24 `peak` participants have 2 to 8 (median 4.5) in the Figure 1 curves and 2 to 7 (median 4)
+  in the Stage-4 spectra; no participant in either group has none. A local-maximum count therefore does not
+  separate the two classes at all, and the classification cannot be read from Figure 1 by eye.
+- Correction (applied, uncommitted): the caption drops the monotonicity claim, says that the curves come from
+  the earlier preprocessing and a simpler detrending rather than from the classified spectra, and says that
+  all 38 curves show small local maxima in the band.
+
+**Text changes applied to `Paper/draft.md` and `Paper/supplementary.md` (uncommitted; diff shown to
+Amirhossein before any commit).** Bounded-absence wording (§11h's pre-specified reading) at all eight places
+that described the 14 as having no beta peak — Abstract, Introduction, Results, Figure 1 caption, Discussion
+×3 (opening summary, "two lines of evidence", tACS), Conclusion; the Conclusion keeps only the first sentence
+of the earlier draft, because its second sentence equated detection sensitivity (tested) with the measurement
+reliability needed for an individual-differences marker (not tested; deferred). The Results sentence names the
+two cells without a bound (14 Hz × 8 Hz, 29 Hz × 8 Hz). Methods: the 5 % false-positive rate is qualified as
+holding at the estimated parameters, and one paragraph describes both post-hoc checks, pointing to a new
+Supplementary Analysis S5 (procedures, the Item 2 results, §11h's minimum-detectable-height table unchanged,
+the tolerance and chance-level figures). Limitations: "Five" → "Six", with a sixth limitation reporting the R1
+failure, the reading of R2, and the σ-convexity caveat (§11h flag 1) as its last sentence. Reference added:
+Bradley, J. V. (1978). Robustness? *British Journal of Mathematical and Statistical Psychology*, 31(2),
+144–152, doi 10.1111/j.2044-8317.1978.tb00581.x (bibliographic record checked on Crossref; the paper's text
+itself was not read).
+
+**A fourth "independent sample" passage, missed by §11g.** `supplementary.md`, the note under Supplementary
+Figure S3, said the four-level order *"holds on reaction times in an independent sample"*. Corrected on §11g's
+principle to the present participants and the published analysis of the same dataset. §11g's count of
+passages (three) was therefore incomplete.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
