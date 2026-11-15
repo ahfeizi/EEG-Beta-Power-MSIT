@@ -3015,6 +3015,93 @@ The same day, line 17's "the logic already established for individual alpha freq
 proposed for …", matching the Jiang caveat. If their Methods are read later, the hedge is either removed (no overlap) or
 made definite (overlap confirmed).
 
+### 11q. Permutation test of the alpha-harmonic coincidence — decision rule (`R1-harmonic-perm`, 2026-11-16)
+
+Decided by Amirhossein on 2026-11-16 (options D1–D4 as recommended). Written before the script exists. **Post-hoc:**
+the test was decided after the 19/24 coincidence rate (§9) was known, and it is labelled post-hoc wherever it is
+reported. It changes no classification and no pre-registered quantity.
+
+**Question.** §9 flagged 19 of the 24 primary resting beta peaks as possible alpha harmonics by the frozen rule
+|CF − 2 × IAF| ≤ 2 Hz (`stage4_core.HARMONIC_TOL`; IAF = CF of the tallest Gaussian in 8–13 Hz). Is 19/24 more than the
+coincidence expected from where beta peaks and twice the alpha frequency fall anyway, irrespective of whether a beta peak
+is paired with its own participant's alpha?
+
+**D1 — null model: IAF shuffled across participants.** The 24 primary CFs stay fixed; their IAFs are randomly permuted
+among the same 24 participants (full permutations, fixed points allowed) and the coincidence count is recomputed. This
+keeps both marginal distributions and destroys only the within-participant pairing on which a harmonic account depends.
+Rejected: a uniform-CF analytic model (beta CFs are not uniform over 13–30 Hz); simulated alpha-only spectra (a new
+generative model, hours of compute).
+
+**D2 — statistic and computation.** Statistic: the number of peaks with |CF − 2 × IAF| ≤ 2 Hz (observed 19). One-sided
+(greater): p = (1 + #{null counts ≥ observed}) / (B + 1), B = 10,000, seed 20261118. Also reported: the null mean
+(expected count) and the observed ÷ expected ratio. Gate: the script's own count on the real data must equal 19 and
+agree peak by peak with `primary_alpha_harmonic` in `peaks_primary.csv`, else it stops.
+
+**D3 — secondary analyses (reported, no separate verdict).**
+- **All in-range Gaussians.** `peaks_all_in_range.csv` holds every fitted Gaussian with CF in [13, 30] Hz and BW in
+  [1, 8] Hz: 65 rows from 38 participants, **including 26 below the participant's threshold** and Gaussians of `no_peak`
+  participants. Excluded before the test: the `poor_fit` participant's rows (sub-34, 2 rows; that fit is not analysed)
+  and rows of participants without an IAF (sub-13, sub-19, 2 rows). The remaining participants' IAFs are permuted among
+  them, each participant's set of Gaussians moving as a unit; statistic = number of Gaussians inside the window.
+- **Window sensitivity:** the primary test repeated with ±1 Hz and ±3 Hz windows.
+- Not included: the task peaks (§10i); the manuscript's harmonic statement concerns rest.
+
+**D4 — interpretation, fixed now.**
+- **p < .05:** the coincidence exceeds what the marginal distributions of IAF and beta CF produce by themselves. This
+  is consistent with a harmonic relation, but the rule remains a coincidence rule and does not establish harmonic
+  origin.
+- **p ≥ .05:** the 79 % is no more than expected from where beta peaks and twice the alpha frequency typically fall;
+  the manuscript's "compatible with an alpha harmonic" may then not be read, or written, as evidence of harmonic origin.
+- **Recorded in advance:** IAF varies over a narrow range and n = 24, so the null rate may itself be high and the power
+  to detect an excess is limited. A non-significant result is therefore not evidence against a harmonic relation.
+
+**Verification before real data.** The script is first run on synthetic sets: (i) CF = 2 × IAF + small noise for every
+participant (the observed count must be high and p small); (ii) CF independent of IAF, 2,000 datasets with B = 999
+(the rejection rate at α = .05 must not exceed the upper end of its binomial 95 % range around .05; a permutation test on
+a discrete count may be conservative, but it must not be liberal — amended before any run, when writing the script). Raw real output is shown to
+Amirhossein before any reading against D4 is written.
+
+### 11r. Permutation test of the alpha-harmonic coincidence — results, read mechanically against §11q (2026-11-16)
+
+Written after Amirhossein saw the raw output. **Post-hoc** (§11q). Sources: `Revision_Output\review1\harmonic_perm\`
+— `r1_harmonic_perm_raw.json` and `r1_harmonic_perm_null.csv` (real data), `r1_harmonic_perm_synthetic.json`
+(verification); script `revision/review1/r1_harmonic_permutation.py`.
+
+**Verification (§11q), passed before the real run.** (i) Harmonic synthetic set (CF = 2 × IAF + noise, n = 24):
+observed 24, null mean 12.93, p = 0.0001. (ii) Independent synthetic sets (2,000, B = 999): rejection rate 0.029 at
+α = .05, below the upper limit 0.060 — conservative, as the amendment written before any run anticipated.
+**Gate:** the script's count on the real primary peaks is 19 and matches `primary_alpha_harmonic` peak by peak.
+
+**Results** (B = 10,000, seed 20261118, IAF permuted across participants, one-sided p = (1 + #{null ≥ observed}) /
+(B + 1)):
+
+| Analysis | Peaks (participants) | Observed | Null mean (SD) [2.5–97.5 %] | Observed ÷ expected | p |
+|---|---|---|---|---|---|
+| **Primary, ±2 Hz (frozen window)** | 24 (24) | 19 | 11.92 (2.01) [8, 16] | 1.59 | **0.0007** |
+| Window ±1 Hz | 24 (24) | 7 | 6.34 (1.96) [3, 10] | 1.10 | 0.460 |
+| Window ±3 Hz | 24 (24) | 21 | 15.61 (1.75) [12, 19] | 1.34 | 0.0018 |
+| All in-range Gaussians, ±2 Hz | 61 (35) | 28 | 21.64 (2.45) [17, 26] | 1.29 | 0.0071 |
+
+(All in-range set: 65 rows less 2 of the poor-fit participant and 2 of participants without an IAF; 23 of the 61 are
+below their participant's threshold.)
+
+**D4, applied as written.** Primary p = 0.0007 < .05, so by the rule: **the coincidence of the primary resting beta
+peaks with twice the participant's own alpha frequency exceeds what the marginal distributions of IAF and beta CF
+produce by themselves (19 observed against 11.92 expected). This is consistent with a harmonic relation; the rule
+remains a coincidence rule and does not establish harmonic origin.**
+
+**Secondary analyses (§11q D3: reported, no separate verdict).** The ±3 Hz window and the all-in-range set also show
+counts above their null distributions (p = 0.0018 and 0.0071). The ±1 Hz window does not (7 observed against 6.34
+expected, p = 0.460). These are recorded as reported; none of them changes the D4 reading, which rests on the
+pre-registered ±2 Hz window only.
+
+**Not concluded, recorded so the result is not over-read.** The test is post-hoc. It shows that the within-participant
+pairing matters, not why: a harmonic of the alpha rhythm and any other process that ties a participant's beta CF to
+their IAF would both produce it. Nothing here changes the pre-registered classification (§9) or the 79.2 % figure.
+
+- **Data-leakage check:** the rule, the null model, the windows and the verification criteria were fixed before the
+  script was run on real data (§11q, with its amendment made before any run); the inputs are the published §9 outputs.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
