@@ -2228,6 +2228,101 @@ as **convergent confirmation from the published analysis of the same dataset**, 
 - **Data-leakage check:** no analysis is run. The change replaces a citation-based justification with
   behavioural numbers already computed in §11e and re-labels an external result as non-independent.
 
+### 11h. Item 2 and Item 3B results, read mechanically against §11b and §11c (`R1-results-2-3B`, 2026-11-15)
+
+Written before any manuscript text, at Amirhossein's request: the pre-specified rules are applied as written and
+nothing else is concluded. Points that the rules do not cover are listed at the end as flags, not as conclusions.
+
+**Runs.** Item 2: `r1_fpr_perturbation.py`, started 2026-11-15 02:22 (HEAD `d2f0084`, script uncommitted but
+byte-identical to its later commit), stopped and relaunched detached at 02:47 (HEAD `ec57307`; 16 of 78 phase-1
+cells already done and reused), exit 0 at 06:46. Item 3B: `r1_sensitivity_cfmatched.py`, 06:46 → 16:31, exit 0.
+Logs `Revision_Output\review1\fpr_run.log`, `sens_cf_run.log`. Recorded script hashes equal the committed files
+(`r1_fpr_perturbation.py` eb1f167c2415…, `r1_sensitivity_cfmatched.py` 719d5c862f69…, `r1_common.py`
+acd1db0f23aa…). The recorded `stage4_core.py` hash (595935e7fc83…) differs from the frozen tag's blob
+(12407744a75e…) **only by CRLF line endings** (`core.autocrlf = true`): with CR removed it is 12407744a75e…, and
+`git diff S4-prereg-frozen -- revision/stage4/` is empty. 0 fit failures in Item 2 step B and in all 560,000
+Item 3B simulations; 0 failed aperiodic fits in step A.
+
+**Item 2 — the rule (§11b, quoted).** *"R1 (sample level): pooled joint-perturbation FPR (39 × 1,000) inside
+[0.025, 0.075] → the per-subject calibration is robust to realistic parameter misspecification. Outside → not
+robust; reported as a limitation, with its direction."* *"R2 (subject level): a subject fails liberally if the
+Clopper–Pearson 95 % CI of its FPR_joint lies wholly above 0.075, conservatively if wholly below 0.025."*
+*"a liberal failure inflates false peaks, so it bears on that subject's `peak` call (24 subjects); a conservative
+failure raises the bar for a real peak, so it bears on that subject's `no_peak` call (14 subjects, the paper's
+headline). Each failing subject is reported with its p95 class. Neither kind of failure changes the
+pre-registered classification (§9 stands under the §4 deviation policy); it changes what the text may claim
+about it."*
+
+**Item 2 — applied** (`Revision_Output\review1\fpr\r1_fpr_summary.json`, `r1_fpr_per_subject.csv`).
+- **R1: FAILED.** Pooled joint-perturbation FPR = **0.1206** (Clopper–Pearson 95 % CI 0.1173–0.1238;
+  4,702 of 39,000), above the upper bound 0.075. Direction: **liberal** (more false positives than nominal).
+  By the rule, the per-subject calibration is **not robust** to the perturbation range tested, and this is
+  reported as a limitation in the liberal direction.
+- **R2: 35 liberal failures, 0 conservative failures.** By p95 class: **20 of the 24 `peak` subjects**
+  (sub-03, 04, 05, 07, 08, 10, 11, 12, 18, 20, 21, 22, 24, 29, 30, 31, 35, 36, 38, 40), **all 14 `no_peak`
+  subjects** (sub-01, 09, 13, 14, 15, 17, 19, 25, 26, 27, 33, 37, 39, 41) and the `poor_fit` subject (sub-34).
+  Not failing: sub-02, 06, 16, 23 (all `peak`; CIs include 0.075). Subject FPR_joint ranges 0.066 (sub-06) to
+  0.176 (sub-35).
+- **Pre-specified reading of R2.** The liberal failures bear on the `peak` calls: for 20 of the 24 `peak`
+  subjects, the text may not claim that their p95 threshold holds the false-positive rate at 5 % once the
+  uncertainty in their own parameters is allowed for. **No subject fails conservatively, so by the rule no
+  `no_peak` call is threatened by this check.** The 14 `no_peak` subjects fail liberally; under the rule a
+  liberal failure bears on a `peak` call, and these subjects have none.
+  §9's classification is unchanged.
+- **Step C (driver, descriptive): σ (spectral roughness).** Pooled FPR with σ at its bootstrap 2.5th / 97.5th
+  percentile: **0.0075 / 0.5728** (range 0.5653); exponent 0.0516 / 0.0503 (range 0.0013); offset 0.0493 / 0.0497
+  (range 0.0004). n = 19,500 per setting.
+- **Step D (fresh-seed control, descriptive): pooled at-point FPR 0.0514** (95 % CI 0.0493–0.0537; 39,000),
+  inside [0.025, 0.075]; one subject's at-point FPR exceeds 0.075 (sub-05, 0.083).
+
+**Item 3B — the rule (§11c, quoted).** *"Primary hit (CF-matched): a qualifying beta peak (CF ∈ [13, 30], BW ∈
+[1, 8]) with PW ≥ the subject's p95 and |CF_detected − CF_injected| ≤ 2 Hz"*. *"Summary quantity, fixed now:
+for each CF × BW, the minimum detectable PW = the smallest PW level at which pooled CF-matched detection over the
+14 subjects is ≥ 0.80 ("not reached" if none)."* *"Interpretation, fixed now. Item 3 is descriptive and changes
+no classification. It bounds the headline: the text may say the 14 `no_peak` participants have no resting beta
+peak at or above the minimum detectable height for the given CF and width, and must name that height; it may not
+say they have no beta peak at all."*
+
+**Item 3B — applied** (`Revision_Output\review1\sens_cf\r1_sens_cf_mde.csv`, `r1_sens_cf_curve.csv`;
+14 subjects × 20 cells × 10 PW levels × 200 reps; each cell-level proportion pools 2,800 simulations).
+Minimum detectable PW (pooled CF-matched detection ≥ 0.80, ±2 Hz), with 100 × (10^PW − 1) above the aperiodic fit:
+
+| CF \ BW | 2 Hz | 4 Hz | 6 Hz | 8 Hz |
+|---|---|---|---|---|
+| 14 Hz | 0.50 (+216 %) | 0.45 (+182 %) | 0.50 (+216 %) | **not reached** (0.788 at PW 0.50) |
+| 18 Hz | 0.50 (+216 %) | 0.40 (+151 %) | 0.45 (+182 %) | 0.45 (+182 %) |
+| 22 Hz | 0.50 (+216 %) | 0.45 (+182 %) | 0.45 (+182 %) | 0.45 (+182 %) |
+| 26 Hz | 0.50 (+216 %) | 0.45 (+182 %) | 0.45 (+182 %) | 0.45 (+182 %) |
+| 29 Hz | 0.50 (+216 %) | 0.50 (+216 %) | 0.50 (+216 %) | **not reached** (0.720 at PW 0.50) |
+
+- **Cells that did not reach 0.80 within the tested range (PW ≤ 0.50): two — CF 14 Hz × BW 8 Hz (0.788,
+  95 % CI 0.772–0.803) and CF 29 Hz × BW 8 Hz (0.720, CI 0.703–0.737).** For these two cells the pre-specified
+  reading allows no stated bound: a height cannot be named.
+- In the other 18 cells the minimum detectable PW is 0.40 (one cell), 0.45 (nine cells) or 0.50 (eight
+  cells). By the pre-specified reading, the text may say that the 14 `no_peak` participants have no resting
+  beta peak at or above that height for that CF and width, and must name it. The median SNR at the MDE
+  (PW / `noise_31_40Hz`, over the 14) is 3.84 (PW 0.40), 4.33 (0.45) and 4.81 (0.50).
+- Reported beside it, as §11c requires: at PW 0.50 the ±1 Hz criterion gives 0.566–0.845 and the ±3 Hz one
+  0.791–0.925 across cells, and the any-peak criterion 0.831–0.943. The CF-matched false-hit rate in Item 2's
+  at-point nulls (chance level, the same 14 subjects, 14,000 nulls) is 0.0089–0.0129 at ±2 Hz across the five
+  target CFs.
+- The 29 Hz × 8 Hz shortfall is the band-edge case §11c named in advance as a property of the criterion, not a
+  bug. The 14 Hz × 8 Hz shortfall was **not** named in advance; it is the same mechanism at the lower edge
+  (a Gaussian of BW 8 Hz centred at 14 Hz extends below 13 Hz), stated here as an observation only.
+
+**Flags — not covered by the pre-specified rules, recorded without being interpreted.**
+1. FPR is strongly convex in σ (0.0075 at the 2.5th percentile against 0.5728 at the 97.5th). A symmetric spread
+   of σ around the point therefore raises the average FPR even when the point estimate is unbiased; the pooled
+   0.1206 against the at-point 0.0514 is consistent with this. Whether that reflects a real weakness of the
+   calibration or of the perturbation model is not decided by §11b.
+2. The σ draws come from inverting the §7a calibration curve (50 reps per grid point); for 17 subjects some draws
+   lay beyond the last grid point and were linearly extrapolated (most: sub-01 548, sub-19 495, sub-27 479,
+   sub-09 421, sub-33 393, sub-39 379, sub-13 341, sub-31 331, sub-26 324 of 1,000). §11b specified this
+   handling; its effect on FPR_joint has not been measured.
+3. Item 3B uses each subject's **point** parameters and original p95. Item 2 says the threshold is liberal under
+   σ uncertainty, which, if it applies, would make detection in 3B easier rather than harder; no rule links the
+   two results, and none is applied here.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
