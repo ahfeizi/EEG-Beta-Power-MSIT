@@ -2389,6 +2389,327 @@ Figure S3, said the four-level order *"holds on reaction times in an independent
 principle to the present participants and the published analysis of the same dataset. §11g's count of
 passages (three) was therefore incomplete.
 
+### 11k. Phase 2 — trial-level mixed model: decision rules (`R1-phase2-rules`, 2026-11-15) — **DECIDED 2026-11-15**
+
+**Status: DECIDED 2026-11-15 by Amirhossein and the reviewer**, after three drafts on the same day: the first
+proposal; a second draft *[revised]* resolving K3's feasibility with the available tools, K5's trials with RT
+above 1000 ms and a reading check of three references; and this third draft *[final]*, which records the K3
+decision and the reading check of four more references. Where a choice was proposed with alternatives, the
+proposal shown as **Decided** is the rule in force; the rejected alternatives stay in the text, as in §11b/§11c, so
+the reasons remain visible. No model has been fitted and no Phase 2 quantity has been computed.
+
+**The rules in force, in one place:** K1.1 outcome log₁₀ active-window band power; K1.2(a) number of conflict
+sources (0/1/2) primary, K1.2(c) Simon × Flanker secondary; K1.3(a) first-in-mini-block trials primary, later
+trials secondary; K1.4(c) log RT split into cell mean and within-cell deviation; K1.5 covariates; K1.6(a)
+random-effects rule as corrected below, REML with Satterthwaite DF; K1.7 synthetic verification first; K2(a)
+correct-only primary; **K3(a) descriptive, with the â·b̂ participant bootstrap reported separately as a labelled
+non-Bauer quantity**; K4a, K4b(i), K4c robustness checks; K5 keep trials with RT above 1000 ms. R will not be
+installed for this analysis; if it is ever needed for another purpose, Amirhossein installs it himself.
+
+**Question.** Does the conflict-related modulation of post-stimulus beta power (§10l) survive when trial-level
+reaction time is taken into account, or is it explained by the fact that conflict slows responses?
+
+**What is already known, disclosed because Phase 2 is not blind to it.** §10l: post-onset ERD% is graded with
+conflict at the cell level (first-in-mini-block W = 0.135). §11e: the same participants' RTs rise 536.4 → 745.1 ms
+across 00 → FS. Not yet seen by anyone: any trial-level relation between RT and beta power. Phase 2 inherits
+the non-blindness of the cell-level results; it is blind only to the trial-level relation it is designed to test.
+
+**Data available, checked by header only (no values read for this entry).** `Revision_Output\stage5\erd\
+stage5_erd_per_trial.csv` (`subject, trial, condition, block, first_in_miniblock, …, usable, baseline_power,
+active_power, erd_pct`; 13–30 Hz ROI band power, baseline [−500, 0) ms, active [0, 1000) ms, §10g) joined on
+(`subject`, `trial`) to `Revision_Output\review1\behaviour_next_stimulus\r1_behaviour_trials.csv` (`…,
+first_in_miniblock_design, rt_ms, outcome, in_rt_set, retained_phase2`). Retained (§11e): 14,671 trials, 4,093
+first-in-mini-block and 10,578 later by the design flag. Tool available without installing anything: MATLAB
+R2022b `fitlme` (Statistics Toolbox), which offers Satterthwaite degrees of freedom; neither R nor `statsmodels`
+is installed.
+
+**A conceptual point that shapes every option below.** Condition is assigned by the task design, not observed,
+so RT **cannot confound** the condition effect in the causal sense: nothing that causes RT can also cause which
+condition a trial belongs to. RT lies **downstream** of condition (conflict → slower responses) and may share
+unmeasured causes with beta power (arousal, attention). "Controlling for RT" therefore estimates something
+close to a **direct effect** of conflict not carried by RT. That is a mediation question, and identifying a
+direct effect needs an untestable no-unmeasured-confounding assumption between RT and beta (sequential
+ignorability; Imai, Keele & Tingley, 2010). A further, mechanical reason RT matters here: the active window is
+fixed at [0, 1000) ms, so a later response moves response-locked desynchronization within the window. The
+reviewer's "confound" is best read as this alternative account — ERD tracks RT — and the options in K3 are built
+around that reading.
+
+**References used below (bibliographic records checked on Crossref on 2026-11-15). *[final]* Read in full text:
+Enders & Tofighi (2007), Imai et al. (2010), Barr et al. (2013), Luke (2017). Checked at abstract level: Mickey &
+Greenland (1989), Maldonado & Greenland (1993), which support only the rejected K3(b). Not read: Bauer et al. (2006),
+cited only for the rejected K3(c); Matuschek et al. (2017), cited only for the rejected K1.6(b). See the reading
+check after this list:** Barr, Levy, Scheepers & Tily (2013), *J Mem Lang* 68(3), 255–278,
+doi 10.1016/j.jml.2012.11.001; Matuschek, Kliegl, Vasishth, Baayen & Bates (2017), *J Mem Lang* 94, 305–315,
+doi 10.1016/j.jml.2017.01.001; Luke (2017), *Behav Res Methods* 49(4), 1494–1502, doi 10.3758/s13428-016-0809-y;
+Enders & Tofighi (2007), *Psychol Methods* 12(2), 121–138, doi 10.1037/1082-989X.12.2.121; Mickey & Greenland
+(1989), *Am J Epidemiol* 129(1), 125–137, doi 10.1093/oxfordjournals.aje.a115101; Maldonado & Greenland (1993),
+*Am J Epidemiol* 138(11), 923–936, doi 10.1093/oxfordjournals.aje.a116813; Bauer, Preacher & Gil (2006),
+*Psychol Methods* 11(2), 142–163, doi 10.1037/1082-989X.11.2.142; Imai, Keele & Tingley (2010), *Psychol
+Methods* 15(4), 309–334, doi 10.1037/a0020761.
+
+**Reading check, 2026-11-15 *[revised]*.** Full texts read with `pdftotext` from copies fetched from a
+university course page (Enders & Tofighi) and the first author's site (Imai et al.); nothing is quoted at length.
+- **Enders & Tofighi (2007) — confirmed, with one correction.** They argue that centring within cluster removes all
+  between-cluster variation from a Level 1 predictor and gives a "pure" estimate of the pooled within-cluster
+  slope, also improving the estimate of the slope variance; and that adding the cluster means as a separate
+  predictor separates within- from between-cluster associations. **Correction:** their scope is two-level
+  cross-sectional data (they set growth-curve models aside, and treat repeated measures within persons as an
+  application of the same logic). In K1.4(c) the cluster is the **participant × condition cell**, i.e. trials
+  within cells within participants. That is an application of their principle beyond the case they analyse, and
+  the text must say so rather than attribute the cell-level decomposition to them.
+- **Imai, Keele & Tingley (2010) — confirmed, with one correction.** Sequential ignorability is their two-part
+  assumption: (a) treatment independent of potential outcomes and mediator values given pretreatment covariates;
+  (b) the observed mediator independent of potential outcomes given treatment and pretreatment covariates. They
+  state that (b) may fail even in randomized experiments, call the assumption key yet untestable, and propose a
+  sensitivity analysis whose parameter ρ is the correlation between the error terms of the mediator and outcome
+  models. **Correction:** their framework covers standard randomized experiments and cross-sectional
+  observational studies; they list multilevel models as future research. They are therefore cited for the logic
+  of the assumption, not for a sensitivity analysis that could be run on the K1 model as it stands.
+- **Bauer, Preacher & Gil (2006) — NOT read.** The CORE copy and the KU repository returned HTTP 403 (CORE behind
+  a browser challenge, which was not bypassed); the publisher's version is paywalled. What is known comes only
+  from secondary sources: the abstract (as reproduced in search results) and the documentation of the R package
+  `multilevelmediation`, which implements their lower-level (1-1-1) model as **one stacked model** for the
+  mediator and outcome equations, **with separate residual variances for the two equations**, and extracts the
+  covariance of the random *a* and *b* slopes. Any statement about their confidence-interval methods (§11k's
+  first draft said "Monte Carlo") is **unverified** and has been removed below. They are cited only for the
+  existence of the random-indirect-effect framework, and that citation must be checked against the paper before
+  any manuscript use.
+
+**Reading check, continued, 2026-11-15 *[final]*.**
+- **Barr, Levy, Scheepers & Tily (2013) — confirmed, with three corrections to how §11k used them** (read from the
+  authors' accepted preprint, OSF 10.31234/osf.io/39mhs). They recommend the maximal random-effects structure
+  justified by the design for confirmatory tests; when it fails to converge, they advise first checking for
+  misspecification or data problems, centring or sum-coding predictors and raising the iteration limit; then
+  keeping the random slope for the predictor of theoretical interest, and they report that removing the random
+  correlations performed similarly to the maximal model. They also warn against stepping back to a
+  random-intercepts-only model merely because the maximal model fails, and they found such models
+  anticonservative. **Corrections:** (1) they give no general simplification order for complex designs (they say
+  research on this is needed; in their own simulations of within-item designs the slope with the smaller variance
+  was dropped), so the order in K1.6(a) is this project's, *consistent with* their two concrete recommendations,
+  not prescribed by them; (2) the pre-simplification steps they recommend were missing from §11k and are added;
+  (3) §11k's last step (intercept only) is the fallback they warn against, so reaching it now carries an explicit
+  warning in the report. Their simulations concern crossed subjects and items in single-factor designs, so
+  applying their guidance to one grouping factor with several fixed effects is an extrapolation, stated as such.
+- **Luke (2017) — confirmed, with one correction** (read on the publisher's page). REML fits with Kenward-Roger or
+  Satterthwaite degrees of freedom gave Type I error rates closest to .05 across sample sizes, including smaller
+  ones; likelihood-ratio tests and the t-as-z method were somewhat anticonservative, more so in small samples. He
+  adds that the degrees-of-freedom approximations are ad hoc and that p-values should be read alongside the
+  estimates and their standard errors. **Correction:** the evaluation used lme4/lmerTest in designs with crossed
+  subjects and items (12–60 of each); this analysis has one grouping factor (39 participants) and uses MATLAB's
+  Satterthwaite implementation, which Luke did not evaluate. The citation supports the choice of REML with
+  Satterthwaite DF, not a guarantee of its behaviour here.
+- **Mickey & Greenland (1989); Maldonado & Greenland (1993) — the K3(b) passage needs one attribution fix**
+  (abstracts via Europe PMC; full texts not read). Both are simulation studies of confounder-selection strategies
+  in observational epidemiology; both found change-in-estimate selection to perform well. **The 10 % cutoff
+  appears in Maldonado & Greenland's abstract** (change-in-estimate and equivalence testing performed best with a
+  10 % importance threshold, in Poisson regression on simulated cohort data); **Mickey & Greenland's abstract does
+  not state a cutoff.** The K3(b) passage is corrected to attribute the 10 % to Maldonado & Greenland and to cite
+  Mickey & Greenland for the change-in-estimate approach only.
+
+#### K1. Model formula
+
+**K1.1 Outcome.** log₁₀ of the trial's active-window band power (`active_power`). Alternative, reported but
+not proposed as primary: the trial-level log ratio log₁₀(active) − log₁₀(baseline), which is the same model with
+the baseline slope fixed at 1; letting the slope be estimated (ANCOVA form) is the more efficient and the
+requested form.
+
+**K1.2 Conflict coding — a real choice.**
+- **(a) Number of conflict sources, numeric 0 / 1 / 2** (00 / S0 and F0 / FS). One coefficient, so "does the
+  conflict effect survive" is a question about one number. It is §10k's pre-registered three-level ordering
+  expressed as a slope, and it assumes S0 and F0 have equal effects, as §10k's averaging did.
+- **(b) Four-level categorical** (treatment coding, 00 as reference). Assumes nothing about ordering, but the
+  effect is three coefficients and "survives" needs a multi-df rule.
+- **(c) 2 × 2 factorial: Simon (0/1) × Flanker (0/1) and their interaction.** This *is* the design (00, S0, F0,
+  FS), and it can express the sub-additivity reported for this dataset's behaviour (Palucha et al., 2025, §10q).
+  Three coefficients again.
+- **Decided: (a) primary, (c) secondary.** (a) keeps the decision on one pre-registered contrast; (c) is reported
+  to show whether the two conflict types behave alike. (b) adds nothing that (c) does not, in a less interpretable
+  parameterization.
+
+**K1.3 Pre-stimulus covariate and the mini-block class — a real choice, because of §10l.** §10l showed that in
+later trials the baseline itself differs across conditions (it sits in the previous same-condition trial's
+post-response period), while in first-in-mini-block trials it does not (p = .223). Adjusting for a baseline that
+the condition has already shifted removes part of the condition effect in later trials.
+- **(a) First-in-mini-block trials only for the primary model** (design flag, §11d-2; 4,093 retained trials).
+  Clean baseline and an unpredictable condition; it matches §10l's headline class. Fewer trials.
+- **(b) All trials, with class (first / later), class × conflict, and class × baseline terms;** the decision is
+  read from the first-in-mini-block simple effect. Uses all data, but the RT slope and the variance components are
+  pooled across classes.
+- **(c) All trials pooled with class as a main-effect covariate only.** Treats the baseline adjustment as
+  equivalent in both classes, which §10l showed is false. **Not proposed.**
+- **Decided: (a) primary; the same model on later trials as a secondary model,** with within-mini-block position
+  (2nd / 3rd / 4th) as a covariate there.
+
+**K1.4 RT transform — a real choice.**
+- **(a) log RT, raw scale.** Simple, but mixes between-participant speed with trial-level variation.
+- **(b) log RT z-scored within participant.** Removes overall speed differences between participants.
+- **(c) log RT decomposed into the participant × condition cell mean and the within-cell deviation** (the
+  centring-within-cluster principle of Enders & Tofighi, 2007, applied here at the cell level, beyond the two-level
+  case they analyse *[revised]*). The within-cell deviation is uncorrelated with condition by
+  construction, so its slope estimates how trial-to-trial RT relates to beta power **without absorbing the
+  condition effect**; the cell mean carries the condition-level RT differences, which are almost collinear with
+  condition itself (four cells per participant).
+- **Decided: (c), with log as the transform.** It is the only option that keeps "RT predicts beta within a
+  condition" separate from "conditions differ in both RT and beta", and K3's options depend on that separation.
+
+**K1.5 Other covariates.** Trial order: the trial's index within the session, z-scored within participant,
+linear. Mini-block position: see K1.3. Accuracy: not applicable in the primary model if K2 is correct-only (it
+would be constant); it enters the K4a sensitivity model.
+
+**K1.6 Random effects — the rule must be fixed now.**
+- **(a) Maximal-first with a fixed simplification order** *[final: corrected after reading Barr et al., 2013]*. Start
+  with a by-participant intercept and by-participant slopes for the conflict term and for within-cell log RT, with
+  their correlations. The conflict count enters **centred (−1, 0, 1)**, because Barr et al. found the no-correlation
+  model sensitive to predictor coding and preferred deviation coding. If the fit fails to converge or is singular:
+  first check the data and the specification and refit once with the optimizer's iteration limit raised (Barr et
+  al.'s recommended first steps); then simplify in this order, stopping at the first structure that fits: (1)
+  remove the correlations; (2) remove the RT slope; (3) remove the conflict slope, leaving the intercept. The
+  conflict slope is removed last because the test of interest rests on it (Barr et al.'s rule of thumb). The order
+  itself is this project's, consistent with but not prescribed by Barr et al. If step (3) is reached, the conflict
+  estimate is reported with an explicit warning that intercept-only models were anticonservative in Barr et al.'s
+  simulations. Barr et al.'s other option, dropping the by-participant intercept while keeping the slopes, is not
+  adopted: absolute log band power differs widely between participants, so a model without that intercept would
+  be badly misspecified here (Claude's judgement, open to challenge). Whatever structure is reached is used and
+  reported.
+- **(b) Model selection from the maximal structure by likelihood-ratio test at α = .20** (Matuschek et al., 2017,
+  who argue that maximal models can cost power without improving Type I error control).
+- **Decided: (a).** It is confirmatory, it leaves no data-driven choice beyond convergence, and it is what the
+  reviewer's "slopes only if supported" most plausibly means when "supported" is read as "estimable". (b) was not
+  adopted; Matuschek et al. (2017) have not been read and are cited only for that rejected option.
+- **Convergence, defined now for `fitlme`:** failure = an optimizer error or warning, or a non-positive-definite
+  Hessian with `CheckHessian` on; singular = any random-effect SD below 10⁻⁴ × the residual SD, or any |correlation|
+  above 0.99.
+- **Estimation and inference:** REML for the reported coefficients, Satterthwaite degrees of freedom for their
+  tests and 95 % CIs (Luke, 2017; see the reading check for the scope of that evidence). *[final]* No
+  likelihood-ratio test enters any decision: with K3(a) decided there is no model comparison to test, and Luke
+  found such tests somewhat anticonservative.
+  *[revised]* `fitlme`'s default `FitMethod` is ML (MATLAB R2022b documentation), so REML must be set
+  explicitly; Satterthwaite DF are available in `coefTest` and `coefCI` (`'DFMethod','Satterthwaite'`).
+
+**K1.7 Verification before real data**, as in every earlier stage: the script is run on synthetic data with known
+coefficients (a conflict effect, an RT slope, a baseline slope) and must recover them before it touches a real
+trial.
+
+#### K2. Trial inclusion
+
+- **(a) Correct-only primary:** trials in the RT set and Track A usable (`retained_phase2`, §11a rule 6). RT has a
+  single meaning (time to a correct decision); accuracy drops out.
+- **(b) All responded trials primary** (correct and errors), with accuracy as a covariate. Omissions cannot enter
+  either way (no RT). Error RTs reflect a different process, and conflict changes the error rate (FS accuracy
+  0.908, §11e), so the error/correct mix differs by condition.
+- **Decided: (a) primary, (b) as the correct/error sensitivity check (K4a).** Recorded here because this
+  sensitivity check appears nowhere earlier in this log; this entry is its first written specification.
+
+#### K3. The RT-controlled vs uncontrolled comparison — the central choice
+
+Two models on the same trials: **M0** without RT, **M1** with the K1.4(c) RT terms. β₀ and β₁ = the conflict
+coefficient in each.
+
+- **(a) Descriptive only.** Report β₀ and β₁ with 95 % CIs, their difference, and the within-cell RT slope; no
+  binary call. No external threshold is needed. Its weakness: the text must then interpret without a rule, which
+  is exactly what pre-specification is meant to prevent.
+- **(b) Likelihood-ratio test for RT plus a change-in-estimate threshold.** RT "matters" if the LRT (ML, M1 vs
+  M0) is significant at .05; the conflict effect is "attenuated" if |β₁ − β₀| / |β₀| ≥ 10 % and "persists" if β₁'s
+  95 % CI excludes zero. **Precedent exists for a change-in-estimate rule** (Mickey & Greenland, 1989), **and
+  for the 10 % cutoff specifically** (Maldonado & Greenland, 1993) *[final: attribution corrected]* — **but in a
+  different domain:** choosing confounders in observational
+  epidemiology. Here RT is not a confounder (see the conceptual point above), and the change in a randomized
+  factor's coefficient when a mediator is added measures how much of the effect runs through the mediator, not
+  confounding. Borrowing the 10 % would therefore cite a precedent for a different question; it would not ground
+  the threshold the way Bradley (1978) grounded Item 2's.
+- **(c) A mediation criterion with confidence intervals and no percentage threshold** (the lower-level
+  multilevel-mediation framework of Bauer, Preacher & Gil, 2006 — **not read, see the reading check**). Path *a*:
+  conflict → log RT. Path *b*: within-cell log RT → beta power (K1.4(c)). Indirect effect from *a* and *b*;
+  direct effect = β₁. Reading: "explained by RT" / "persists, partly carried by RT" / "persists, not carried by
+  RT" / "undetermined", from which of the indirect and direct CIs exclude zero. Causal reading needs sequential
+  ignorability (Imai, Keele & Tingley, 2010), and a shared arousal or attention state would violate it.
+
+**K3 feasibility with the available tools *[revised]*.** Only MATLAB `fitlme` is available (no R, no `statsmodels`).
+- **The model as Bauer et al. specify it cannot be fitted exactly.** It is a single stacked model with a separate
+  residual variance for the mediator and the outcome equation (per the `multilevelmediation` documentation), so
+  that the covariance of the random *a* and *b* slopes, which enters the average indirect effect when both slopes
+  vary, is estimated jointly. `fitlme` has one residual variance per model and no option to group it (its
+  documented name-value pairs are `CovariancePattern`, `FitMethod`, `Weights`, `Exclude`, `DummyVarCoding`,
+  optimizer settings, `StartMethod`, `Verbose`, `CheckHessian`). A stacked model with fixed `Weights` from
+  preliminary separate fits would only approximate it, and the approximation's behaviour is unknown.
+- **What is implementable:** fit the *a*-model and the *b*/direct model separately with `fitlme`, resample
+  participants with replacement (cluster bootstrap, B = 1000; about 2,000 fits, each on about 4,000 trials),
+  and take the percentile 95 % CI of â·b̂. This is a **different estimator**: it omits the *a*–*b* slope
+  covariance, so it matches the random-slope indirect effect only if that covariance is zero or the *b* slope is
+  fixed. Calling it "Bauer et al.'s indirect effect" would be wrong.
+- **A third route, not available without approval:** installing R with `nlme` and `multilevelmediation` would fit
+  the stacked model as specified. This means downloading and installing software, which needs Amirhossein's
+  explicit approval, and the reference itself would still need to be read.
+- **Decided 2026-11-15 *[final]*: K3(a), descriptive, as the basis for interpretation, with the
+  product-of-coefficients participant bootstrap reported separately as a labelled descriptive quantity,
+  explicitly not the Bauer et al. estimator, and with no categories attached.** The text then reports β₀, β₁ and their CIs, the
+  within-cell RT slope, and â·b̂ with its bootstrap CI, and says what these do and do not show; it makes no
+  binary "persists / explained" call. This is the fallback the reviewer asked for if (c) is not implementable as
+  specified. R is not installed for this (Amirhossein's decision); if it is ever needed for another purpose, he
+  installs it himself. Options (b) and (c) are not adopted.
+
+#### K4. The two robustness checks, as their own small rules
+
+**K4a. Correct/error sensitivity.** The K3 models are refitted on all responded trials (K2(b)), with a
+trial accuracy term (correct / error) and its interaction with conflict. **Agree** if β₁ has the same sign and the
+same verdict on whether its 95 % CI excludes zero as in the primary model *[revised: the first draft compared K3's
+four categories, which the revised K3 proposal no longer has]*. **Disagree** otherwise: the
+primary result stands as reported, and the text names the disagreement.
+
+**K4b. Knee versus fixed aperiodic adjustment — this check needs scoping before it can have a rule.** Three
+problems are recorded rather than solved:
+1. §6 removed the knee model from this project because fitted knee frequencies fell inside the 13–30 Hz band,
+   and §10e found the same in task data (derived knee frequency median 10.18 Hz, range 1.66–25.17). Re-introducing
+   a knee is permissible only as an explicitly labelled robustness check that cannot feed a decision.
+2. Track A's trial windows are 250 and 500 samples (2 Hz resolution, about 20 bins in 2–40 Hz). A per-trial
+   fooof fit with three aperiodic parameters on that grid is not credible.
+3. The main model's outcome is raw band power, not aperiodic-adjusted power, so "agreement" has to compare like
+   with like.
+
+Options:
+- **(i) Cell-level aperiodic fits applied to trial outcomes.** For each participant × condition × class × window,
+  fit fooof (fixed, and separately knee) to the trial-averaged spectrum. Subtract the fitted aperiodic band power
+  (log₁₀) from each trial's log₁₀ band power in that cell, and refit the K3 model with this adjusted outcome
+  (baseline adjusted the same way). This keeps the trial-level model and RT, at the cost that the adjustment is
+  constant within a cell.
+- **(ii) Cell-level only:** rerun §10l's statistics on aperiodic-adjusted cell values. This is simpler but cannot
+  include RT, so it does not test the Phase 2 question.
+- **(iii) Drop the check,** citing problems 1 and 2.
+- **Decided: (i).** **Agree** if, under both the fixed and the knee adjustment, β₁ has the same sign as in the main
+  model and the same verdict on whether its 95 % CI excludes zero. Because of problem 1, the knee version is also
+  run excluding every cell whose derived knee frequency lies in 13–30 Hz, and agreement must hold with and
+  without those cells; the number excluded is reported. **Disagree:** the main result stands, and the text reports
+  which adjustment changes it and in which direction.
+
+#### K5. What is not decided by any option above, and is flagged now
+
+- **Trials with RT above 1000 ms *[revised]*.** Their response falls outside the active window [0, 1000) ms.
+  Sample composition, computed from `r1_behaviour_trials.csv` (RT and condition only; no beta quantity read), as a
+  share of the 14,671 retained trials:
+
+  | | all | 00 | S0 | F0 | FS |
+  |---|---|---|---|---|---|
+  | all trials | 432 / 14,671 (2.94 %) | 24 / 3,861 (0.62 %) | 53 / 3,916 (1.35 %) | 117 / 3,485 (3.36 %) | 238 / 3,409 (6.98 %) |
+  | first in mini-block (primary set) | 209 / 4,093 (5.11 %) | 15 / 1,093 (1.37 %) | 35 / 1,094 (3.20 %) | 50 / 991 (5.05 %) | 109 / 915 (11.91 %) |
+  | later | 223 / 10,578 (2.11 %) | 9 / 2,768 (0.33 %) | 18 / 2,822 (0.64 %) | 67 / 2,494 (2.69 %) | 129 / 2,494 (5.17 %) |
+
+  The share rises steeply with conflict (in the primary set, about nine times higher in FS than in 00), so
+  excluding these trials would select on a variable the condition itself changes.
+  **Rule, as instructed by the reviewer on 2026-11-15 (pending the freeze of §11k):** these trials **stay in the
+  primary model**, RT entering as a continuous variable; **K4c**, a robustness check, re-runs the central K3
+  comparison (M0 and M1, β₀ and β₁ with their CIs, and the descriptive product of coefficients) **excluding
+  them**. **Agree** if β₁ has the same sign and the same verdict on whether its 95 % CI excludes zero as in the
+  primary model; **disagree** otherwise, in which case the primary result stands and the text reports the
+  disagreement.
+- Stimulus-code random effects (3–12 codes per condition, nested in condition) are not proposed; with so few
+  levels per condition they would be poorly estimated.
+- A single primary coefficient (β₁ in K1.2(a) on first-in-mini-block trials) means no multiplicity correction is
+  needed for the decision; everything else is labelled secondary or sensitivity.
+
+- **Data-leakage check:** written from column headers, trial counts already in §11e, the §10l/§11e cell-level
+  results already published in this log, and bibliographic records. No trial-level beta power, RT–beta relation or
+  model output exists.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
@@ -2454,4 +2775,4 @@ passages (three) was therefore incomplete.
 14. ~~Build and run Track A~~ — **done** 2026-11-08 (§10l): 39/39 exported, 15,335 of 15,492 trials usable, 0 subjects excluded; a graded conflict effect on post-onset ERD% with the §10k rule satisfied in all three mini-block classes. One axis bug in `stage5_erd_by_condition.py` found and fixed before any ERD% value existed. The headline effect size is the first-in-mini-block W = 0.135.
 15. ~~Confirm the F/S/0 interference semantics of the four MSIT+ labels against Dzianok et al. 2022~~ — **done** 2026-11-02 (§10k): 0 = no interference, S = Simon, F = Flanker, FS = both. Page's L added to the Track A plan on the three ordered levels 00 < mean(F0, S0) < FS, with its decision rule written before the run.
 16. ~~Compare the matched-task power curve with the rest curve and apply the `S5-matched-power` decision rule~~ — **done** 2026-11-02 (§10j): max |matched − rest| = 0.0815, above 0.05 at six of ten levels, so the second branch applies. No rest-vs-task prevalence difference is reported as a physiological result; length matching removed almost none of the gap (0.0873 → 0.0815), which identifies it as a spectral-roughness effect.
-25. Review round 1, Phase 1 (§11): Item 1, Item 3A and the §10l flag check done 2026-11-15 (§11e); Items 2 and 3B running detached. Phase 2 (trial-level mixed-effects model) needs its own written decision rule, reviewed by Amirhossein, before it is run.
+25. Review round 1, Phase 1 (§11): Item 1, Item 3A and the §10l flag check done 2026-11-15 (§11e); Items 2 and 3B running detached. Phase 2 (trial-level mixed-effects model): decision rules decided 2026-11-15 (§11k); not yet implemented or run.
