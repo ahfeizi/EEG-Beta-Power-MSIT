@@ -2879,6 +2879,103 @@ combination `nconf_c` + `nconf_c:acc` and its SE (from that run's coefficient co
 same random-effects structure; the script checks this and reports the difference. The first run's K4a numbers are kept
 in its output files and are superseded for the K4a rule.
 
+### 11n. Phase 2 real-data results, read mechanically against §11k (`R1-phase2-results`, 2026-11-16)
+
+Written after Amirhossein saw the raw output. The decided rules are applied as written and nothing else is
+concluded. Sources: `Revision_Output\review1\phase2_real\r1_phase2_raw_output.txt` (run 2026-11-15 20:14–22:10,
+exit 0; HEAD `855f5a0` with §11m and the run scripts then uncommitted, committed unchanged in `61f2f32`) and, for K4a,
+`r1_phase2_k4a_recode_raw.txt` (the §11m amendment re-run, 2026-11-16, which supersedes the first run's K4a numbers).
+Units: β₀, β₁, b and a·b in log₁₀ band power; a in ln RT (seconds) per conflict source; nconf_c centred (−1, 0, 1).
+
+**The rules (§11k, quoted).** K3(a): *"descriptive, as the basis for interpretation, with the product-of-coefficients
+participant bootstrap reported separately as a labelled descriptive quantity, explicitly not the Bauer et al.
+estimator, and with no categories attached."* K4a, K4c: *"Agree if β₁ has the same sign and the same verdict on
+whether its 95 % CI excludes zero as in the primary model"*; otherwise *"the primary result stands"* and the text
+names the disagreement. K4b: *"Agree if, under both the fixed and the knee adjustment, β₁ has the same sign as in the
+main model and the same verdict on whether its 95 % CI excludes zero … agreement must hold with and without those
+[flagged] cells"*; *"Disagree: the main result stands, and the text reports which adjustment changes it and in which
+direction."* K1.6(a): if the intercept-only level is reached, *"the conflict estimate is reported with an explicit
+warning that intercept-only models were anticonservative in Barr et al.'s simulations."*
+
+#### n1. K3 quantities, as decided (descriptive, no categories)
+
+β₀ = M0's conflict coefficient (no RT terms); β₁ = M1's (with `rt_w` and `rt_cm`); b = M1's `rt_w` slope; a = the
+a-model's conflict coefficient on ln RT; a·b = product of fixed effects with a participant-cluster percentile bootstrap
+(B = 1000, full ladder per resample, seed 20261117) — **not the Bauer, Preacher & Gil (2006) estimator**. 95 % CIs
+with Satterthwaite DF.
+
+| Set | n | β₀ [95 % CI] | β₁ [95 % CI] | β₁ − β₀ | b [95 % CI] | a [95 % CI] | a·b [bootstrap 95 % CI] |
+|---|---|---|---|---|---|---|---|
+| **Primary** (first in mini-block) | 4,093 | −0.020956 [−0.029180, −0.012732] | −0.013870 [−0.029026, +0.001286] ⚠ | +0.007086 | −0.055932 [−0.083299, −0.028565] | +0.152662 [+0.140386, +0.164939] | −0.008539 [−0.014162, −0.002317] |
+| K4a (all responded; β₁ at correct trials) | 4,266 | −0.020979 [−0.029909, −0.012048] | −0.011922 [−0.026311, +0.002468] ⚠ | +0.009057 | −0.053640 [−0.080150, −0.027129] | not fitted (§11k K4a refits M0 and M1 only) | not computed |
+| K4b fixed-adjusted | 4,093 | −0.011897 [−0.021110, −0.002683] | +0.005466 [−0.011616, +0.022548] | +0.017362 | −0.050424 [−0.095785, −0.005064] | +0.152188 [+0.140023, +0.164354] | −0.007674 (no bootstrap) |
+| K4b knee-adjusted | 4,093 | −0.008045 [−0.015376, −0.000715] | +0.005936 [−0.009054, +0.020926] | +0.013981 | −0.050027 [−0.095170, −0.004883] | +0.152229 [+0.139994, +0.164465] | −0.007616 (no bootstrap) |
+| K4b knee-adjusted, flagged cells excluded | 2,916 (112 of 156 cells; 34 participants) | −0.006883 [−0.015085, +0.001320] ⚠ | +0.001990 [−0.015157, +0.019136] ⚠ | +0.008872 | −0.040420 [−0.072786, −0.008055] | +0.157606 [+0.142126, +0.173086] | −0.006370 (no bootstrap) |
+| K4c (RT ≤ 1000 ms) | 3,884 | −0.021290 [−0.029709, −0.012870] | −0.013157 [−0.028789, +0.002475] ⚠ | +0.008133 | −0.065963 [−0.099606, −0.032319] | +0.134356 [+0.124486, +0.144226] | −0.008862 [−0.015792, −0.001814] |
+
+⚠ = estimated in an intercept-only model (n3). **Warning required by K1.6(a): intercept-only models were
+anticonservative in Barr et al.'s (2013) simulations; these estimates do not meet the maximal-structure standard of
+§11k.** K4a's β₁ − β₀ is computed here from the two printed coefficients (−0.011922 − (−0.020979)). In K4a, the
+error-trial difference terms are `nconf_c:err` = +0.022226 [−0.022098, +0.066550] (M0) and +0.019305 [−0.024814,
++0.063423] (M1), and `err` = −0.030021 (M0), −0.034385 (M1); 4,093 correct and 173 error trials.
+
+**Later trials (K1.3 secondary model; its own first-in-mini-block versus later comparison, not a robustness check of
+Primary; §11k fixes no rule that compares it with Primary):** n = 10,578, with `mb_pos` as a covariate. β₀ = −0.032999
+[−0.040365, −0.025634]; β₁ = −0.000546 [−0.011631, +0.010538]; β₁ − β₀ = +0.032453; b = −0.086793 [−0.124092,
+−0.049494]; `rt_cm` = −0.193950 [−0.240609, −0.147291]; a = +0.166861 [+0.153383, +0.180339]; a·b = −0.014482,
+bootstrap 95 % CI [−0.019459, −0.008808]. All three of its main models reached the maximal structure.
+
+**Also run (K1.2(c) secondary coding, primary set; no rule attached):** M0 `simon` −0.018307 [−0.030976, −0.005639],
+`flanker` −0.033264 [−0.046255, −0.020273], `simon:flanker` +0.010374 [−0.008224, +0.028971]; M1 `simon` −0.021008
+[−0.038179, −0.003837], `flanker` −0.038517 [−0.064440, −0.012594], `simon:flanker` +0.009889 [−0.008754, +0.028532];
+both intercept-only ⚠.
+
+#### n2. The K4 agreement rules, applied to β₁ against Primary
+
+Primary β₁ = −0.013870, 95 % CI [−0.029026, +0.001286]: **sign negative; the CI includes zero.**
+
+| Check | β₁ [95 % CI] | Sign | CI excludes zero? | Same sign? | Same CI verdict? | **Verdict** |
+|---|---|---|---|---|---|---|
+| K4a (corrected) | −0.011922 [−0.026311, +0.002468] | − | no | yes | yes | **Agree** |
+| K4b fixed | +0.005466 [−0.011616, +0.022548] | + | no | **no** | yes | fails |
+| K4b knee | +0.005936 [−0.009054, +0.020926] | + | no | **no** | yes | fails |
+| K4b knee, flagged excluded | +0.001990 [−0.015157, +0.019136] | + | no | **no** | yes | fails |
+| **K4b overall** (must hold under fixed and knee, with and without flagged cells) | | | | | | **Disagree** |
+| K4c | −0.013157 [−0.028789, +0.002475] | − | no | yes | yes | **Agree** |
+
+- **K4a: agree. K4c: agree.**
+- **K4b: disagree.** As the rule requires, which adjustment changes the result and in which direction: **every one of
+  the three aperiodic adjustments (fixed; knee; knee with the 44 flagged cells excluded) changes the sign of β₁ from
+  negative to positive; none changes the CI verdict (the CI includes zero in all of them, as in Primary).** The number
+  of cells excluded for the knee-frequency flag is 44 of 156 (1,177 trials; 5 participants lose all their cells).
+- By the rules, **the primary result stands as reported** in every case; the K4b disagreement is named in the text.
+
+#### n3. Random-effects structure reached — a descriptive fact, not part of any verdict
+
+Main fits (level 0 = maximal with correlations; level 1 = without correlations; intercept only = the last level):
+
+| Set | M0 | a-model | M1 |
+|---|---|---|---|
+| Primary | maximal | maximal | **intercept only** (level 0 singular, \|correlation\| 1.0000; levels 1–2 failed on the Hessian warning) |
+| Later | maximal | maximal | maximal |
+| K4a (corrected) | maximal | — | **intercept only** (level 0 singular, \|correlation\| 0.9984) |
+| K4b fixed | maximal | maximal | maximal |
+| K4b knee | maximal | maximal | level 1 (without correlations) |
+| K4b knee, flagged excluded | **intercept only** | maximal | **intercept only** |
+| K4c | maximal | maximal | **intercept only** (level 0 singular, \|correlation\| 0.9987) |
+| K1.2(c) Simon × Flanker | **intercept only** | — | **intercept only** |
+
+Bootstrap resamples (1000 each; no resample failed in any run), structure reached by M1 — maximal / without
+correlations / without the RT slope / intercept only: **Primary 429 / 112 / 1 / 458; Later 646 / 22 / 0 / 332; K4c
+532 / 129 / 0 / 339.** The a-model reached intercept only in 3 (Primary), 0 (Later) and 15 (K4c) resamples. As in
+the synthetic validation (§11l), the movement down the ladder comes from the "any warning = failed fit" rule, which
+stays unchanged by decision (§11l amendment 2); it is recorded here and folded into no verdict.
+
+- **Data-leakage check:** no rule, threshold or model was changed after these numbers existed. The only change made
+  after the first real run was the K4a recoding, decided and logged (§11m amendment) before its re-run because the
+  first coding did not estimate the quantity the K4a rule compares; the re-run reproduces the first run's linear
+  combination to 10⁻¹¹.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
