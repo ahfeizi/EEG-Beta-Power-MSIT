@@ -2710,6 +2710,107 @@ Options:
   results already published in this log, and bibliographic records. No trial-level beta power, RT–beta relation or
   model output exists.
 
+### 11l. Phase 2 K1.7 — synthetic validation of the model code: pass criteria (`R1-phase2-synth`, 2026-11-15)
+
+Written before the validation is run. No real trial-level data is read by any step of K1.7.
+
+**Code under test** (`revision/review1/`): `r1_phase2_prepare.m` (builds every model variable from a trial
+table, used unchanged for synthetic and real data), `r1_phase2_fit.m` (one model with the §11k K1.6(a)
+random-effects rule: maximal full covariance → one refit with the iteration limit raised → no correlations →
+drop the RT slope → intercept only with an explicit warning; REML set explicitly; Satterthwaite DF; a forced-
+failure test hook refused on real data), `r1_phase2_k3.m` (M0, M1, the a-model and the labelled non-Bauer a·b
+participant bootstrap). Test driver: `r1_phase2_synth_test.m`; output `Revision_Output\review1\phase2_synth\`.
+
+**Builder's calls made while writing the code, flagged for review:** RT enters as the natural log of seconds;
+`base_c` is centred at the grand mean of the analysed trials and `rt_cm` at the grand mean of the cell means;
+`order_z` is z-scored within participant; each bootstrap resample is fitted at the random-effects structures
+the main fits reached (no re-simplification inside resamples) and a resample whose fit fails is counted and
+skipped.
+
+**Synthetic data.** 39 participants × 26 first-in-mini-block trials per condition (104 each, about the 4,093
+retained first trials), trial positions drawn from a 400-trial session. Log RT = r₀ + v₀ᵢ + (a + vₐᵢ)·nconf_c +
+cell noise + trial noise. log₁₀ baseline power varies by participant and trial. The outcome is generated from
+the same variables `r1_phase2_prepare` builds — y = β₀ + u₀ᵢ + (c′ + u_cᵢ)·nconf_c + γ·base + δ·order_z +
+(b + u_bᵢ)·rt_w + b·rt_cm + residual — so M1 is correctly specified and its true coefficients are c′, b, γ, δ;
+the a-model's is a; M0's conflict coefficient is approximately c′ + a·b (exact only up to the unmodelled
+cell-level noise); and a·b is the product the bootstrap estimates. Values: a = 0.16, c′ = −0.03, b = −0.10,
+γ = 0.40, δ = 0.01, with non-zero random-slope SDs in the main dataset.
+
+**Pass criteria (all must hold).**
+- **T1 recovery, 20 replicate datasets:** for c′ (M1), b (M1 `rt_w`), γ (M1 `base_c`) and a (a-model), the true
+  value lies inside the Satterthwaite 95 % CI in **≥ 16 of 20** replicates, and |mean estimate − true| ≤ 0.5 ×
+  mean SE. For M0's conflict coefficient (approximate target c′ + a·b): the bias criterion only.
+- **T2 natural simplification:** on a dataset generated with all random-slope SDs set to zero, M1's maximal fit
+  must fail and the attempts must follow the ladder in order — level 0, level 0 refitted with the raised
+  iteration limit, then levels 1, 2, … with none skipped — stopping at the first that fits; if that is the
+  intercept-only level, the warning text must be present.
+- **T3 forced failure:** forcing levels 0, 1 and 2 of M1 to fail must end at level 3 (intercept only), with the
+  warning text present and the attempts table showing each forced level.
+- **T4:** forcing every level to fail must stop with an error.
+- **T5:** the forced-failure hook must be refused when the data are declared real.
+- **T6 bootstrap:** on replicate 1, with B = 200, the true a·b lies inside the percentile 95 % CI, and at most
+  5 % of resamples fail.
+- **T7:** every fitted model reports `FitMethod` = REML.
+- **T8:** `nconf_c` takes only −1, 0, 1, and `rt_w` has zero mean in every cell (asserted in the code).
+
+If any criterion fails, the code is not run on real data; the failure is reported and diagnosed first.
+
+**Amendment before the validation run (`R1-phase2-synth-amend1`, 2026-11-15).** A smoke test of the test
+driver itself (2 replicates, B = 5, output in the session scratchpad, not a validation result) ran every step
+without error. Working through the T1 criteria for that report showed a design flaw that is pure arithmetic, not
+a result: with 20 replicates, an unbiased estimator fails "coverage ≥ 16 of 20" with probability ≈ 0.016 per
+parameter, and the bias bound of 0.5 × mean SE is only ≈ 2.2 standard errors of a 20-replicate mean (≈ 3 %
+false-fail per parameter), so correct code would fail T1 roughly one time in six. **T1 therefore uses 100
+replicates**, with the same criteria scaled: coverage ≥ 80 of 100, and the same 0.5 × mean SE bias bound (now
+≈ 5 standard errors of the mean). Nothing else changes. Observed in the smoke test and recorded for the
+report: `fitlme` emits a "covariance of covariance parameters not positive definite" warning under
+`CheckHessian` when a random-effect variance is near zero; §11k K1.6 counts any warning as a failed fit, so
+such fits move down the simplification ladder (in one smoke replicate M0 reached intercept only).
+
+**Result of the first validation run (2026-11-15 19:32–19:39, `Revision_Output\review1\phase2_synth\`): NOT
+PASSED — T6 fails; everything else passes.** No real data was touched, and the code is not run on real data.
+- T1 (100 replicates) passes for every parameter: c′ coverage 95/100, bias +0.0009 (bound 0.0052); b 95/100, −0.0020
+  (0.0090); γ 94/100, −0.0000 (0.0079); a 97/100, −0.0000 (0.0040); M0's conflict coefficient bias +0.0001 (0.0023).
+- M1 reached the maximal structure in 82 of 100 replicates; 3 ended at level 1, 5 at level 2 and **10 at intercept
+  only**, although every synthetic dataset had non-zero random-slope variance. The cause is the "any warning = failed
+  fit" rule meeting `fitlme`'s non-positive-definite-Hessian warning. Coverage of c′ was 18/18 in those replicates,
+  so no harm was visible here, but on real data the rule may push M1 down the ladder more often than the data
+  require.
+- T2, T3, T4, T5, T7, T8 pass: the ladder runs in order with the one raised-iteration refit, the intercept-only
+  warning fires, the all-levels failure stops with an error, and the test hook is refused on real data.
+- **T6 fails on its failure-rate arm: 59 of 200 bootstrap resamples failed (limit 5 %)**; the CI arm holds (true a·b
+  −0.0160 inside [−0.0200, −0.0073]). A diagnostic on 40 resamples of the same replicate (scratchpad only) found every
+  failure in M1 at the fixed maximal full-covariance structure: 8 non-positive-definite-Hessian warnings and 2
+  |correlation| > 0.99; the a-model never failed. The cause is the builder's call in this section that each
+  resample is fitted at the structure the main fit reached and is skipped if that fit fails. Skipping a quarter of
+  the resamples, non-randomly, would bias the CI. A fix is a choice for Amirhossein; nothing has been changed or
+  re-run.
+
+**Amendment 2, after the first run and before the second (`R1-phase2-synth-amend2`, 2026-11-15; decided by
+Amirhossein).** The T6 failure is fixed by option 1: **every bootstrap resample is estimated by the whole procedure**,
+i.e. the full K1.6(a) simplification ladder of `r1_phase2_fit` (the code validated by T2–T5) runs inside each
+resample, so the random-effects structure is chosen per resample exactly as in the main fits. This replaces the
+builder's call above ("each bootstrap resample is fitted at the random-effects structures the main fits reached").
+The test hook is not used inside the bootstrap; the intercept-only warning is recorded per resample (the levels
+reached are reported) rather than printed. §11k's "any warning = failed fit" rule is **unchanged** (Amirhossein,
+2026-11-15: c′ coverage was 18/18 in the replicates it pushed down the ladder, so there is no evidence that it biases
+the key estimate; it is conservative). **All of T1–T8 are re-run with the same 100-replicate criteria**, into a new
+folder (`Revision_Output\review1\phase2_synth_run2\`); the first run's outputs are kept unchanged.
+
+**Result of the second validation run (2026-11-15 19:50–20:04, `Revision_Output\review1\phase2_synth_run2\`):
+ALL CRITERIA PASS (T1–T8).** No real data was touched.
+- T1 (100 replicates) is identical to the first run, as expected (same seeds; the bootstrap runs only on replicate 1
+  and after its main fits): c′ 95/100, b 95/100, γ 94/100, a 97/100, every bias well inside its bound; M1 structure
+  levels again 82 maximal, 3 / 5 / 10 at levels 1 / 2 / intercept only.
+- **T6 now passes: 0 of 200 resamples failed**; a·b = −0.01310, percentile 95 % CI [−0.02030, −0.00719], true −0.01600
+  inside it. Structure levels reached by the per-resample ladder: M1 141 maximal, 13 without correlations, 0 without
+  the RT slope, **46 intercept only (23 %)**; a-model 200 maximal. The 23 % is the same conservative "any warning =
+  failed fit" rule seen in the main fits, which stays unchanged by decision.
+- T2, T3, T4, T5, T7, T8 pass as in the first run; T4's error message now also carries the reason for the last failed
+  attempt (a diagnostic improvement made while investigating T6; it changes no fit).
+- Status: the Phase 2 code meets every §11l criterion. It has not been run on real data; that step waits for
+  Amirhossein.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
