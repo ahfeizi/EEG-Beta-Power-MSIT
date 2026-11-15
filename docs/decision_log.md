@@ -2811,6 +2811,74 @@ ALL CRITERIA PASS (T1–T8).** No real data was touched.
 - Status: the Phase 2 code meets every §11l criterion. It has not been run on real data; that step waits for
   Amirhossein.
 
+### 11m. Phase 2 on real data — implementation details fixed before the run (`R1-phase2-real`, 2026-11-15)
+
+Cleared by Amirhossein on 2026-11-15 after §11l passed. Written before any real Phase 2 model is fitted. The model
+code is the committed, validated code (`855f5a0`); this entry fixes only how the real data reach it and the
+builder's calls §11k left open. Raw output is shown to Amirhossein before any interpretation or text.
+
+**Trial table (`revision/review1/r1_phase2_build_table.py`).** Track A's `stage5_erd_per_trial.csv` joined on
+(`subject`, `trial`) to `behaviour_next_stimulus/r1_behaviour_trials.csv`; the script stops unless all 15,492 keys,
+conditions and usable flags agree (checked: they do), the retained count is 14,671 and the first-in-mini-block
+retained count is 4,093 (§11e).
+- `trial_index` (K1.5 trial order) = Track A's in-block trial index (time order within the session, out-of-block
+  trials not counted). Builder's call.
+- `mb_pos` (K1.3 later-trials covariate) = the stimulus's position since the last S 10 / S 11 / S 12 marker,
+  counted over **all** stimuli in `events.tsv`, so a trial whose mini-block began before a clipped block start gets
+  its true position; the script stops unless `mb_pos == 1` exactly when the design flag is 1.
+- `correct` = behavioural outcome `correct`.
+
+**Trial sets.**
+- Primary (K1.3(a), K2(a)): design first-in-mini-block ∧ `retained_phase2` (4,093 trials).
+- Later (K1.3 secondary): design later ∧ `retained_phase2` (10,578 trials), covariates + `mb_pos`.
+- K4a: design first-in-mini-block ∧ Track A usable ∧ outcome correct or error (all responded trials, K2(b)), with
+  `acc` and `acc × nconf_c` added. Anticipatory responses (< 150 ms) are kept here, being responded trials.
+- K4c: the primary set with RT ≤ 1000 ms.
+
+**Models run (each with the validated K1.6(a) ladder, REML, Satterthwaite DF; RT terms built on the rows of each
+set).**
+1. Primary K3: M0, M1, a-model; covariates `base_c`, `order_z`; a·b bootstrap B = 1000, seed 20261117.
+2. Later K3: the same on the later set with `mb_pos` added; B = 1000.
+3. K1.2(c) secondary on the primary set: M0 and M1 with fixed `simon`, `flanker`, `simon:flanker` in place of
+   `nconf_c`; by-participant random slopes for `simon` and `flanker` (plus `rt_w` in M1), dropped in the order
+   `rt_w`, `flanker`, `simon` (builder's call: §11k fixes only that the RT slope goes first); no bootstrap.
+4. K4a: M0 and M1 on the K4a set; no bootstrap (its rule compares β₁ only).
+5. K4b(i): M0 and M1 (and the a-model) on the primary set with aperiodic-adjusted outcomes, for the fixed and the
+   knee adjustment, and the knee adjustment again excluding flagged cells; no bootstrap.
+6. K4c: K3 on the K4c set, B = 1000 (§11k: "the descriptive product of coefficients" is part of K4c).
+
+**K4b(i) adjustment (`revision/review1/r1_phase2_k4b_aperiodic.py`).** For each participant × condition cell of the
+primary set and each window (baseline, active), the trial spectra are recomputed from the Track A trial files with
+the §10g estimator (Hann, 250 samples, 50 % overlap, 2 Hz bins, ROI mean on linear power; gate: their 13–30 Hz band
+means must reproduce `stage5_erd_per_trial.csv` to 1e-9 relative) and averaged over the cell's trials. `fooof`
+1.1.1 is fitted over 2–40 Hz with the frozen Stage-4 peak settings, once with `aperiodic_mode='fixed'` and once with
+`'knee'`; the cell's aperiodic band power is the mean of 10^(aperiodic curve) over the same 13–30 Hz bins (14, 16, …,
+30 Hz). Each trial's adjusted power = its band power ÷ its cell's aperiodic band power (so the log₁₀ outcome becomes
+log₁₀ band power − log₁₀ aperiodic band power), for both windows. A cell is **flagged** if the knee fit's derived
+knee frequency, knee^(1/exponent), lies in 13–30 Hz in either window; "excluding flagged cells" removes every
+trial of a flagged participant × condition cell. A cell whose fit fails is excluded from that variant and counted.
+Known limitation, recorded in advance: at 2 Hz resolution `fooof` will warn that the minimum peak width (1 Hz) is
+below twice the resolution; the frozen settings are kept so the adjustment uses the project's one fitting
+configuration.
+
+**Outputs:** `Revision_Output\review1\phase2_real\` — the trial table, the K4b cell table, a raw-output text file
+with every model's coefficient table, structure level, attempts and warnings, and a `.mat` with everything. The
+K4a/K4b/K4c agreement verdicts are **not** computed by the run; they are applied afterwards, against §11k's rules,
+once Amirhossein has seen the raw output.
+
+**Amendment to §11m, K4a coding, before the K4a re-run (`R1-phase2-k4a-recode`, 2026-11-16; decided by
+Amirhossein).** In the first real run the K4a models entered accuracy as `acc` (1 = correct, 0 = error) together with
+`nconf_c:acc`, so the reported `nconf_c` coefficient was the conflict effect in **error** trials, not comparable with
+the primary β₁ (estimated on correct trials only). This was Claude's coding choice, §11k having fixed only "a trial
+accuracy term and its interaction with conflict". **K4a is re-run with `err` = 1 − `acc` (0 = correct, 1 = error)**
+and the term `nconf_c:err`, so the headline `nconf_c` coefficient is the conflict effect **at correct trials** and
+`nconf_c:err` carries the error-trial difference. Nothing else changes: same trials (4,266), covariates, ladder and
+estimation; only K4a is re-run (`revision/review1/r1_phase2_run_k4a_recode.m`), to new filenames. Because this is a
+reparameterization of one binary covariate, the new `nconf_c` estimate and SE must equal the first run's linear
+combination `nconf_c` + `nconf_c:acc` and its SE (from that run's coefficient covariance) whenever both runs reach the
+same random-effects structure; the script checks this and reports the difference. The first run's K4a numbers are kept
+in its output files and are superseded for the K4a rule.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
