@@ -2976,6 +2976,45 @@ stays unchanged by decision (§11l amendment 2); it is recorded here and folded 
   first coding did not estimate the quantity the K4a rule compares; the re-run reproduces the first run's linear
   combination to 10⁻¹¹.
 
+### 11o. Correction note: the author is Paluch, not "Palucha" (2026-11-16)
+
+The first author of *Common but different: An ERP study of single- and multi-source interference processing in MSIT*
+is **Katarzyna Paluch** (Crossref record of the published version, doi 10.1016/j.neuroimage.2026.122030, and the Crossref
+record of the bioRxiv preprint, doi 10.1101/2025.03.05.641477). This log spells the name "Palucha" in §10q, §11a, §11e, §11f, §11g and §11k; those entries stay as written, and
+every such mention should be read as **Paluch**. The manuscript and supplementary now spell it correctly. The paper
+has since been published in *NeuroImage* 337, 122030 (2026; online 6 June 2026); the manuscript still cites the 2025
+bioRxiv preprint, because the three facts it quotes (n = 41, all adjacent conditions separated on RT at p < .001,
+Simon against flanker accuracy p = .80) have been checked only in the preprint; the published version could not be
+read (paywall and captcha).
+
+### 11p. Does Jiang et al. (2026) draw on this dataset? Narrowed, not confirmed; the manuscript is hedged (2026-11-16)
+
+Prompted by the abstract-level reference check of the same day (the Jiang caveat now in the manuscript). Jiang, Zhang,
+Wang, Zhong, An & Zhang (2026), *NeuroImage* 325, 121685, doi 10.1016/j.neuroimage.2026.121685, report the individual
+alpha bandwidth across four EEG datasets; the manuscript's individual-differences framing compares itself with their
+work.
+
+**What could be checked.** Their Methods, data-availability, ethics and funding statements could not be read: the
+publisher page returned HTTP 403 or a captcha (not bypassed), Europe PMC lists the paper as subscription-only, and no
+preprint was found. Their Crossref record carries the full reference list (72 entries), which was searched for dataset
+sources. It includes **Dzianok et al. (2022)**, the Nencki-Symfonia dataset paper (doi 10.1093/gigascience/giac015),
+and **Paluch et al. (2025)**, the ERP analysis of that dataset's interference task (§11f), together with two
+multi-session EEG databases (Hinss et al., 2023, doi 10.1038/s41597-022-01898-y; M3CV, Huang et al., 2022) that are
+plausible sources for their test-retest analysis. Their abstract's cognitive measures, flanker interference and the
+N450, are what the Nencki-Symfonia MSIT+ measures.
+
+**Conclusion — narrowed, not confirmed.** Citing a dataset paper does not prove its data were used, but together these
+make it likely that at least one of the four datasets is ds004621 or derived from it. Confirmation needs their Methods
+(institutional access).
+
+**Decision (Amirhossein, 2026-11-16): hedge now, without waiting for access.** The Introduction now states, after the
+sentence citing Jiang et al., that their work may not be independent of the present sample, gives the evidence (their
+references to Dzianok et al. 2022 and Paluch et al. 2025, and the matching paradigm), and says that comparisons between
+their alpha-band findings and these beta-band findings should not be read as comparisons between independent samples.
+The same day, line 17's "the logic already established for individual alpha frequency and bandwidth" became "the logic
+proposed for …", matching the Jiang caveat. If their Methods are read later, the hedge is either removed (no overlap) or
+made definite (overlap confirmed).
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
