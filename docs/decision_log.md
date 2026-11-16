@@ -3144,6 +3144,27 @@ not ordered: 0.90, 0.69, 1.23 and 1.55 % for 00, S0, F0 and FS.
 - Both sources draw on the participants analysed here, so neither is an independent replication.
 - §10k and §10q stay as written; read them with this note.
 
+### 11u. Terminology: "pre-registered" only for what Zenodo registered; the task analyses are "pre-specified" (2026-11-16)
+
+Decided by Amirhossein, 2026-11-16 (Option A). The Zenodo pre-registration (10.5281/zenodo.23843194) covers Stage 4
+only: the resting beta-peak criterion, the seven-channel ROI, the poor-fit flag, the threshold grid, the alpha-harmonic
+rule and the split-half analysis. Stage 5 was declared exploratory throughout, with no second deposit (§10, 2026-11-01).
+The manuscript nevertheless called 24 task-analysis items "pre-registered": the equivalence bound [0.900, 1.111] (§10m),
+the three-level Page's L (§10k) and the trial-averaged estimator and analysis (§10g). Each of these was fixed in this log
+before the analysis it governs was run, so "pre-specified" is accurate and "pre-registered" is not: this log is public,
+but its dates are git commit dates under our own control, not an independent registry.
+
+**Change.** In `draft.md` and `supplementary.md`, every "pre-registered" that refers to a task analysis becomes
+"pre-specified" (`draft.md` lines 77 ×2, 81, 127, 131 ×2, 141 ×2, 155 ×2, 157, 170, 196, 208, 212; `supplementary.md`
+lines 58, 60, 72, 77, 79, 86, 93, 97, 99). Uses that refer to the Zenodo-registered Stage 4 analysis, including the
+seven-channel region, are unchanged. One sentence is added at the end of the Statistical Analysis paragraph on code
+and decision rules (`draft.md` line 79), stating that only the resting analysis was registered, defining
+"pre-specified", and labelling the task analyses exploratory because the same task recordings were analysed in the v1
+version. This also makes good the Introduction's statement (line 17) that the task results are labelled exploratory in
+the Method. The paragraph's existing statement is also narrowed: the decision rules were recorded "before the
+analysis it governs was run", no longer "before the relevant data were examined", because the task recordings had
+been examined in the v1 version. No number and no verdict changes.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
