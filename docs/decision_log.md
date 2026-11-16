@@ -3336,6 +3336,80 @@ the §11v NaN-resample stop rule unchanged) and reported beside the McGraw–Won
 with a one-line note that in this calibration BCa covered 0.89–0.91 instead of 0.95 at n = 20. This swaps the roles §11v
 D3 gave the two intervals; nothing else in §11v changes.
 
+### 11x. Split-half ICC of resting CF, BW and PW — results, read mechanically against §11v/§11w (2026-11-16)
+
+Written after Amirhossein saw the raw output. **Post-hoc** (§11v). Source: `Revision_Output\review1\splithalf_icc\`
+`r1_splithalf_icc_real.json`; script `revision/review1/r1_splithalf_icc_cfbw.py --mode icc`, committed unchanged at
+`16088c3` and run once, exit code 0.
+
+**Provenance (SHA-256, from the output file).** Script d912545373ba4426edd00e3ad37aba02a823d7e1d94650f64bee4de98fd1686e
+(identical to the committed blob at `16088c3`); `r1_common.py` acd1db0f23aab14aa78d9bb194add37a2b8f79a1583a05fa3374aa2595782f65;
+`stage4_core.py` 595935e7fc83de9d97f85c539abc76d24ecc3cabcef271b25eb3ba1272299c0e; this log as committed at `b8da3d2`
+139b6f9a0d0dfe7abc89b028179a025089844de78374e900d291c0f490b444eb. Inputs: `r1_splithalf_cfbw.csv`
+17dcc9495c557c01b4dd0ef48795eee259fa410da7e89ad82a35a1fae7564925; `r1_splithalf_gate.json`
+8605734a672d80bb124d545826e4c36e24c42401eaff1e7bb30ac1fa2f32e8fc; `r1_splithalf_icc_synthetic.json`
+69d8605c5f3db8e269e6875a4d77f8d4a4026fdaa1124d43d5d85d37d088e360. fooof 1.1.1, numpy 2.5.4.
+
+**Settings and checks.** n = 20 (sub-02, 03, 04, 06, 07, 10, 11, 12, 16, 18, 20, 22, 23, 24, 29, 30, 35, 36, 38, 40);
+ICC(2,1) two-way random, absolute agreement, single measures; verdict interval McGraw & Wong (1996) analytic 95 %
+(§11w); BCa 95 %, B = 10,000, seed 20261120, `SeedSequence(seed).spawn(3)` in the order cf, bw, pw; SD with ddof = 1.
+Preconditions passed: gate `passed`, official calibration with the fallback outcome, PW ICC from the CSV identical to the
+gate value. Stop rules not triggered: 0 NaN resamples for every measure; every McGraw–Wong interval finite.
+
+**Raw output** (CF and BW in Hz, PW in fooof PW units; d4 fields computed by the script from the McGraw–Wong interval):
+
+| Field | CF | BW | PW |
+|---|---|---|---|
+| icc | 0.8883290235869101 | 0.615489119346753 | 0.9185927155163712 |
+| mw_lo | 0.7437062504104643 | 0.26307033157382703 | 0.8064816581693521 |
+| mw_hi | 0.9539670222489112 | 0.8258906254384157 | 0.9669560742059223 |
+| d4.span | moderate, good, excellent | poor, moderate, good | good, excellent |
+| d4.label | moderate to excellent (good) | poor to good (moderate) | good to excellent (excellent) |
+| d4.point_category | good | moderate | excellent |
+| d4.reading | imprecise | imprecise | reliable |
+| bca_lo | 0.6390935928372785 | 0.21442053249578974 | 0.6942204598342991 |
+| bca_hi | 0.9788247852260881 | 0.8641045889364537 | 0.9804270940561821 |
+| bca_z0 | 0.0 | 0.03961508598957968 | −0.023313754740585505 |
+| bca_a | 0.02067339215713019 | −0.06636932094589944 | −0.07387669617333288 |
+| bca_n_nan_resamples | 0 | 0 | 0 |
+| mean h1 − h2 | −0.41862060145989577 | 0.6161620389221534 | −0.021023328729970675 |
+| SD h1 − h2 | 1.4756566267497446 | 1.9847491459398825 | 0.061715942618630955 |
+| jackknife ICC min | 0.811238620656504 | 0.5717380525643321 | 0.890801277018995 |
+| jackknife ICC max | 0.9535486122314585 | 0.7303599819136335 | 0.9657861719691275 |
+
+BCa note, as the script wrote it: "BCa reported without a verdict: in the §11w synthetic calibration (n = 20, 1000
+datasets per true ICC) its 95 % interval covered 0.893-0.906 of true values, not 0.95."
+
+**D4, applied as written (McGraw–Wong interval, §11w).**
+- **PW: reliable.** Lower bound 0.806 ≥ 0.75. Span "good to excellent" (point estimate 0.919, "excellent"). **The
+  consequence stated in advance in §11v D4 is triggered:** the lower bound is below 0.90, so the manuscript's
+  description of PW reliability changes from "excellent" to "good to excellent".
+- **CF: imprecise.** Interval [0.744, 0.954] contains 0.75. Span "moderate to excellent" (point estimate 0.888, "good").
+- **BW: imprecise.** Interval [0.263, 0.826] contains 0.75. Span "poor to good" (point estimate 0.615, "moderate").
+- BCa intervals are reported beside these with no verdict, with the note above (§11w).
+
+**D5, applied as written.** CF and BW both fall in outcome 3 ("imprecise"). By the mapping fixed in §11v D5: **the
+split-half reliability of CF and BW is reported as not established, with no claim in either direction, and "reliable"
+is restricted to peak presence and PW.** Every "the measurement was reliable where a peak existed" (Abstract,
+Discussion, Conclusion) names the quantity it refers to. The qualifications §11v fixed for the text also apply: the
+values describe a half-length measurement and are conservative relative to the full-length IBF and IBB (D1), and they are
+conditional on a peak being detectable in both halves (D2). Outcomes 1 and 2 of D5 do not apply.
+
+**Context, not a reason to alter the verdict** (§11w, D2b descriptives). Of the 20 participants, 18 have more than
+one beta-range Gaussian in at least one half, so the tallest-Gaussian rule may select different components in the two
+halves; 6 have a BW at the 1 or 8 Hz bound of `peak_width_limits` in at least one half. Either may contribute to the
+width of the CF and BW intervals. Under §11v D2b both are reported, not corrected, and neither changes the D4 or D5
+reading above.
+
+**What does not change.** No pre-registered classification changes: the 24-peak primary classification (§9), the
+split-half agreement (97.4 %) and the PW point estimate (ICC(2,1) = 0.919) stand as reported; only the descriptive label
+attached to the PW value changes, as above. The Conclusion's statement about IBF/IBB as resting trait markers is not
+amended retroactively here; it is addressed only through the manuscript text changes that follow this note.
+
+- **Data-leakage check:** the ICC model, sample, Gaussian rule, interval method, fallback, grid and D5 mapping were fixed
+  in §11v before any per-half CF or BW existed; the choice of the McGraw–Wong interval for the verdict was fixed by the
+  synthetic calibration (§11w) before the real values were read; the script was committed before its single run.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
