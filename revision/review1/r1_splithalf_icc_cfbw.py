@@ -10,6 +10,14 @@ Mode `synthetic` (§11v D3 verification; touches no real data): reference checks
   95 % interval and of the analytic McGraw & Wong (1996) interval, computed by the same functions that the real
   data will use; the D3 rule (BCa coverage 0.92-0.98, fallback to the analytic interval) applied mechanically.
 
+    python r1_splithalf_icc_cfbw.py --mode icc --out-dir <outRoot>/review1/splithalf_icc
+
+Mode `icc` (§11v D1-D5 with the §11w outcome): reads the 20 per-half CF, BW, PW from r1_splithalf_cfbw.csv;
+  ICC(2,1) per measure; McGraw & Wong (1996) 95 % interval, which carries the D4 verdict (§11w); BCa 95 %
+  (B = 10,000, seed 20261120, NaN-resample stop rule) reported beside it without a verdict; mean and SD of
+  h1 - h2; leave-one-out ICC range. Refuses to run unless the gate passed and the official calibration chose
+  the analytic interval.
+
 Mode `extract`:
   1. GATE (§11v D0), entirely in memory. For every one of the 39 rest ROI files the frozen Stage-4 split-half is
      repeated exactly as stage4_peak_detection.py does it (split_half_runs -> welch_runs -> run_pipeline ->
@@ -267,6 +275,90 @@ def synthetic(args):
                                           'bca_cells_above_target', 'd3_outcome_mechanical')}, indent=2))
 
 
+# ---------------------------------------------------------------------------------------------------------
+# §11v D1-D5 on the real per-half values, with the §11w outcome: McGraw-Wong carries the D4 verdict.
+# ---------------------------------------------------------------------------------------------------------
+MEASURES = ('cf', 'bw', 'pw')                # Hz, Hz, fooof PW units (log10 power above the aperiodic fit)
+SYNTH_FALLBACK = 'fallback: analytic McGraw-Wong interval used for the D4 verdict'
+KOO_LI = ('poor', 'moderate', 'good', 'excellent')
+
+
+def koo_li(v):
+    """§11v D4, on unrounded values: < 0.50 poor; [0.50, 0.75) moderate; [0.75, 0.90] good; > 0.90 excellent."""
+    if v < 0.50:
+        return 'poor'
+    if v < 0.75:
+        return 'moderate'
+    if v <= 0.90:
+        return 'good'
+    return 'excellent'
+
+
+def d4_verdict(point, lo, hi):
+    """§11v D4: the categories the 95 % CI spans, the point estimate's category, and the 0.75 reading."""
+    span = KOO_LI[KOO_LI.index(koo_li(lo)):KOO_LI.index(koo_li(hi)) + 1]
+    reading = 'reliable' if lo >= 0.75 else ('unreliable' if hi < 0.75 else 'imprecise')
+    label = span[0] if len(span) == 1 else f'{span[0]} to {span[-1]}'
+    return dict(span=list(span), label=f'{label} ({koo_li(point)})', point_category=koo_li(point), reading=reading)
+
+
+def icc(args):
+    cfbw = os.path.join(args.out_dir, 'r1_splithalf_cfbw.csv')
+    gate_json = os.path.join(args.out_dir, 'r1_splithalf_gate.json')
+    synth_json = os.path.join(args.out_dir, 'r1_splithalf_icc_synthetic.json')
+    out = os.path.join(args.out_dir, 'r1_splithalf_icc_real.json')
+    rc.refuse_existing([out])
+
+    # preconditions: the gate passed, and the official calibration selected the analytic interval (§11w)
+    with open(gate_json) as fh:
+        g = json.load(fh)
+    if not g.get('passed'):
+        raise SystemExit('gate did not pass: no ICC computed')
+    with open(synth_json) as fh:
+        sy = json.load(fh)
+    if sy.get('test_run', True) or (sy['n_datasets'], sy['B']) != (N_SYNTH, B_SYNTH):
+        raise SystemExit('synthetic calibration is a test run: no ICC computed')
+    if sy['d3_outcome_mechanical'] != SYNTH_FALLBACK:
+        raise SystemExit(f"calibration outcome is {sy['d3_outcome_mechanical']!r}, §11w expects the fallback")
+    cov = [c['bca']['coverage'] for c in sy['cells']]
+    note = (f'BCa reported without a verdict: in the §11w synthetic calibration (n = {sy["n_subjects"]}, '
+            f'{sy["n_datasets"]} datasets per true ICC) its 95 % interval covered {min(cov):.3f}-{max(cov):.3f} '
+            f'of true values, not 0.95.')
+
+    rows = rc.read_csv(cfbw)
+    if len(rows) != N_PEAK_BOTH_EXPECTED:
+        raise SystemExit(f'{len(rows)} rows in {cfbw}, {N_PEAK_BOTH_EXPECTED} expected')
+    x = {m: np.array([[float(r[f'{m}_h1']), float(r[f'{m}_h2'])] for r in rows]) for m in MEASURES}
+    # sanity: PW read back from the CSV must give the gated ICC exactly (same 20, same values)
+    if icc_2_1(x['pw']) != g['checks']['icc_pw']['recomputed']:
+        raise SystemExit('PW ICC from r1_splithalf_cfbw.csv differs from the gate value: stop')
+
+    res = {}
+    for m, ss in zip(MEASURES, np.random.SeedSequence(SEED_REAL).spawn(len(MEASURES))):
+        bc = bca_ci(x[m], B_REAL, np.random.default_rng(ss))
+        if bc['nan_frac'] > NAN_RESAMPLE_MAX:
+            raise SystemExit(f'{m}: {bc["n_nan"]} of {B_REAL} resamples NaN (> 1 %): stop, nothing written')
+        mlo, mhi = mw_ci(x[m])
+        if not (np.isfinite(mlo) and np.isfinite(mhi)):          # koo_li(NaN) would silently say 'excellent'
+            raise SystemExit(f'{m}: McGraw-Wong interval not finite ({mlo}, {mhi}): stop, nothing written')
+        d = x[m][:, 0] - x[m][:, 1]
+        res[m] = dict(n=len(d), icc=bc['theta'],
+                      mw_lo=mlo, mw_hi=mhi, d4=d4_verdict(bc['theta'], mlo, mhi),
+                      bca_lo=bc['lo'], bca_hi=bc['hi'], bca_z0=bc['z0'], bca_a=bc['a'],
+                      bca_n_nan_resamples=bc['n_nan'],
+                      mean_h1_minus_h2=float(d.mean()), sd_h1_minus_h2=float(d.std(ddof=1)),
+                      jackknife_icc_min=bc['jack_min'], jackknife_icc_max=bc['jack_max'])
+    report = dict(section='§11v / §11w', icc_type='ICC(2,1) two-way random, absolute agreement, single measures',
+                  verdict_interval='McGraw & Wong (1996) analytic 95 % (§11w)', bca_note=note,
+                  B=B_REAL, seed=SEED_REAL, seed_streams='SeedSequence(seed).spawn(3), in the order cf, bw, pw',
+                  sd_ddof=1, subjects=[r['subject'] for r in rows], measures=res,
+                  provenance=rc.provenance(__file__, dict(cfbw_csv=cfbw, gate_json=gate_json,
+                                                          synthetic_json=synth_json)))
+    with open(out, 'w') as fh:
+        json.dump(report, fh, indent=2)
+    print(json.dumps({k: report[k] for k in ('verdict_interval', 'bca_note', 'measures')}, indent=2))
+
+
 def at_bound(bw):
     return int(abs(bw - core.BW_RANGE[0]) <= BW_BOUND_TOL or abs(bw - core.BW_RANGE[1]) <= BW_BOUND_TOL)
 
@@ -345,7 +437,7 @@ def extract(args):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('--mode', required=True, choices=('extract', 'synthetic'))
+    ap.add_argument('--mode', required=True, choices=('extract', 'synthetic', 'icc'))
     ap.add_argument('--stage4')
     ap.add_argument('--roi-dir')
     ap.add_argument('--out-dir', required=True)
@@ -356,8 +448,10 @@ def main():
         if not (args.stage4 and args.roi_dir):
             ap.error('--mode extract needs --stage4 and --roi-dir')
         extract(args)
-    else:
+    elif args.mode == 'synthetic':
         synthetic(args)
+    else:
+        icc(args)
 
 
 if __name__ == '__main__':
