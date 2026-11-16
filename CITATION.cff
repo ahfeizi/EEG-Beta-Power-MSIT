@@ -11,8 +11,6 @@ authors:
     orcid: "https://orcid.org/0000-0002-3702-8547"
 repository-code: "https://github.com/ahfeizi/EEG-Beta-Power-MSIT"
 license: MIT
-version: 1.1.0
-date-released: "2026-11-14"
 keywords:
   - EEG
   - beta oscillations
@@ -27,11 +25,8 @@ keywords:
   - Python
 identifiers:
   - type: doi
-    value: "10.5281/zenodo.24225846"
-    description: "Version DOI for release v1.1.0, the code archive for this manuscript"
-  - type: doi
     value: "10.5281/zenodo.22232798"
-    description: "Concept DOI for the analysis-code archive (resolves to the latest version)"
+    description: "Concept DOI for the analysis-code archive (resolves to the latest version; each release's own version DOI is listed on Zenodo)"
   - type: doi
     value: "10.5281/zenodo.23843194"
     description: "Pre-registration of the beta-peak detection criterion"
