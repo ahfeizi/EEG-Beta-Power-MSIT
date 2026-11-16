@@ -3505,6 +3505,52 @@ read from the file.
 **What does not change.** sub-34 is `poor_fit` at rest (0.80 < 0.90) and in the task (0.68 < 0.90), so its
 classification, the 14 of 38 and 24 of 38 counts, and the task's 28 of 38 are unchanged.
 
+### 11aa. Figure 1 redraw — produced, checked against §11y (2026-11-16)
+
+Written after Amirhossein saw the figure. **Descriptive** (§11y): no new statistic. Script
+`revision/review1/r1_fig1_stage4.py`: gate committed at `8532af5`; export/draw split and fixes B and C at `12e60e4`
+(SHA-256 81ffbd5e539bc1e1a203f2e77e93de2cd6e75d36651e89e77a0562b278f2192f, the value recorded in every run-2 output).
+
+**Two interpreters (decided by Amirhossein, 2026-11-16, option A).** No installed Python has both fooof 1.1.1 and
+matplotlib, and neither environment was changed. `--mode gate` and `--mode export` run in Python 3.12 (fooof 1.1.1,
+numpy 2.5.4); `--mode draw` runs in Python 3.15.2 (matplotlib 3.11.2, numpy 2.5.4), imports no fooof, and refuses to
+draw unless the export record shows a passing gate, the same script SHA-256 and matching SHA-256s for the exported CSV
+and both input tables, and unless the exported markers equal `peaks_all_in_range.csv`.
+
+**Run 2 (the figure used), `Revision_Output\review1\fig1_stage4_run2\`, all exit code 0.**
+- Gate (§11y G0): passed; 39 ROI files; `class_p95`, `n_beta_peaks`, `primary_cf/pw/bw`, `r2_full` and the 65 in-range
+  Gaussians reproduced, largest absolute difference 0.0; wrapper `peak_params_` identical to `core.full_fit`.
+- Export: the gate passed again in memory; `fig1_stage4_plotted.csv`, 6,071 rows (39 × 77 × 2 curve points and 65
+  Gaussian markers), byte-identical to run 1's.
+- Draw: all seven pre-draw checks passed; the panel order read back from the drawn axes equals the intended order
+  (sub-16 first, sub-01 last of the classified, sub-34 in the last participant cell); `n_by_class` peak 24, no_peak 14,
+  poor_fit 1; shared y-limits [−0.18546, 0.83024] from a 13–30 Hz residual range of [−0.10082, 0.74560] (§11y G3);
+  `fig1_stage4_drawn.csv` 6,194 rows, with 38 filled and 27 open markers and 47 clip marks (46 on curves, 1 on a
+  threshold line).
+- SHA-256: `fig1_stage4.png` 7bba746b222f989629ca1ba98fa696c2e7be97cfd318aa3c5dce25b67ff800a5; `fig1_stage4.pdf`
+  ea66c2cb1ac1979a319e30a36623c962630ca0f7a60c470cc36b5132f7cbc160; `fig1_stage4_panels.json`
+  9f1d25b614561b378d10b82f2958d4d1727312e76680b0a2eb2c270226bd7f53; `fig1_stage4_drawn.csv`
+  f5e9475821e49626e85ef0944f2538966ca6e550f440f9156cb928e2a655ae1b; `fig1_stage4_plotted.csv`
+  b337a50b2fa3983a8f21d696c46c9657231f0c638dbcce219e129ecb0246e701; `fig1_stage4_export.json`
+  5f556f21fc83f0c7b4418ff74ba620763d20c74de7abb9f614fcf8283c2b015e; `r1_fig1_gate.json`
+  82755a0b42eb7f1ecb8187f5ca145f4af22217d53a3817901c4d585b8c3cc16d.
+- Copied unchanged to `Paper/media/figure1_v2.png` (same SHA-256 as the PNG above); `image1.png` is kept.
+
+**Run 1, `Revision_Output\review1\fig1_stage4\`: superseded, kept, not used.** Drawn from the same gated data, with the
+uncorrected code. Amirhossein's review of it led to three fixes:
+- **A. Wrong R² in the manuscript.** The figure printed sub-34's resting R² read from `peaks_primary.csv` (0.80); the
+  manuscript said .68, the task value. Corrected in `draft.md` (Paper `f9d627b`) with note §11z (`d95e739`).
+- **B. A clipped threshold line was not marked.** sub-01's threshold (0.871) lies above the shared scale (top 0.830);
+  its line was clipped without a mark, although §11y G3 requires clipped values to be marked. Implementation gap,
+  fixed in the code: a ▲/▼ in the threshold's colour at the axis edge, at 21.5 Hz. The G3 scale rule is unchanged.
+- **C. The poor-fit label overran its panel.** Split onto two lines ("poor fit (R² = 0.80)" / "not classified").
+Because B and C changed the script, gate, export and draw were rerun in the new run-2 folder (no output overwritten).
+
+**Caption.** The Figure 1 caption in `draft.md`, redrafted to §11y G6, and the figure itself were committed in Paper
+`958ffc8` (approved by Amirhossein, 2026-11-16).
+
+- See §11y (specification) and §11z (the R² correction).
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
