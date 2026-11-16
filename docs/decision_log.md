@@ -3551,6 +3551,38 @@ Because B and C changed the script, gate, export and draw were rerun in the new 
 
 - See §11y (specification) and §11z (the R² correction).
 
+### 11ab. Jiang et al. (2026) draw on this dataset: the §11p hedge is made definite (2026-11-16)
+
+§11p narrowed, but could not confirm, whether Jiang et al. (2026; *NeuroImage* 325, 121685,
+doi 10.1016/j.neuroimage.2026.121685) analyse the present dataset, and the Introduction was hedged. §11p's own rule:
+the hedge is removed if their Methods show no overlap, or made definite if they show overlap.
+
+**Source of the verification, stated exactly.** The paper's Methods and Results were read on ScienceDirect
+(pii S1053811926000030) **by Claude acting as Amirhossein's advisor, outside this working session**, and reported here
+in a message pasted by Amirhossein: eyes-open resting EEG from the Nencki-Symfonia dataset (n = 42, citing Dzianok et
+al., 2022) together with the MSIT+ task, and Paluch et al. (2025) cited in their Results (Section 3.5) for the N450
+region of interest. **The paper was not read in this session**: its ScienceDirect page returned HTTP 403 here. What
+this session did check (Crossref, 2026-11-16) is only that pii S1053811926000030 is the paper cited in the manuscript
+(same title, authors, volume and article number); Crossref carries no abstract, so the dataset facts above rest on the
+advisor's reading alone.
+
+**Claim before** (`Paper/draft.md`, Introduction, line 15): "That alpha-band work may not be independent of the present
+sample: Jiang et al. appear to draw on a dataset overlapping with or related to the one analysed here, since their
+references include the description of the Nencki-Symfonia dataset (Dzianok et al., 2022) and an analysis of its
+interference task (Paluch et al., 2025), and their executive-function measures match this paradigm, so comparisons
+between their alpha-band findings and our beta-band findings should not be read as comparisons between independent
+samples."
+
+**Claim after:** "That alpha-band work is not independent of the present sample: Jiang et al. (2026) analyse eyes-open
+resting EEG from the same Nencki-Symfonia dataset (Dzianok et al., 2022) together with the MSIT+ task, and cite Paluch
+et al. (2025) for their N450 region of interest; comparisons between their alpha-band findings and our beta-band
+findings are therefore not comparisons between independent samples."
+
+**Other citations checked.** The three other citations of Jiang et al. (2026) in `draft.md` (the preceding sentence of
+the same paragraph, line 15; Discussion, lines 184 and 190) attribute findings or a proposal to them and say nothing
+about independence; they are unchanged. `supplementary.md` does not cite the paper. §11p's change of "the logic
+already established for …" to "the logic proposed for …" stands.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
