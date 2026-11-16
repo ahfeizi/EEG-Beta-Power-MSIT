@@ -3490,6 +3490,21 @@ Supplementary Analysis S7.
 - **Data-leakage check:** nothing here is a new statistic; every plotted quantity is the frozen Stage-4 output or a
   curve from the same fit, and the gate binds the figure to `peaks_primary.csv` and `peaks_all_in_range.csv`.
 
+### 11z. Correction note: the resting poor-fit R² is .80, not .68 (2026-11-16)
+
+`Paper/draft.md` Results (line 93, "Absence of a Discrete Resting Beta Peak") said that one participant's spectral fit
+did not meet the quality criterion with "R² = .68". That is sub-34's full-model R² in the **task** recording
+(`Revision_Output\stage5\peak_detection_task\peaks_primary.csv`, `r2_full` = 0.6786497922729278; §10i). The resting
+value, which that paragraph reports on, is **0.8034855809085849** (`Revision_Output\stage4\peak_detection\
+peaks_primary.csv`, `r2_full`; §9: "sub-34, R²=0.8035 < 0.90"). The sentence now reads "R² = .80". It is the only place
+in `draft.md` or `supplementary.md` where sub-34's R² is printed (checked by search, 2026-11-16). §11y G5 quoted the
+same wrong value in the label it described ("poor fit (R² = 0.68)"); G5's own rule, that the R² is read from
+`peaks_primary.csv` and not typed, governs, and the figure prints 0.80. Found when the Figure 1 redraw printed the value
+read from the file.
+
+**What does not change.** sub-34 is `poor_fit` at rest (0.80 < 0.90) and in the task (0.68 < 0.90), so its
+classification, the 14 of 38 and 24 of 38 counts, and the task's 28 of 38 are unchanged.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
