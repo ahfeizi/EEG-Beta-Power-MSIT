@@ -3410,6 +3410,86 @@ amended retroactively here; it is addressed only through the manuscript text cha
   in §11v before any per-half CF or BW existed; the choice of the McGraw–Wong interval for the verdict was fixed by the
   synthetic calibration (§11w) before the real values were read; the script was committed before its single run.
 
+### 11y. Figure 1 redraw from the Stage-4 classification — specification (`R1-fig1-redraw`, 2026-11-16)
+
+Decided by Amirhossein on 2026-11-16 (options G0–G8 as recommended). Written before any plotting code exists.
+**Descriptive, not inferential:** the figure redraws the pre-registered Stage-4 classification (§9) and introduces no
+new test or quantity; it replaces the current Figure 1, which §11i showed is drawn from the v1 pipeline (42 v1
+`*_rest_clean.set` files, all channels, linear log-log detrending with 7–13 Hz masked), not from the spectra the
+criterion classified, and from which the classification cannot be read (§11j: every curve has local maxima in 13–30 Hz).
+
+**Checked before writing (2026-11-16).**
+- `stage4_core.full_fit` returns only `fit_ok`, R² and `peaks`; it does not return the aperiodic or model curves.
+- fooof 1.1.1 (`fooof/objs/fit.py`, `_create_peak_params`, lines 1169–1207): a peak's PW is
+  `fooofed_spectrum_[ind] − _ap_fit[ind]`, with `ind` the frequency bin **nearest** to CF, i.e. the height of the
+  model's periodic component `_peak_fit` at that bin. `_spectrum_flat` = `power_spectrum − _ap_fit` after the final
+  aperiodic fit (lines 494–495). So a marker at (CF, PW) lies on the periodic-component curve at the bin nearest CF
+  (horizontal offset ≤ 0.25 Hz on the 0.5 Hz grid), and comparing markers with the threshold line reproduces the
+  criterion.
+- The three participants of the 42 who are not in the 39 are sub-42 (35 channels with unresolved labels), sub-28
+  (15.2 % bad channels) and sub-32 (21.6 % bad channels) (this log, top). `draft.md` Methods (line 29) already states
+  these exclusions, without participant IDs.
+
+**G0 — data and gate.** A new script, `revision/review1/r1_fig1_stage4.py`, imports `stage4_core` unchanged and, for
+each of the 39 rest ROI files, repeats `load_roi` → `welch_runs` → the full fit. To obtain the curves it fits with
+`core._fooof()` and `fm.fit(freqs, psd, list(core.FIT_RANGE))`, the same call as `core.full_fit`, and reads
+`fm.freqs`, `fm._spectrum_flat`, `fm._peak_fit` (private fooof 1.1.1 attributes; a new access path, no new fitting
+logic). **Gate, before anything is drawn:** the wrapper's `peak_params_` must equal `core.full_fit`'s `peaks` exactly
+for every participant; and `class_p95`, `primary_cf`, `primary_pw`, `primary_bw`, `r2_full`, `n_beta_peaks` (all 39,
+`peaks_primary.csv`) and every in-range Gaussian's `cf`, `pw`, `bw`, `pw_ge_p95` (`peaks_all_in_range.csv`) must be
+reproduced (classes and flags exactly, numbers within 1e-9). The p95 threshold of each participant is read from
+`peaks_primary.csv` (`thr_p95`). If any check fails, the script stops, draws nothing and reports which check failed.
+
+**G1 — content of each panel.** (1) thin line: the data residual `_spectrum_flat` (log₁₀ PSD − the full model's
+aperiodic fit); (2) thick line: the model's periodic component `_peak_fit`; (3) one marker per beta-range Gaussian
+(CF in [13, 30] Hz, BW in [1, 8] Hz) at (CF, PW), **filled** if PW ≥ the participant's own p95 threshold, **open** if
+below; (4) a dashed horizontal line at the participant's own p95 threshold, drawn over 13–30 Hz only; (5) 13–30 Hz
+shaded. The model curve can exceed the threshold inside 13–30 Hz where no qualifying Gaussian has its centre (e.g. the
+shoulder of an alpha peak near 13 Hz); the caption states that the classification is read from the markers, not from
+either curve. Rejected: model curve and markers only (hides the data); data residual and threshold only (invites the
+reading by local maxima that §11j showed separates nothing).
+
+**G2 — frequency range: 2–40 Hz**, the fitted range, so the panel shows what the criterion saw, including the alpha
+peak and the 31–40 Hz noise band. Rejected: 8–40 Hz; 13–30 Hz only.
+
+**G3 — vertical scale: one shared scale for all panels**, fixed mechanically as the minimum and maximum of the data
+residual within 13–30 Hz over all 39 participants, plus 10 % of that range on each side. Values outside it (mainly
+alpha peaks) are clipped at the axis and marked with a small symbol at the clip point. Rejected: per-panel scaling
+(heights and thresholds would not be comparable across participants).
+
+**G4 — layout and order.** A grid of 5 columns × 8 rows (40 cells): 39 participants and one legend cell, one panel per
+participant, in the main text in place of the current Figure 1. The 38 classified participants are ordered by the
+margin `max beta-range PW − own p95 threshold` (the maximum PW taken as 0 for a participant with no beta-range
+Gaussian, as `max_beta_pw` defines it), descending, so the 24 `peak` participants precede the 14 `no_peak` ones and the distance of each from its
+threshold is visible; the poor-fit participant comes last. Panel title: participant ID only; no numbers inside panels
+(they are in the companion CSV/JSON). Rejected: order by ID within class; a group-summary figure in the main text with
+the grid in the Supplementary.
+
+**G5 — poor fit.** sub-34 is shown in the last participant cell, in grey, labelled "poor fit (R² = 0.68), not
+classified", with no threshold line and no filled marker. The R² printed is read from `peaks_primary.csv`
+(`r2_full`), not typed.
+
+**G6 — relation to Table 1.** Table 1 is unchanged (the earlier edge-based methods, n = 42). Figure 1 shows the
+pre-registered classification (n = 39: 24 `peak`, 14 `no_peak`, 1 `poor_fit`). The caption states that the two answer
+different questions on different samples (as the Results text already says they "should not be averaged or compared
+directly"), points to Methods for the three exclusions, and replaces "the classification cannot be read from the
+figure" by a statement that the classification is read from the markers against each participant's threshold, while
+the data residual has local maxima in both groups (§11j). Rejected: a Stage-4 row in Table 1 (mixes denominators 38
+and 42); a per-panel tag counting edge-based flags (a new comparison).
+
+**G7 — outputs and provenance.** Outputs in `Revision_Output\review1\fig1_stage4\`, never overwritten: the figure
+(PNG at 200 dpi, as Figure 3, and PDF), a CSV of every plotted curve and marker, and a `_panels.json` written by
+re-reading the drawn figure (panel order, participant per cell, class, threshold), so that the caption can be checked
+against what was drawn. Provenance hashes as in the other review-1 scripts. In the manuscript the figure is copied as
+`Paper/media/figure1_v2.png` (a new name; `image1.png` is kept), and every number in the caption is read from these
+outputs.
+
+**G8 — no 2 × IAF mark.** The figure's role is the classification; the harmonic finding is reported in the text and
+Supplementary Analysis S7.
+
+- **Data-leakage check:** nothing here is a new statistic; every plotted quantity is the frozen Stage-4 output or a
+  curve from the same fit, and the gate binds the figure to `peaks_primary.csv` and `peaks_all_in_range.csv`.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
