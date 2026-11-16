@@ -3102,6 +3102,17 @@ their IAF would both produce it. Nothing here changes the pre-registered classif
 - **Data-leakage check:** the rule, the null model, the windows and the verification criteria were fixed before the
   script was run on real data (§11q, with its amendment made before any run); the inputs are the published §9 outputs.
 
+### 11s. Correction note: "the published behavioural analysis" becomes the citation itself (2026-11-16)
+
+§11g (item 2) and the manuscript text it produced called Paluch et al. (2025) "the published (behavioural) analysis
+of the same dataset". The manuscript cites the 2025 bioRxiv preprint (doi 10.1101/2025.03.05.641477), and the three
+facts it quotes from that work were checked only there (§11o); the NeuroImage version (337, 122030, 2026) could not be
+read. "Published" therefore names a version the quoted facts were not checked against. As already done for the Simon
+against flanker accuracy p = .80, the phrase is replaced by the citation itself in the three places that still used
+it: `draft.md` Methods (line 73) and Results (line 131), and the S3 note in `supplementary.md` (line 60). No number
+changes. §11g stays as written; its "published analysis of the same dataset" should be read as "the analysis of the
+same dataset by Paluch et al. (2025, bioRxiv preprint)".
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
