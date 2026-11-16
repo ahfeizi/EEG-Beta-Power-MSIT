@@ -1230,7 +1230,7 @@ across conditions in `later` (χ² = 16.077, p = .0011, W = 0.137, Page's L p = 
 ### 10m. The within-task control window, the equivalence bound and the BF₀₁ rule (`S5-control-window`, `S5-tost-bound`, 2026-11-08)
 
 Three decisions, all taken before the analyses they govern run, after the §10l results and the
-reconciliation pass (`stage5_reconciliation.md`, root commit `ddb1f41`) identified what was still missing:
+reconciliation pass (`stage5_reconciliation.md`, root commit `c0c9372`) identified what was still missing:
 `revision_plan.md` Stage 5 (audit #5, #6) needs a within-task control window, and Stage 6 (audit #1, #13)
 needs BF₀₁ and TOST before the pre-stimulus conflict null may be called a null.
 
