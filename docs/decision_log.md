@@ -3113,6 +3113,37 @@ it: `draft.md` Methods (line 73) and Results (line 131), and the S3 note in `sup
 changes. §11g stays as written; its "published analysis of the same dataset" should be read as "the analysis of the
 same dataset by Paluch et al. (2025, bioRxiv preprint)".
 
+### 11t. Correction note: Dzianok et al. (2022) do rank Simon against flanker interference, on reaction time (2026-11-16)
+
+§10k justified the three-level Page's L with "nothing in the paper or in the task ranks Flanker interference against
+Simon interference", and §10q judged the v1 manuscript's citation of Dzianok et al. (2022) for 00 < S0 < F0 < FS
+misattributed. Both readings of the paper were incomplete. §10k read its Methods ("Task details") and Table 3, which
+define the four conditions without ranking them. The paper's "Dataset basic results" section, read in full on
+2026-11-16 (open full text, Europe PMC PMC8900497, doi 10.1093/gigascience/giac015), reports the four conditions in
+the reaction-time order 00 < S0 < F0 < FS on all 42 participants: 537.29 ± 62.11, 592.61 ± 54.48, 678.71 ± 69.80 and
+746.82 ± 85.87 ms; F(1.76, 72.02) = 391.15, P < 0.001; all post hoc pairwise comparisons P < 0.001, Bonferroni-corrected.
+Its ERP results describe the N450 and the conflict slow potential as increasing in the same order. Response errors are
+not ordered: 0.90, 0.69, 1.23 and 1.55 % for 00, S0, F0 and FS.
+
+**What changes.**
+- The v1 citation of Dzianok et al. (2022) for the reaction-time order was correct. §10q's "misattributed" verdict
+  holds for Wojciechowski et al. (2024) only, which remains unverified.
+- The manuscript sentences saying that the published description of the paradigm does not rank the conditions are
+  corrected (Amirhossein, 2026-11-16, Option 1): `draft.md` Methods (line 73) and Results (line 131), and the S3 caption
+  and note in `supplementary.md` (lines 58 and 60). The three-level test is now justified by what the design itself
+  defines, the number of conflict sources (0, 1, 1, 2), with Dzianok et al. (2022) cited for that definition, and the
+  reaction-time order is attributed to Dzianok et al. (2022, all 42 participants) as well as to Paluch et al. (2025).
+  Paluch et al. remain the source of the Simon against flanker accuracy p = .80, which Dzianok et al. do not report.
+
+**What does not change.**
+- The three-level test remains the pre-specified primary ordering claim. It was fixed before Track A ran, and the part
+  of §10k's rationale that holds, that the task design defines the conditions only by their number of conflict
+  sources, is the rationale the manuscript now gives.
+- The four-level test stays post-hoc (§10q: the decision to run it followed the §10l medians). A published source for
+  its order on the full dataset existed before it was run but was not consulted; that does not make it pre-specified.
+- Both sources draw on the participants analysed here, so neither is an independent replication.
+- §10k and §10q stay as written; read them with this note.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
