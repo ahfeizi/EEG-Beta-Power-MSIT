@@ -3165,6 +3165,116 @@ the Method. The paragraph's existing statement is also narrowed: the decision ru
 analysis it governs was run", no longer "before the relevant data were examined", because the task recordings had
 been examined in the v1 version. No number and no verdict changes.
 
+### 11v. Split-half reliability of resting CF and BW (IBF, IBB) — decision rule (`R1-splithalf-icc-cfbw`, 2026-11-16)
+
+Decided by Amirhossein on 2026-11-16 (options D0–D5, with D2b, as recommended). Written before the script exists.
+**Post-hoc:** §3.8 of the pre-registration and §9 registered and reported the split-half ICC of peak power (PW) only; the ICC of the
+centre frequency (CF, the IBF) and bandwidth (BW, the IBB) was not registered, and it is labelled post-hoc wherever it is
+reported. It changes no classification and no pre-registered quantity.
+
+**Question.** §9 reports split-half agreement 97.4 % and ICC(2,1) = 0.919 for PW among the 20 participants with a peak
+in both halves, and the manuscript (`draft.md` Abstract line 5, Discussion line 182, Conclusion line 224) states that
+"the measurement was reliable where a peak existed". That statement is supported for peak presence and PW, not for the
+two quantities proposed as trait markers. Are CF and BW themselves reliable between halves of one resting session?
+
+**D0 — extraction: frozen fitting code, new wrapper, reproduction gate.**
+- The fitting code is unchanged: `git diff S4-prereg-frozen HEAD -- revision/stage4/` is empty (checked 2026-11-16).
+  `split_half_runs`, `welch_runs`, `run_pipeline` and `beta_peaks` in `stage4_core.py` are the code frozen at
+  `bd96a95`, and `run_pipeline` returns [CF, PW, BW] for every Gaussian.
+- The per-half CF and BW were computed in the §9 run but not saved: `stage4_peak_detection.py` (line 150) writes only
+  `max_beta_pw` per half to `split_half.csv`. That script is not re-run or modified (it is frozen, requires the DOI and
+  refuses to overwrite its outputs).
+- A new wrapper, `revision/review1/r1_splithalf_icc_cfbw.py`, imports `stage4_core` unchanged, reads the same rest ROI
+  files, repeats the split and the fits, and records `beta_peaks(peaks)[0]` per half. Outputs go to the new folder
+  `Revision_Output\review1\splithalf_icc\`; no existing file is overwritten.
+- **Mandatory gate, in memory, before any CF or BW value is written.** For all 39 participants the script recomputes
+  `class_h1`, `class_h2`, `max_beta_pw_h1` and `max_beta_pw_h2` and compares them with `split_half.csv`: class must
+  match exactly, PW within an absolute tolerance of 1e-9. The number of participants classified `peak` in both halves
+  must be 20, and ICC(2,1) of their recomputed PW must reproduce `icc_pw` in `split_half_summary.json` within 1e-9. If
+  any check fails, the script stops, writes nothing, and the failure is reported to Amirhossein; it is not worked around.
+- Nothing in D0 adds fitting logic. The three choices it does involve (which Gaussian, D2b; which sample, D2; raw
+  units, D1) are inherited from the frozen definitions and are written down here so that none is made after the fact.
+
+**D1 — ICC model: ICC(2,1).** Two-way random effects, absolute agreement, single measures (Koo & Li, 2016; McGraw &
+Wong, 1996, ICC(A,1)), the model registered for PW (§3.8), so the CF, BW and PW values are directly comparable. Absolute
+agreement penalises a systematic h1 − h2 offset as well as random disagreement; IBF is a value in Hz, so an offset
+matters. The existing `icc_2_1` function (verified against Shrout & Fleiss, 1979, §9) is reused. Raw units, no
+transformation: CF and BW in Hz. Rejected: ICC(3,1) consistency (ignores offsets in Hz); ICC(1,1) one-way (defensible
+because the half labels are arbitrary, but inconsistent with the registered PW model, and with interleaved odd/even
+halves the difference is expected to be negligible); ICC(2,2) / Spearman–Brown for the full-length measure (not
+reported, so that no second, more favourable number is available to choose from). The verdict therefore concerns a
+half-length measurement and is conservative relative to the full-length IBF and IBB reported in the manuscript; the
+text says so.
+
+**D2 — sample: the same 20 participants.** Those classified `peak` in both halves at their own half-length p95 (§7c,
+§9), read from `split_half.csv` and confirmed by the D0 gate. The set was fixed by PW and cannot be changed by CF or BW,
+because classification depends on PW alone and CF and BW come from the same Gaussian. Rejected: every participant with
+any 13–30 Hz Gaussian in both halves regardless of threshold (would measure the reliability of fits the pipeline does
+not call a peak); the 24 participants with a full-data peak (sub-05, sub-21 and sub-31 have no peak in either half, so
+their CF and BW are undefined). The result is conditional on a peak being detectable in both halves, a selection
+towards stronger peaks; the text says so.
+
+**D2b — which Gaussian: the tallest beta-range Gaussian of each half** (`beta_peaks(peaks)[0]`, CF in [13, 30] Hz and
+BW in [1, 8] Hz, highest PW first). This is the frozen definition behind `primary_cf` and `max_beta_pw`. No matching of
+Gaussians between halves (e.g. nearest CF to the full-data peak) is applied: that would be a new analytic rule.
+Reported descriptively, with no verdict: the number of participants with more than one beta-range Gaussian in either
+half (possible peak switching), |CF_h1 − CF_h2| per participant, the number of BW values at the 1 or 8 Hz bounds of
+`peak_width_limits` (censored), and the min–max of the leave-one-out (jackknife) ICCs.
+
+**D3 — confidence interval: BCa bootstrap, with a fixed fallback.**
+- Primary: BCa bootstrap, two-sided 95 %. Resampling unit: the participant (the pair h1, h2 moves together). B = 10,000,
+  seed 20261120. Acceleration from the leave-one-out jackknife over the 20 participants. Two-sided because the ICC is
+  estimated and classified by both bounds (D4), not tested against a single value.
+- Resamples whose ICC is NaN are counted and dropped; if more than 1 % of resamples are NaN, the script stops and the
+  case is reported.
+- Secondary, reported beside it with no verdict: the analytic F-based interval for ICC(A,1) (McGraw & Wong, 1996), which
+  assumes normal subject and error effects (CF and BW are bounded and may not be normal).
+- The same BCa (and analytic) interval is computed for PW. The PW point estimate (0.919) does not change.
+- **Verification before real data.** Synthetic bivariate-normal pairs, n = 20, true ICC 0.5, 0.75 and 0.9 (subject
+  variance = ICC, error variance = 1 − ICC, no offset between halves), 1,000 datasets per value, B = 1,999 per dataset.
+  The script's own ICC must be used throughout. Target coverage of the BCa 95 % interval: 0.92–0.98 in each of the three
+  cells. If BCa coverage is below 0.92 in any cell, the verdict (D4) is taken from the analytic interval instead,
+  fixed now. The analytic interval's coverage is computed in the same simulation; if the fallback is needed and the
+  analytic coverage is also below 0.92 in any cell, the script stops and the case is reported. A BCa coverage above
+  0.98 does not trigger the fallback (an over-wide interval cannot overstate reliability) and is reported as
+  conservative. Raw synthetic output is shown to Amirhossein before the real data are touched.
+
+**D4 — interpretation grid, fixed now: Koo & Li (2016), read from the 95 % CI.** Categories on unrounded values:
+ICC < 0.50 poor; 0.50 ≤ ICC < 0.75 moderate; 0.75 ≤ ICC ≤ 0.90 good; ICC > 0.90 excellent. Following Koo & Li's own
+recommendation, the verdict is the set of categories the 95 % CI spans (e.g. "good to excellent"), with the point
+estimate's category in parentheses. Applied identically to CF, BW and PW. **Consequence stated in advance:** if the
+lower bound of the PW interval is below 0.90, the manuscript's description of PW reliability changes from "excellent"
+to the span the interval covers. Three reliability readings, linked to the 0.75 threshold of rule 7 (§10d):
+- **reliable:** lower CI bound ≥ 0.75;
+- **unreliable:** upper CI bound < 0.75;
+- **imprecise:** the CI contains 0.75.
+Rejected: labelling by the point estimate only (§9's practice, but not what Koo & Li advise); Cicchetti (1994), more
+lenient and not the grid this project has used.
+
+**D5 — what is reported, and how it connects to the Conclusion.**
+- PW, CF and BW separately: n, ICC(2,1), BCa 95 % CI, the D4 span, and the mean (SD) of h1 − h2 in the measure's units.
+  Results (resting reliability paragraph), Methods (labelled post-hoc), a Supplementary table. The D2b descriptives go
+  to the Supplementary.
+- Whatever the result, every "the measurement was reliable where a peak existed" (Abstract, Discussion, Conclusion)
+  names the quantity it refers to.
+- Fixed mapping, applied to CF and BW separately (they may differ):
+  1. **reliable:** among participants with a detectable peak, IBF/IBB are reliably measured within a session; the
+     limitation the Conclusion states is one of coverage (no peak in 36.8 %), not of measurement reliability. The
+     Conclusion's first sentence stands; two qualifications are added: (a) split-half reliability within one session
+     is not stability across sessions, so it does not by itself establish a trait; (b) 19 of 24 resting peaks are
+     compatible with an alpha harmonic (§9, §11r), so a reliable CF may inherit its reliability from IAF and does not by
+     itself show an independent beta trait.
+  2. **unreliable:** the Conclusion is strengthened: even where a peak is detected, IBF/IBB are not reliably measured
+     within a session; "reliable" is restricted to peak presence and PW.
+  3. **imprecise:** CF/BW reliability is reported as not established, with no claim either way; "reliable" is
+     restricted to peak presence and PW.
+- **Scope: rest only.** The Conclusion concerns resting trait markers. The task split-half CF/BW ICC (§10i, n = 26) is
+  not run.
+
+- **Data-leakage check:** written from the frozen code, §3.8, §9 and the manuscript text. The full-data primary CF and
+  BW (`peaks_primary.csv`) have been seen and are reported in the manuscript; the per-half CF and BW have never been
+  saved or seen by anyone, so no ICC of CF or BW existed when this rule was written.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
