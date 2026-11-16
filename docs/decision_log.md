@@ -3275,6 +3275,67 @@ lenient and not the grid this project has used.
   BW (`peaks_primary.csv`) have been seen and are reported in the manuscript; the per-half CF and BW have never been
   saved or seen by anyone, so no ICC of CF or BW existed when this rule was written.
 
+### 11w. Split-half ICC — gate and synthetic interval calibration, read mechanically against §11v (2026-11-16)
+
+Written after Amirhossein saw the raw output. **Post-hoc** (§11v). Script `revision/review1/r1_splithalf_icc_cfbw.py`:
+`--mode extract` committed at `4791314`, `--mode synthetic` added at `081e77a`. Outputs in
+`Revision_Output\review1\splithalf_icc\`. No real-data ICC of CF or BW, and no real-data interval, has been computed at
+the time of writing; the per-half CF and BW values written by the gate step have not been looked at.
+
+**Gate (§11v D0), passed.** `r1_splithalf_gate.json`: 39 = 39 participants, same set; half-length thresholds and
+half epoch counts identical to `split_half.csv` (0 mismatches); `class_h1/h2` 78 of 78 identical; `max_beta_pw_h1/h2`
+78 of 78 within 1e-9, largest absolute difference 0.0; 20 participants `peak` in both halves; ICC(2,1) of PW recomputed
+as 0.9185927155163712, identical to `icc_pw` (difference 0.0). Exit code 0. Only then were the per-half CF, PW and BW of
+the 20 written (`r1_splithalf_cfbw.csv`).
+
+**D2b descriptives** (`r1_splithalf_descriptives.json`, no verdict). Of the 20, 14 have more than one beta-range
+Gaussian in half 1 and 14 in half 2, **18 in at least one half** (sub-threshold Gaussians included, as §11v D2b defines
+the count); BW lies at the 1 or 8 Hz bound in 4 halves-1 and 4 halves-2, **6 participants in at least one half**
+("at the bound" taken as within 1e-6 Hz of it, a tolerance fixed in the script, not in §11v). The high multi-Gaussian
+rate means that the tallest-Gaussian rule may pick different components in the two halves, which would lower the CF
+ICC; under §11v D2b this is reported, not corrected.
+
+**Synthetic calibration (§11v D3).** `r1_splithalf_icc_synthetic.json` and `r1_splithalf_icc_synthetic_datasets.csv`
+(3,000 rows); log `synthetic_run.log`, exit code 0. Bivariate normal, n = 20, subject variance = ICC, error variance =
+1 − ICC, no offset between halves; 1,000 datasets per true ICC, B = 1,999; the same `icc_2_1`, `bca_ci` and `mw_ci` that
+the real data will use. **Seed 20261121**, chosen when the script was written (§11v did not fix a synthetic seed); it is
+independent of the real-data seed **20261120** fixed in §11v D3, which is used only on the real data. The run's
+provenance records `script_sha256` a27649681718fe5f9e18eb5b0c2a7b0d8a46f257c96b82d786c518f8a6513150, identical to the
+committed blob at `081e77a`, and `decision_log_sha256` of this log as committed at `04e80af`. Before the official run,
+a smoke test (20 datasets, B = 199, written to the session scratchpad, not an output) exposed and fixed a file-naming bug
+in the output step; the official run used the committed code.
+
+| True ICC | Interval | Coverage (covered / 1,000) | Clopper–Pearson 95 % of coverage | Interval above true | Interval below true | Median width |
+|---|---|---|---|---|---|---|
+| 0.50 | BCa | **0.893** (893) | [0.872, 0.912] | 59 | 48 | 0.586 |
+| 0.50 | McGraw–Wong | **0.945** (945) | [0.929, 0.958] | 22 | 33 | 0.673 |
+| 0.75 | BCa | **0.906** (906) | [0.886, 0.923] | 55 | 39 | 0.361 |
+| 0.75 | McGraw–Wong | **0.955** (955) | [0.940, 0.967] | 23 | 22 | 0.416 |
+| 0.90 | BCa | **0.905** (905) | [0.885, 0.923] | 60 | 35 | 0.162 |
+| 0.90 | McGraw–Wong | **0.946** (946) | [0.930, 0.959] | 28 | 26 | 0.193 |
+
+No dataset gave a NaN interval and none had more than 1 % NaN resamples. Median estimated ICC 0.509, 0.758 and 0.901.
+
+**Implementation checks, run in the same script before the calibration.**
+- **BCa against `scipy.stats.bootstrap(method='BCa', paired=True)`**, one synthetic dataset (true ICC 0.75, n = 20),
+  B = 20,000 each, independent seeds: own [0.6609, 0.9042], scipy [0.6645, 0.9037]. The differences (0.004, 0.0005)
+  are of Monte Carlo size, so the BCa code computes BCa; its undercoverage is a property of the method at n = 20.
+- **McGraw–Wong on the Shrout & Fleiss (1979) Table 2 data** (6 targets × 4 judges): ICC(2,1) = 0.2898 (the published
+  0.29), interval [0.0188, 0.7611]. **Caveat:** the interval could not be cross-checked against an independent
+  implementation on this machine (no R, no `pingouin`). The 0.945–0.955 coverage above is indirect evidence that the
+  formula is correct; a direct check is R `irr::icc(model = "twoway", type = "agreement", unit = "single")` on the
+  same table.
+
+**Mechanical outcome (§11v D3).** BCa coverage is below 0.92 in **all three** cells (0.893, 0.906, 0.905); McGraw–Wong
+coverage is within 0.92–0.98 in all three. No cell is above 0.98. Therefore, as fixed in §11v D3, **the D4 verdict on the
+real data (CF, BW and PW alike) is taken from the analytic McGraw & Wong (1996) interval**, not from BCa. The stop
+condition (both intervals below 0.92 in some cell) does not arise.
+
+**Reporting decision (Amirhossein, 2026-11-16).** On the real data BCa is still computed (B = 10,000, seed 20261120,
+the §11v NaN-resample stop rule unchanged) and reported beside the McGraw–Wong interval, with no verdict attached, and
+with a one-line note that in this calibration BCa covered 0.89–0.91 instead of 0.95 at n = 20. This swaps the roles §11v
+D3 gave the two intervals; nothing else in §11v changes.
+
 ## File locations (as of 2026-11-02)
 - Decision log: `github/eeg-beta-project/docs/decision_log.md` (repo `ahfeizi/EEG-Beta-Power-MSIT`, branch `revision-v2`).
 - Pre-registration: `github/eeg-beta-project/docs/zenodo_preregistration_stage4.md` (same repo/branch).
